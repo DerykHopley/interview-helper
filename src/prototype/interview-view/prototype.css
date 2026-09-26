@@ -245,3 +245,37 @@ button { font: inherit; }
 .vj-yours { margin-left: 8px; font-size: 11px; background: #fcd34d; color: #1f2937; padding: 1px 6px; border-radius: 4px; }
 .vj-reason { font-size: 13px; color: #d1d5db; }
 .vj-keep { font-size: 13px; font-weight: 700; color: #fcd34d; }
+
+/* ---------- K: dark table ---------- */
+.ve { transition: background .4s; }
+.ve.vk-table { background: radial-gradient(circle at 50% 30%, #1f3b33, #0b1512 75%); }
+.vk-table .vg-card { box-shadow: 0 14px 30px #000a; }
+.vk-table .vg-card:not(.is-picked):not(.vg-empty) { background: #111827; border-color: #4b5563; }
+.vk-table .vg-card.is-best:not(.is-picked) { border-color: #fcd34d; }
+.vk-table .ve-tally { color: #9ca3af; }
+.vk-table .ve-deal { background: #fcd34d; color: #111827; }
+.vk-table .ve-under { background: #e7e0cc; }
+
+/* ---------- L: card turns over, light hand ---------- */
+.vl-back { justify-content: center; }
+.vl-q { font-family: Georgia, serif; font-size: 22px; font-weight: 700; line-height: 1.3; margin-top: 10px; }
+.vl-hint { margin-top: 14px; font-size: 13px; color: #9ca3af; }
+.vl .vg-card:not(.vg-empty) { background: #fffdf7; color: #1f2937; border-color: #e7d9b0; }
+.vl .vg-card.is-best:not(.is-picked) { border-color: #1f2937; }
+.vl .vg-card.is-picked { background: #dcfce7; border-color: #16a34a; }
+.vl .vg-label { color: #a16207; }
+.vl .vg-reason { color: #4b5563; }
+.vl .vg-cta { color: #6b7280; }
+.vl .vg-card.is-picked .vg-cta { color: #15803d; }
+.vl .vg-used { color: #b45309; }
+
+/* ---------- M: hand on the card ---------- */
+.vm-back { padding: 22px 24px 16px; }
+.vm-back > .ve-label { color: #d1d5db; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 15px; }
+.vg-on-card { margin-top: 24px; min-height: 0; }
+.vg-on-card .vg-card { width: 170px; min-height: 200px; padding: 12px; }
+.vg-on-card .vg-card:not(.is-picked):not(.vg-empty) { background: #374151; border-color: #4b5563; }
+.vg-on-card .vg-card.is-best:not(.is-picked) { border-color: #fcd34d; }
+.vg-on-card .vg-title { font-size: 14px; }
+.vg-on-card .vg-reason { font-size: 12px; }
+.vg-on-card .vg-empty { width: 100%; background: transparent; border: 0; box-shadow: none; }

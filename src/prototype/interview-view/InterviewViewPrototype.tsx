@@ -1,20 +1,20 @@
-// PROTOTYPE — round 3: the flashcard deck (round 2's E) with four ways of showing Matches,
-// switchable via ?variant=E|G|H|J. Earlier rounds: see docs/prototypes/interview-view/README.md.
+// PROTOTYPE — round 4: G's dealt hand, plus three ways of adding H's dark contrast,
+// switchable via ?variant=G|K|L|M. Earlier rounds: see docs/prototypes/interview-view/README.md.
 // Picks are shared in memory so you can compare the same state across variants.
 import { useState } from "react";
 import { PrototypeSwitcher, useVariant, type VariantDef } from "../PrototypeSwitcher";
 import { initialPicks, questions, scenarioById, type Picks } from "./data";
-import { VariantE } from "./VariantE";
 import { VariantG } from "./VariantG";
-import { VariantH } from "./VariantH";
-import { VariantJ } from "./VariantJ";
+import { VariantK } from "./VariantK";
+import { VariantL } from "./VariantL";
+import { VariantM } from "./VariantM";
 import "./prototype.css";
 
 const variants: VariantDef[] = [
-  { key: "E", name: "One Match at a time" },
-  { key: "G", name: "Dealt hand" },
-  { key: "H", name: "Ranked list" },
-  { key: "J", name: "Guess first" },
+  { key: "G", name: "Dealt hand (round 3)" },
+  { key: "K", name: "Dark table" },
+  { key: "L", name: "Card turns over" },
+  { key: "M", name: "Hand on the card" },
 ];
 
 export function InterviewViewPrototype() {
@@ -29,10 +29,10 @@ export function InterviewViewPrototype() {
 
   return (
     <>
-      {variant === "E" && <VariantE {...props} />}
       {variant === "G" && <VariantG {...props} />}
-      {variant === "H" && <VariantH {...props} />}
-      {variant === "J" && <VariantJ {...props} />}
+      {variant === "K" && <VariantK {...props} />}
+      {variant === "L" && <VariantL {...props} />}
+      {variant === "M" && <VariantM {...props} />}
       <PrototypeSwitcher variants={variants} current={variant} onChange={setVariant} state={state} />
     </>
   );

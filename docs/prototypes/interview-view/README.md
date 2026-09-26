@@ -38,4 +38,17 @@ The flashcard deck from E is the same in every variant; only the way the Matches
 | H — Ranked list: every Match on the back at once, each with a strength bar | [round-3/variant-H-flipped.png](round-3/variant-H-flipped.png) |
 | J — Guess first: pick the story you'd tell from your whole Scenario bank, then flip to see whether it was a Match | [before the flip](round-3/variant-J-before-flip.png) · [after the flip](round-3/variant-J-flipped.png) |
 
+**Decision:** G for the look: tilted, overlapping cards. But H stood out because of its dark background, so round 4 tries G with darker contrast.
+
+## Round 4 — 2026-09-26
+
+G's dealt hand, with the dark contrast that made H stand out added in three different places. Screenshots are taken after the Matches are dealt (`?flipped=1`).
+
+| Variant | Screenshot |
+|---|---|
+| G — Dealt hand (from round 3), on the yellow background | [round-4/variant-G-dealt.png](round-4/variant-G-dealt.png) |
+| K — Dark table: dealing darkens the whole page to a dark green card table | [round-4/variant-K-dealt.png](round-4/variant-K-dealt.png) |
+| L — Card turns over: the Question card flips to a dark side and the cards dealt below it are light cream | [round-4/variant-L-dealt.png](round-4/variant-L-dealt.png) |
+| M — Hand on the card: the Matches are fanned out on the dark back of the Question card | [round-4/variant-M-dealt.png](round-4/variant-M-dealt.png) |
+
 **Decision:** _pending_

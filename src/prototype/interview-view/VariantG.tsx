@@ -3,11 +3,11 @@
 import { FlashcardShell, type SlotProps } from "./FlashcardShell";
 import { questions, scenarioById, usedFor, type VariantProps } from "./data";
 
-function Hand({ q, picks, pick, flipped, flip }: SlotProps) {
-  if (!flipped) return <button className="vg-deal" onClick={flip}>Deal my Matches</button>;
+export function Hand({ q, picks, pick, flipped, flip, onCard }: SlotProps & { onCard?: boolean }) {
+  if (!flipped && !onCard) return <button className="vg-deal" onClick={flip}>Deal my Matches</button>;
   if (!q.matches.length)
     return (
-      <div className="vg-hand">
+      <div className={`vg-hand ${onCard ? "vg-on-card" : ""}`}>
         <div className="vg-card vg-empty">
           <div className="vg-label">Gap</div>
           <div className="vg-title">No story in your hand</div>
@@ -23,7 +23,7 @@ function Hand({ q, picks, pick, flipped, flip }: SlotProps) {
   const mid = (fan.length - 1) / 2;
 
   return (
-    <div className="vg-hand">
+    <div className={`vg-hand ${onCard ? "vg-on-card" : ""}`}>
       {fan.map(({ m, rank }, i) => {
         const s = scenarioById(m.scenarioId);
         const kept = picks[q.id] === s.id;
