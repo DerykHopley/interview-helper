@@ -101,3 +101,74 @@ button { font: inherit; }
   .ve-swipe.is-dealt .ve-deck { height: clamp(280px, 42dvh, 440px); width: 100%; }
   .ve-swipe.is-dealt .ve-q { font-size: clamp(22px, 3.4dvh, 30px); }
 }
+
+/* ---------- round 12: answering (shared parts) ---------- */
+.ans-mic { flex: none; border-radius: 50%; border: 0; background: #fcd34d; color: #111827; display: grid; place-items: center; cursor: pointer; }
+.ans-mic.is-listening { background: #dc2626; color: #fff; animation: ans-pulse 1.2s ease-out infinite; }
+@keyframes ans-pulse { from { box-shadow: 0 0 0 0 #dc262699; } to { box-shadow: 0 0 0 16px #dc262600; } }
+.ans-stats { font-size: 12px; color: #9ca3af; }
+.ans-sim { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #fcd34d; border: 1px solid #fcd34d66; border-radius: 4px; padding: 0 4px; margin-right: 4px; }
+
+/* ---------- K1: answer bar ---------- */
+.k1.ve-swipe { padding-bottom: 190px; }
+.k1-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 72px; z-index: 30; width: min(640px, calc(100% - 32px)); background: #0b1512f2; border: 1px solid #2f4a41; border-radius: 18px; padding: 8px 8px 8px 14px; box-shadow: 0 10px 30px #000a; }
+.k1-bar.is-open { border-color: #fcd34d88; }
+.k1-bar.is-open .k1-input { overflow-y: auto; }
+.k1-row { display: flex; gap: 10px; align-items: flex-end; }
+.k1-input { flex: 1; overflow: hidden; scrollbar-width: thin; scrollbar-color: #4b5563 transparent; background: transparent; color: #f9fafb; border: 0; outline: none; resize: none; font: inherit; font-size: 16px; line-height: 1.4; padding: 10px 0; }
+.k1-input::placeholder { color: #6b7280; }
+.k1-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #9ca3af; padding: 4px 4px 2px 0; }
+.k1-meta strong { color: #e5e7eb; }
+.k1-interim { font-size: 14px; font-style: italic; color: #9ca3af; padding: 2px 0 4px; }
+
+/* ---------- K2: answer on the card ---------- */
+.k2-below, .k3-below { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+.k2-answer-btn { max-width: min(520px, 92%); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; border: 1.5px solid #fcd34d; color: #fcd34d; border-radius: 999px; padding: 10px 20px; font-weight: 700; cursor: pointer; }
+.k2-preview { color: #d1d5db; font-weight: 400; }
+.ve-swipe.k2.is-answering .ve-deck { height: 520px; width: min(640px, 100%); }
+.k2-pad { flex: 1; display: flex; flex-direction: column; gap: 10px; background: #111827; color: #f9fafb; border-radius: 20px; padding: 20px; }
+.k2-pad.is-turning { animation: k2-flip .35s ease-out; }
+.ve-swipe.k2.is-answering .ve-card { background: transparent; box-shadow: none; }
+.ve-swipe.k2.is-answering .ve-below { display: none; }
+@keyframes k2-flip { from { transform: perspective(900px) rotateY(80deg); opacity: .3; } }
+.k2-q { font-family: Georgia, serif; font-size: 17px; font-weight: 700; line-height: 1.3; color: #e5e7eb; }
+.k2-using { font-size: 12px; color: #9ca3af; }
+.k2-using strong, .k3-using strong { color: #fcd34d; }
+.k2-input, .k3-input { scrollbar-width: thin; scrollbar-color: #4b5563 transparent; flex: 1; min-height: 0; background: #0b1220; border: 1px solid #374151; border-radius: 12px; color: #f9fafb; padding: 12px; font: inherit; font-size: 16px; line-height: 1.45; resize: none; outline: none; }
+.k2-input:focus, .k3-input:focus { border-color: #fcd34d88; }
+.k2-interim, .k3-interim { font-size: 14px; font-style: italic; color: #9ca3af; }
+.k2-foot { display: flex; align-items: center; gap: 12px; }
+.k2-status { flex: 1; font-size: 13px; color: #d1d5db; display: flex; flex-direction: column; gap: 2px; }
+.k2-done, .k3-done { background: #fcd34d; color: #111827; border: 0; border-radius: 999px; padding: 10px 20px; font-weight: 700; cursor: pointer; }
+
+/* ---------- K3: speak first ---------- */
+.k3-actions { display: grid; grid-template-columns: 44px auto 44px; align-items: center; justify-items: center; gap: 6px 18px; }
+.k3-type { width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.08); color: #d1d5db; font-size: 18px; cursor: pointer; }
+.k3-label { grid-column: 1 / -1; font-size: 13px; color: #9ca3af; }
+.k3-scrim { position: fixed; inset: 0; z-index: 35; background: #0009; opacity: 0; pointer-events: none; transition: opacity .3s; }
+.k3-scrim.is-open { opacity: 1; pointer-events: auto; }
+.k3-sheet { position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; z-index: 40; width: min(640px, 100%); height: min(480px, 64dvh); display: flex; flex-direction: column; gap: 10px; background: #111827; color: #f9fafb; border-radius: 20px 20px 0 0; padding: 10px 20px 84px; box-shadow: 0 -10px 40px #000a; transform: translateY(100%); transition: transform .3s ease; }
+.k3-sheet.is-open { transform: none; }
+.k3-grip { width: 40px; height: 4px; border-radius: 2px; background: #4b5563; margin: 0 auto 4px; cursor: pointer; }
+.k3-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.k3-title { font-weight: 700; font-size: 16px; }
+.k3-using { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+.k3-timer { font-family: ui-monospace, monospace; font-size: 20px; color: #9ca3af; display: flex; align-items: center; gap: 6px; }
+.k3-timer.is-live { color: #f87171; }
+.k3-dot { width: 8px; height: 8px; border-radius: 50%; background: #dc2626; animation: ans-pulse 1.2s ease-out infinite; }
+.k3-foot { display: flex; justify-content: space-between; align-items: center; }
+.k3-clear { background: transparent; border: 1px solid #4b5563; color: #d1d5db; border-radius: 999px; padding: 10px 18px; cursor: pointer; }
+.k3-clear:disabled { opacity: .35; cursor: default; }
+.k3-stats { text-align: center; }
+
+@media (max-width: 640px) {
+  .k1.ve-swipe { padding-bottom: 136px; }
+  .k1 .ve-tally { display: none; }
+  .k1-bar { bottom: 60px; width: calc(100% - 16px); }
+  .ve-swipe.k1.is-dealt .ve-deck, .ve-swipe.k2.is-dealt .ve-deck, .ve-swipe.k3.is-dealt .ve-deck { height: clamp(250px, 34dvh, 400px); }
+  .ve-swipe.k2.is-answering .ve-deck { height: calc(100dvh - 130px); }
+  .k1-meta { flex-direction: column; gap: 2px; }
+  .k2 .ve-tally, .k3 .ve-tally { display: none; }
+  .k3-sheet { height: 70dvh; padding: 10px 16px 76px; }
+}
+.ve-swipe.k2.is-answering .ve-side { display: none; }

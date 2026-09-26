@@ -154,6 +154,8 @@ export type Picks = Record<string, string | undefined>; // questionId -> scenari
 export type VariantProps = {
   picks: Picks;
   pick: (questionId: string, scenarioId: string | undefined) => void;
+  answers: Record<string, string>; // questionId -> the Candidate's typed or dictated answer, in memory only
+  setAnswer: (questionId: string, text: string | ((previous: string) => string)) => void;
 };
 
 // "already used for: …" — other Questions in this Interview that picked this Scenario

@@ -1,10 +1,11 @@
 // PROTOTYPE — Variant K: dark table. The chosen Interview view design (see docs/prototypes/interview-view/README.md).
 // A flashcard deck on a dark card table. The Question card stays face up; "Deal my Matches" fans them out
-// underneath as tilted, overlapping cards. The kept card (or the best Match) sits in the middle; tap another to keep it\n// and it slides to the middle.
+// underneath as tilted, overlapping cards. The kept card (or the best Match) sits in the middle; tap another to keep it
+// and it slides to the middle.
 import { FlashcardShell, type SlotProps } from "./FlashcardShell";
 import { questions, scenarioById, usedFor, type VariantProps } from "./data";
 
-function Hand({ q, picks, pick, flipped, flip }: SlotProps) {
+export function Hand({ q, picks, pick, flipped, flip }: SlotProps) {
   if (!flipped) return <button className="vg-deal" onClick={flip}>Deal my Matches</button>;
   if (!q.matches.length)
     return (

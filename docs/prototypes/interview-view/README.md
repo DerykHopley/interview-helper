@@ -132,3 +132,19 @@ The two-card fan is now balanced. The whole fan is centred on the screen, so two
 | Galaxy S25, Q7 (three Matches, unchanged) | [round-11/s25-q7-dealt.png](round-11/s25-q7-dealt.png) |
 
 **Decision:** _pending_
+
+## Round 12 — 2026-09-26
+
+Question: how does the Candidate type or speak their answer to the Question? Three versions of K. Answers are kept in memory only. Voice uses the browser's built-in speech-to-text where it exists; where it doesn't (e.g. Firefox, or a page opened without a secure connection), a simulated transcript types itself out, marked "simulated voice".
+
+| Variant | Galaxy S25, dealt | Galaxy S25, answering | Desktop, answering |
+|---|---|---|---|
+| K1 — Answer bar: a chat-style text box fixed at the bottom of the screen with a mic button beside it; it grows while you write, and the Matches stay visible above | [dealt](round-12/s25-K1-dealt.png) | [answering](round-12/s25-K1-answering.png) | [answering](round-12/desktop-K1-answering.png) |
+| K2 — Answer on the card: "✎ Answer this Question" turns the Question card over to a writing pad (the Matches are put away), with the kept story named, a large mic button, and "Done" to turn it back | [dealt](round-12/s25-K2-dealt.png) | [answering](round-12/s25-K2-answering.png) | [answering](round-12/desktop-K2-answering.png) |
+| K3 — Speak first: a big mic button under the Matches ("Tap to answer out loud") opens a sheet from the bottom with a timer and the live transcript, which you can edit; a ⌨ button opens it for typing | [dealt](round-12/s25-K3-dealt.png) | [answering](round-12/s25-K3-answering.png) | [answering](round-12/desktop-K3-answering.png) |
+
+**Notes for the real build**
+- **Privacy:** Chrome's built-in speech-to-text sends the audio to Google's servers. That sits badly with ADR 0001 (Candidate data never leaves the browser) and with the OpenRouter no-retention settings. Options to weigh: speech recognition that runs on the device where the browser supports it, a Whisper-style model running in the browser (like the local embedding Matcher), or voice as a clearly labelled opt-in.
+- **Secure connection:** speech recognition only works on a secure page: `localhost`, or HTTPS. Opening the dev server from a phone over plain `http://` on the local network falls back to the simulated voice.
+
+**Decision:** _pending_

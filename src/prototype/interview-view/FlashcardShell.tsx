@@ -4,7 +4,13 @@
 import { useEffect, useRef, useState, type ComponentType, type PointerEvent } from "react";
 import { questions, type Question, type VariantProps } from "./data";
 
-export type SlotProps = VariantProps & { q: Question; flipped: boolean; flip: () => void };
+export type SlotProps = VariantProps & {
+  q: Question;
+  flipped: boolean;
+  flip: () => void;
+  answering: boolean; // the Candidate is writing or speaking their answer to this Question
+  setAnswering: (on: boolean) => void;
+};
 
 const SWIPE_DISTANCE = 90; // px past which a release moves to the next/previous card
 const LEAVE_MS = 220;
@@ -12,13 +18,24 @@ const LEAVE_MS = 220;
 export function FlashcardShell({
   picks,
   pick,
+  answers,
+  setAnswer,
   Below,
+  CardBack,
+  Overlay,
   className = "",
-}: VariantProps & { Below: ComponentType<SlotProps>; className?: string }) {
+}: VariantProps & {
+  Below: ComponentType<SlotProps>;
+  CardBack?: ComponentType<SlotProps>; // replaces the Question card's face while answering; hides `Below`
+  Overlay?: ComponentType<SlotProps>; // rendered on top of the page (fixed bars, sheets)
+  className?: string;
+}) {
   // ?q=<n> starts on Question n (for screenshots)
   const [index, setIndex] = useState(() => Math.max(0, Number(new URLSearchParams(location.search).get("q") ?? 1) - 1));
   // ?flipped=1 starts the first card flipped (for screenshots)
   const [flipped, setFlipped] = useState(() => new URLSearchParams(location.search).has("flipped"));
+  // ?answering=1 starts with the answer open (for screenshots)
+  const [answering, setAnswering] = useState(() => new URLSearchParams(location.search).has("answering"));
   const [dx, setDx] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [swiped, setSwiped] = useState(false); // play the enter animation only for cards arriving by swipe
@@ -29,7 +46,8 @@ export function FlashcardShell({
   const hasPrev = index > 0;
   const hasNext = index < questions.length - 1;
   const remaining = questions.length - index - 1;
-  const slot: SlotProps = { picks, pick, q, flipped, flip: () => setFlipped(true) };
+  const slot: SlotProps = { picks, pick, answers, setAnswer, q, flipped, flip: () => setFlipped(true), answering, setAnswering };
+  const onBack = answering && !!CardBack;
 
   // dir -1 = card leaves to the left = next Question; +1 = leaves to the right = previous.
   const leave = (dir: -1 | 1) => {
@@ -40,6 +58,7 @@ export function FlashcardShell({
       setIndex((i) => i - dir);
       setSwiped(true);
       setFlipped(false);
+      setAnswering(false);
       setAnimating(false);
       setDx(0);
     }, LEAVE_MS);
@@ -56,7 +75,8 @@ export function FlashcardShell({
   });
 
   const onPointerDown = (e: PointerEvent) => {
-    if (animating) return;
+    // Drags that start in a text box select text; they never swipe.
+    if (animating || (e.target as HTMLElement).closest("textarea, input")) return;
     drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, active: false };
   };
   const onPointerMove = (e: PointerEvent) => {
@@ -88,7 +108,7 @@ export function FlashcardShell({
 
   return (
     <div
-      className={`ve ve-swipe ${flipped ? "is-dealt" : ""} ${className}`}
+      className={`ve ve-swipe ${flipped ? "is-dealt" : ""} ${answering ? "is-answering" : ""} ${className}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -108,18 +128,24 @@ export function FlashcardShell({
           <div key={i} className="ve-under" style={{ transform: `translate(${(i + 1) * 6}px, ${(i + 1) * 6}px)`, zIndex: 3 - i }} />
         ))}
         <div key={q.id} className={`ve-card ${swiped ? "ve-enter" : ""}`} style={{ transform: `translateX(${dx}px) rotate(${dx / 25}deg)`, transition: motion }}>
-          <div className="ve-front" onClick={() => setFlipped((f) => !f)}>
-            <div className="ve-corner">{index + 1}/{questions.length}</div>
-            <div className="ve-skill">{q.skill}</div>
-            <div className="ve-q">{q.text}</div>
-            <div className="ve-tap">{flipped ? "Tap to hide your Matches" : "Tap to deal your Matches"}</div>
-          </div>
+          {onBack ? (
+            <CardBack key={q.id} {...slot} />
+          ) : (
+            <div className="ve-front" onClick={() => setFlipped((f) => !f)}>
+              <div className="ve-corner">{index + 1}/{questions.length}</div>
+              <div className="ve-skill">{q.skill}</div>
+              <div className="ve-q">{q.text}</div>
+              <div className="ve-tap">{flipped ? "Tap to hide your Matches" : "Tap to deal your Matches"}</div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="ve-below" style={{ transform: `translateX(${dx * 0.6}px)`, opacity: Math.max(0, 1 - Math.abs(dx) / 300), transition: motion }}>
-        <Below key={q.id} {...slot} />
+        {!onBack && <Below key={q.id} {...slot} />}
       </div>
+
+      {Overlay && <Overlay key={q.id} {...slot} />}
 
       <div className="ve-tally">
         {questions.filter((x) => picks[x.id]).length} kept · {questions.filter((x) => !x.matches.length).length} Gaps
