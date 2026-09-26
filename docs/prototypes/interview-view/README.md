@@ -120,3 +120,15 @@ You can now hide the Matches again. Tapping the Question card switches between d
 | Dealt, with the hide hint | [round-10/s25-dealt.png](round-10/s25-dealt.png) | [round-10/desktop-dealt.png](round-10/desktop-dealt.png) |
 
 **Decision:** _pending_
+
+## Round 11 — 2026-09-26
+
+The two-card fan is now balanced. The whole fan is centred on the screen, so two cards sit evenly either side of the middle. The kept card (or the best Match) is on the right, on top and raised. Tapping the other card keeps it, and the two cards swap sides. The three-card fan is unchanged.
+
+| State | Screenshot |
+|---|---|
+| Galaxy S25, Q1 (two Matches) | [round-11/s25-q1-dealt.png](round-11/s25-q1-dealt.png) |
+| Desktop, Q1 (two Matches) | [round-11/desktop-q1-dealt.png](round-11/desktop-q1-dealt.png) |
+| Galaxy S25, Q7 (three Matches, unchanged) | [round-11/s25-q7-dealt.png](round-11/s25-q7-dealt.png) |
+
+**Decision:** _pending_

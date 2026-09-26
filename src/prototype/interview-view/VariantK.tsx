@@ -28,6 +28,8 @@ function Hand({ q, picks, pick, flipped, flip }: SlotProps) {
     const i = others.findIndex((m) => m.scenarioId === scenarioId);
     return i % 2 === 0 ? -(Math.floor(i / 2) + 1) : Math.floor(i / 2) + 1;
   };
+  // Centre the fan as a whole, so two cards sit either side of the middle instead of one peeking out on the left.
+  const offset = -q.matches.reduce((sum, m) => sum + slotOf(m.scenarioId), 0) / q.matches.length;
 
   return (
     <div className="vg-hand vg-fan">
@@ -35,14 +37,15 @@ function Hand({ q, picks, pick, flipped, flip }: SlotProps) {
         const s = scenarioById(m.scenarioId);
         const kept = picks[q.id] === s.id;
         const used = usedFor(picks, s.id, q.id);
-        const slot = slotOf(s.id);
+        const slot = slotOf(s.id) + offset;
+        const focus = s.id === focusId;
         return (
           <button
             key={s.id}
-            className={`vg-card ${rank === 0 ? "is-best" : ""} ${kept ? "is-picked" : ""} ${slot === 0 ? "is-focus" : ""}`}
+            className={`vg-card ${rank === 0 ? "is-best" : ""} ${kept ? "is-picked" : ""} ${focus ? "is-focus" : ""}`}
             style={{
-              transform: `translateX(calc(-50% + ${slot} * var(--spread))) translateY(${slot === 0 ? -14 : Math.abs(slot) * 10}px) rotate(${slot * 7}deg)`,
-              zIndex: 10 - Math.abs(slot),
+              transform: `translateX(calc(-50% + ${slot} * var(--spread))) translateY(${focus ? -14 : Math.abs(slot) * 10}px) rotate(${slot * 7}deg)`,
+              zIndex: focus ? 10 : 5 - Math.abs(slot),
             }}
             onClick={() => pick(q.id, kept ? undefined : s.id)}
           >
