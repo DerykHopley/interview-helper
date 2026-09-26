@@ -68,16 +68,19 @@ button { font: inherit; }
 .ve-side-right { right: 16px; }
 .ve-swipe-hint { color: #6b7280; }
 @media (max-width: 640px) {
-  .ve-swipe { justify-content: flex-start; padding-top: 32px; gap: 20px; }
-  .ve-deck { height: 280px; }
-  .ve-front { padding: 22px 22px; }
-  .ve-q { font-size: 22px; }
+  /* Fill the phone's height: card, then a fixed area for the dealt hand, then the tally. */
+  .ve-swipe { min-height: 100dvh; justify-content: space-between; padding: 24px 16px 84px; gap: 16px; }
+  .ve-deck { height: clamp(280px, 44dvh, 440px); flex: none; }
+  .ve-front { padding: 26px 24px; }
+  .ve-q { font-size: clamp(22px, 3.4dvh, 30px); }
+  .ve-below { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; min-height: clamp(200px, 32dvh, 320px); }
   .ve-side { width: 32px; height: 72px; font-size: 32px; border-radius: 16px; background: rgba(255,255,255,.04); }
   .ve-side-left { left: 4px; }
   .ve-side-right { right: 4px; }
-  .vg-hand { min-height: 0; }
-  .vg-card { width: 150px; min-height: 180px; padding: 12px; margin: 0 -14px; }
-  .vg-title { font-size: 14px; }
-  .vg-reason { font-size: 12px; }
+  .vg-hand { min-height: 0; margin-top: 0; }
+  .vg-card { width: 158px; min-height: clamp(180px, 27dvh, 260px); padding: 14px; margin: 0 -14px; }
+  .vg-title { font-size: 15px; }
+  .vg-reason { font-size: 13px; }
   .vg-empty { width: calc(100vw - 64px); }
+  .ve-tally { flex: none; }
 }

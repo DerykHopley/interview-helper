@@ -115,7 +115,7 @@ export function FlashcardShell({
         </div>
       </div>
 
-      <div style={{ transform: `translateX(${dx * 0.6}px)`, opacity: Math.max(0, 1 - Math.abs(dx) / 300), transition: motion }}>
+      <div className="ve-below" style={{ transform: `translateX(${dx * 0.6}px)`, opacity: Math.max(0, 1 - Math.abs(dx) / 300), transition: motion }}>
         <Below key={q.id} {...slot} />
       </div>
 

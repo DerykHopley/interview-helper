@@ -76,3 +76,14 @@ K without the "Next card" and back buttons, to free up space. Instead, you swipe
 | After dealing | [round-6/desktop-dealt.png](round-6/desktop-dealt.png) | [round-6/phone-dealt.png](round-6/phone-dealt.png) |
 
 **Decision:** _pending_
+
+## Round 7 — 2026-09-26
+
+On a phone-sized screen (Galaxy S25, 360×780) there was a lot of empty space below the cards. The phone layout now fills the screen height: a taller Question card (about 44% of the height), then an area set aside for the dealt Matches so the Question card stays put when you deal, then the tally line near the bottom.
+
+| State | Galaxy S25 (360×780) |
+|---|---|
+| Before dealing | [round-7/s25-before.png](round-7/s25-before.png) |
+| After dealing | [round-7/s25-dealt.png](round-7/s25-dealt.png) |
+
+**Decision:** _pending_
