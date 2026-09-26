@@ -88,3 +88,16 @@ button { font: inherit; }
 .vg-fan .vg-card { position: absolute; left: 50%; top: 14px; height: var(--card-h); min-height: 0; margin: 0; overflow: hidden; transition: transform .3s ease, border-color .2s, background .2s; }
 .vg-fan .vg-card:not(.is-focus) { filter: brightness(.8); }
 @media (max-width: 640px) { .vg-fan { --spread: 92px; --card-h: clamp(220px, 30dvh, 290px); } }
+
+/* ---------- card size: larger until the Matches are dealt ---------- */
+.ve-swipe .ve-deck { height: 440px; width: min(600px, 100%); transition: height .3s ease, width .3s ease; }
+.ve-swipe .ve-q { font-size: 34px; transition: font-size .3s ease; }
+.ve-swipe.is-dealt .ve-deck { height: 340px; width: min(520px, 100%); }
+.ve-swipe.is-dealt .ve-q { font-size: 28px; }
+@media (max-width: 640px) {
+  .ve-swipe .ve-deck { height: clamp(320px, 58dvh, 560px); width: 100%; }
+  .ve-swipe .ve-q { font-size: clamp(26px, 4.2dvh, 36px); }
+  .ve-swipe:not(.is-dealt) .ve-below { min-height: 0; }
+  .ve-swipe.is-dealt .ve-deck { height: clamp(280px, 42dvh, 440px); width: 100%; }
+  .ve-swipe.is-dealt .ve-q { font-size: clamp(22px, 3.4dvh, 30px); }
+}

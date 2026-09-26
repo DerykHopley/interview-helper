@@ -99,3 +99,14 @@ On Q7 (three Matches) the fan didn't have enough horizontal room on a phone. The
 | Desktop, Q7 | [round-8/desktop-q7-dealt.png](round-8/desktop-q7-dealt.png) |
 
 **Decision:** _pending_
+
+## Round 9 — 2026-09-26
+
+The Question card is larger until the Matches are dealt, then shrinks back to its round 8 size to make room for them (a 0.3-second animation). On desktop the card goes from 600×440 to 520×340 and the Question text from 34px to 28px. On a phone the card goes from about 58% of the screen height to 42%, with the text shrinking to match.
+
+| State | Galaxy S25 (360×780) | Desktop (1440×900) |
+|---|---|---|
+| Before dealing (large) | [round-9/s25-before.png](round-9/s25-before.png) | [round-9/desktop-before.png](round-9/desktop-before.png) |
+| After dealing (round 8 size) | [round-9/s25-dealt.png](round-9/s25-dealt.png) | [round-9/desktop-dealt.png](round-9/desktop-dealt.png) |
+
+**Decision:** _pending_

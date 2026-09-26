@@ -87,7 +87,7 @@ export function FlashcardShell({
 
   return (
     <div
-      className={`ve ve-swipe ${className}`}
+      className={`ve ve-swipe ${flipped ? "is-dealt" : ""} ${className}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
