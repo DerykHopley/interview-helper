@@ -247,7 +247,6 @@ button { font: inherit; }
 .vj-keep { font-size: 13px; font-weight: 700; color: #fcd34d; }
 
 /* ---------- K: dark table ---------- */
-.ve { transition: background .4s; }
 .ve.vk-table { background: radial-gradient(circle at 50% 30%, #1f3b33, #0b1512 75%); }
 .vk-table .vg-card { box-shadow: 0 14px 30px #000a; }
 .vk-table .vg-card:not(.is-picked):not(.vg-empty) { background: #111827; border-color: #4b5563; }
@@ -279,3 +278,4 @@ button { font: inherit; }
 .vg-on-card .vg-title { font-size: 14px; }
 .vg-on-card .vg-reason { font-size: 12px; }
 .vg-on-card .vg-empty { width: 100%; background: transparent; border: 0; box-shadow: none; }
+.vk-table .vg-deal { background: transparent; border: 2px solid #fcd34d; color: #fcd34d; }

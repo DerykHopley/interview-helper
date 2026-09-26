@@ -1,5 +1,5 @@
 // PROTOTYPE — round 4: G's dealt hand, plus three ways of adding H's dark contrast,
-// switchable via ?variant=G|K|L|M. Earlier rounds: see docs/prototypes/interview-view/README.md.
+// switchable via ?variant=K|G|L|M. K (the round 4 pick) is the default. Earlier rounds: see docs/prototypes/interview-view/README.md.
 // Picks are shared in memory so you can compare the same state across variants.
 import { useState } from "react";
 import { PrototypeSwitcher, useVariant, type VariantDef } from "../PrototypeSwitcher";
@@ -11,8 +11,8 @@ import { VariantM } from "./VariantM";
 import "./prototype.css";
 
 const variants: VariantDef[] = [
-  { key: "G", name: "Dealt hand (round 3)" },
   { key: "K", name: "Dark table" },
+  { key: "G", name: "Dealt hand (round 3)" },
   { key: "L", name: "Card turns over" },
   { key: "M", name: "Hand on the card" },
 ];

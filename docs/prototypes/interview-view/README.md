@@ -51,4 +51,15 @@ G's dealt hand, with the dark contrast that made H stand out added in three diff
 | L — Card turns over: the Question card flips to a dark side and the cards dealt below it are light cream | [round-4/variant-L-dealt.png](round-4/variant-L-dealt.png) |
 | M — Hand on the card: the Matches are fanned out on the dark back of the Question card | [round-4/variant-M-dealt.png](round-4/variant-M-dealt.png) |
 
+**Decision:** K, the dark table, with the background always dark rather than switching when the cards are dealt.
+
+## Round 5 — 2026-09-26
+
+K becomes the default. The dark table now stays the same before and after dealing, and "Deal my Matches" has a yellow outline so it shows up against the dark table.
+
+| State | Screenshot |
+|---|---|
+| Before dealing | [round-5/variant-K-before-deal.png](round-5/variant-K-before-deal.png) |
+| After dealing | [round-5/variant-K-dealt.png](round-5/variant-K-dealt.png) |
+
 **Decision:** _pending_

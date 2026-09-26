@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "prototype": "vite --open /?variant=G"
+    "prototype": "vite --open /?variant=K"
   },
   "dependencies": {
     "react": "^19.3.0",

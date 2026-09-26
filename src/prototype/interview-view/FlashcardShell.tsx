@@ -13,11 +13,13 @@ export function FlashcardShell({
   tapToFlip = true,
   backHeight = 340,
   flippedClass,
+  className = "",
 }: VariantProps & {
   Back?: ComponentType<SlotProps>;
   Below?: ComponentType<SlotProps>;
   tapToFlip?: boolean;
   flippedClass?: string; // extra class on the page once flipped
+  className?: string; // extra class on the page, always
   backHeight?: number | ((q: Question) => number);
 }) {
   const [index, setIndex] = useState(0);
@@ -33,7 +35,7 @@ export function FlashcardShell({
   const slot: SlotProps = { picks, pick, q, flipped, flip: () => setFlipped(true) };
 
   return (
-    <div className={`ve ${flipped && flippedClass ? flippedClass : ""}`}>
+    <div className={`ve ${className} ${flipped && flippedClass ? flippedClass : ""}`}>
       <div className="ve-deck" style={{ height: showBack ? (typeof backHeight === "function" ? backHeight(q) : backHeight) : 340 }}>
         {Array.from({ length: Math.min(remaining, 3) }).map((_, i) => (
           <div key={i} className="ve-under" style={{ transform: `translate(${(i + 1) * 6}px, ${(i + 1) * 6}px)`, zIndex: 3 - i }} />
