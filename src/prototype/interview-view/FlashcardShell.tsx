@@ -14,7 +14,8 @@ export function FlashcardShell({
   Below,
   className = "",
 }: VariantProps & { Below: ComponentType<SlotProps>; className?: string }) {
-  const [index, setIndex] = useState(0);
+  // ?q=<n> starts on Question n (for screenshots)
+  const [index, setIndex] = useState(() => Math.max(0, Number(new URLSearchParams(location.search).get("q") ?? 1) - 1));
   // ?flipped=1 starts the first card flipped (for screenshots)
   const [flipped, setFlipped] = useState(() => new URLSearchParams(location.search).has("flipped"));
   const [dx, setDx] = useState(0);

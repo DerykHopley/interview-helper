@@ -87,3 +87,15 @@ On a phone-sized screen (Galaxy S25, 360×780) there was a lot of empty space be
 | After dealing | [round-7/s25-dealt.png](round-7/s25-dealt.png) |
 
 **Decision:** _pending_
+
+## Round 8 — 2026-09-26
+
+On Q7 (three Matches) the fan didn't have enough horizontal room on a phone. The middle of the fan now always holds the kept card, or the best Match if none is kept yet, on top of the others. The other cards tuck in behind it on each side. Tapping a side card keeps it, and it slides into the middle. With only two Matches, the second card peeks out from the left only.
+
+| State | Screenshot |
+|---|---|
+| Galaxy S25, Q7 (three Matches) | [round-8/s25-q7-dealt.png](round-8/s25-q7-dealt.png) |
+| Galaxy S25, Q1 (two Matches, one kept) | [round-8/s25-q1-dealt.png](round-8/s25-q1-dealt.png) |
+| Desktop, Q7 | [round-8/desktop-q7-dealt.png](round-8/desktop-q7-dealt.png) |
+
+**Decision:** _pending_
