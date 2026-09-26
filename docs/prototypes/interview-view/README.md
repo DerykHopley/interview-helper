@@ -2,6 +2,8 @@
 
 Question: what should the Interview view (Questions → Matches → pick → Gaps) look like?
 
+**Outcome:** K, dark table (round 5). Summary: one Question at a time on a flashcard deck, on a dark card table; "Deal my Matches" fans the Matches out below the Question card as tilted, overlapping cards, with the best in the middle; tap a card to keep it.
+
 Prototype code lives on the throwaway branch `prototype/interview-view`, not on main. Screenshots are 1440×900, taken on page load, with made-up data.
 
 ## Round 1 — 2026-09-26 (commit `afd70b2`)
@@ -62,4 +64,4 @@ K becomes the default. The dark table now stays the same before and after dealin
 | Before dealing | [round-5/variant-K-before-deal.png](round-5/variant-K-before-deal.png) |
 | After dealing | [round-5/variant-K-dealt.png](round-5/variant-K-dealt.png) |
 
-**Decision:** _pending_
+**Decision:** K is the main design for the Interview view. The other variants are removed from the prototype and remain in the branch history.
