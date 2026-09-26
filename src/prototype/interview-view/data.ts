@@ -162,3 +162,13 @@ export function usedFor(picks: Picks, scenarioId: string, exceptQuestionId?: str
 }
 
 export const initialPicks: Picks = { q1: "s1", q3: "s3" };
+
+// Short STAR outline per Scenario, for the rehearsal variant.
+export const star: Record<string, { s: string; t: string; a: string; r: string }> = {
+  s1: { s: "Checkout rewrite 3 months behind, team demoralised.", t: "Take over as tech lead and get it live.", a: "Cut scope to a strangler rollout, daily risk review, paired on the hardest parts.", r: "Shipped 3 weeks late instead of 3 months; errors down 40%." },
+  s2: { s: "CTO wanted to build an in-house scheduling tool.", t: "Make the case for buying one instead.", a: "Costed both options, ran a 2-week trial, presented the numbers.", r: "Bought the tool; saved ~£120k in year one." },
+  s3: { s: "Two juniors joining the on-call rota for the first time.", t: "Get them confident to lead incidents.", a: "Shadow shifts, game-day drills, wrote a runbook with them.", r: "Both led incidents solo within 2 months." },
+  s4: { s: "Picking screens slow and error-prone per support tickets.", t: "Redesign them with the people using them.", a: "Spent 3 shifts in the warehouse, prototyped on a handheld, iterated weekly.", r: "Pick time down 18%; support tickets halved." },
+  s5: { s: "Friday config push with a typo took down the API for 25 minutes.", t: "Restore service and stop it happening again.", a: "Rolled back, ran the post-mortem, added schema validation to CI.", r: "No repeat in 2 years." },
+  s6: { s: "Releases rolled back by redeploying, taking hours.", t: "Make rollbacks instant.", a: "Introduced a feature flag service and migrated risky features to it.", r: "Rollbacks went from hours to seconds." },
+};
