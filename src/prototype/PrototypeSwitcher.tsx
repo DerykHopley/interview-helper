@@ -34,6 +34,7 @@ export function PrototypeSwitcher({
   const step = (d: number) => onChange(variants[(i + d + variants.length) % variants.length].key);
 
   useEffect(() => {
+    if (variants.length < 2) return; // leave the arrow keys to the page
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t.closest("input, textarea, [contenteditable]")) return;

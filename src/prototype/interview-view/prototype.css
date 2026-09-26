@@ -28,8 +28,6 @@ button { font: inherit; }
 .ve-keep { background: #fcd34d; color: #1f2937; border: 0; border-radius: 10px; padding: 10px 18px; font-weight: 700; cursor: pointer; align-self: flex-start; }
 .ve-actions .ve-keep { align-self: auto; }
 .ve-keep.is-picked { background: #22c55e; color: #fff; }
-.ve-controls { display: flex; gap: 12px; align-items: center; }
-.ve-round { width: 48px; height: 48px; border-radius: 50%; border: 0; background: #fffdf7; font-size: 20px; cursor: pointer; box-shadow: 0 2px 8px #78350f22; }
 .ve-deal { background: #1f2937; color: #fff; border: 0; border-radius: 999px; padding: 14px 32px; font-weight: 700; cursor: pointer; }
 .ve-tally { font-size: 13px; color: #78350f; }
 
@@ -57,5 +55,29 @@ button { font: inherit; }
 .vk-table .ve-deal { background: #fcd34d; color: #111827; }
 .vk-table .ve-under { background: #e7e0cc; }
 .vk-table .vg-deal { background: transparent; border: 2px solid #fcd34d; color: #fcd34d; }
-.ve-deck { transition: height .2s; }
 .ve-deal:disabled { opacity: .35; cursor: default; }
+
+/* ---------- swipe deck ---------- */
+.ve-swipe { position: relative; overflow: hidden; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.ve-card { will-change: transform; }
+.ve-enter { animation: ve-enter .2s ease-out; }
+@keyframes ve-enter { from { opacity: .4; transform: scale(.96); } }
+.ve-side { position: fixed; top: 50%; transform: translateY(-50%); z-index: 20; width: 56px; height: 96px; border: 0; border-radius: 28px; background: rgba(255,255,255,.06); color: rgba(255,255,255,.4); font-size: 44px; line-height: 1; cursor: pointer; transition: background .15s, color .15s; }
+.ve-side:hover { background: rgba(255,255,255,.14); color: rgba(255,255,255,.9); }
+.ve-side-left { left: 16px; }
+.ve-side-right { right: 16px; }
+.ve-swipe-hint { color: #6b7280; }
+@media (max-width: 640px) {
+  .ve-swipe { justify-content: flex-start; padding-top: 32px; gap: 20px; }
+  .ve-deck { height: 280px; }
+  .ve-front { padding: 22px 22px; }
+  .ve-q { font-size: 22px; }
+  .ve-side { width: 32px; height: 72px; font-size: 32px; border-radius: 16px; background: rgba(255,255,255,.04); }
+  .ve-side-left { left: 4px; }
+  .ve-side-right { right: 4px; }
+  .vg-hand { min-height: 0; }
+  .vg-card { width: 150px; min-height: 180px; padding: 12px; margin: 0 -14px; }
+  .vg-title { font-size: 14px; }
+  .vg-reason { font-size: 12px; }
+  .vg-empty { width: calc(100vw - 64px); }
+}

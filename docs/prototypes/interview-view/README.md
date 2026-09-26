@@ -65,3 +65,14 @@ K becomes the default. The dark table now stays the same before and after dealin
 | After dealing | [round-5/variant-K-dealt.png](round-5/variant-K-dealt.png) |
 
 **Decision:** K is the main design for the Interview view. The other variants are removed from the prototype and remain in the branch history.
+
+## Round 6 — 2026-09-26
+
+K without the "Next card" and back buttons, to free up space. Instead, you swipe the Question card left for the next Question and right for the previous one (touch or mouse drag), use the faint arrow buttons on the left and right edges, or press ← →. At the first and last card the swipe springs back. Also added a phone layout.
+
+| State | Desktop (1440×900) | Phone (390×844) |
+|---|---|---|
+| Before dealing | [round-6/desktop-before.png](round-6/desktop-before.png) | [round-6/phone-before.png](round-6/phone-before.png) |
+| After dealing | [round-6/desktop-dealt.png](round-6/desktop-dealt.png) | [round-6/phone-dealt.png](round-6/phone-dealt.png) |
+
+**Decision:** _pending_
