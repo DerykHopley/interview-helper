@@ -1,5 +1,6 @@
 // PROTOTYPE — the flashcard deck. One Question card at a time; swipe left for the next card and right for
-// the previous one (touch or mouse drag), or use the faint side arrows or the ← → keys. `Below` renders under the card.
+// the previous one (touch or mouse drag), or use the faint side arrows or the ← → keys. Tap the card to deal the
+// Matches; tap it again to hide them. `Below` renders under the card.
 import { useEffect, useRef, useState, type ComponentType, type PointerEvent } from "react";
 import { questions, type Question, type VariantProps } from "./data";
 
@@ -107,11 +108,11 @@ export function FlashcardShell({
           <div key={i} className="ve-under" style={{ transform: `translate(${(i + 1) * 6}px, ${(i + 1) * 6}px)`, zIndex: 3 - i }} />
         ))}
         <div key={q.id} className={`ve-card ${swiped ? "ve-enter" : ""}`} style={{ transform: `translateX(${dx}px) rotate(${dx / 25}deg)`, transition: motion }}>
-          <div className="ve-front" onClick={() => setFlipped(true)}>
+          <div className="ve-front" onClick={() => setFlipped((f) => !f)}>
             <div className="ve-corner">{index + 1}/{questions.length}</div>
             <div className="ve-skill">{q.skill}</div>
             <div className="ve-q">{q.text}</div>
-            {!flipped && <div className="ve-tap">Tap to deal your Matches</div>}
+            <div className="ve-tap">{flipped ? "Tap to hide your Matches" : "Tap to deal your Matches"}</div>
           </div>
         </div>
       </div>

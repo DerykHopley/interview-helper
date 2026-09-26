@@ -110,3 +110,13 @@ The Question card is larger until the Matches are dealt, then shrinks back to it
 | After dealing (round 8 size) | [round-9/s25-dealt.png](round-9/s25-dealt.png) | [round-9/desktop-dealt.png](round-9/desktop-dealt.png) |
 
 **Decision:** _pending_
+
+## Round 10 — 2026-09-26
+
+You can now hide the Matches again. Tapping the Question card switches between dealing the Matches and hiding them. While they are showing, the card's hint reads "Tap to hide your Matches". Hiding them returns the card to its larger size and brings back the "Deal my Matches" button. Your kept Match stays kept.
+
+| State | Galaxy S25 (360×780) | Desktop (1440×900) |
+|---|---|---|
+| Dealt, with the hide hint | [round-10/s25-dealt.png](round-10/s25-dealt.png) | [round-10/desktop-dealt.png](round-10/desktop-dealt.png) |
+
+**Decision:** _pending_
