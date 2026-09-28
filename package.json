@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "prototype": "vite --open /?variant=K1",
-    "prototype:access": "vite --open /prototype/access"
+    "prototype:access": "vite --open /prototype/access",
+    "prototype:dashboard": "vite --open /prototype/dashboard"
   },
   "dependencies": {
     "react": "^19.3.0",

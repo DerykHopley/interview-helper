@@ -22,7 +22,7 @@ export function Home({ access, onAddToken }: { access: Access; onAddToken: () =>
       <div className="ac-home-body">
         <div className="ac-home-title">Unlocked</div>
         <p>Your stories are open{demoData ? ", with demo stories added (labelled demo)" : ""}. The app locks itself after 15 minutes without use.</p>
-        <a className="ac-primary" href="/?variant=K1">Go to your Interviews →</a>
+        <a className="ac-primary" href="/prototype/dashboard">Go to your Interviews →</a>
       </div>
     </div>
   );
