@@ -112,3 +112,33 @@ export function GeneratingCard() {
     </div>
   );
 }
+
+/** S3: a small jump-to menu from the header — just the Questions and their status; tap one to go there. */
+export function QuickJump({ picks, index, goTo, onClose }: Pick<SlotProps, "picks" | "index" | "goTo"> & { onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <>
+      <div className="vs-jump-scrim" onClick={onClose} />
+      <nav className="vs-jump" aria-label="Jump to a Question">
+        <ol>
+          {questions.map((q, i) => {
+            const status = q.unmatched ? "new" : !q.matches.length ? "gap" : picks[q.id] ? "kept" : "open";
+            return (
+              <li key={q.id}>
+                <button className={i === index ? "is-current" : ""} onClick={() => { goTo(i); onClose(); }}>
+                  <span className="vs-jump-n">{i + 1}</span>
+                  <span className={`vs-dot is-${status}`}>{status === "kept" ? "✓" : status === "gap" ? "!" : ""}</span>
+                  <span className="vs-jump-q">{q.text}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+    </>
+  );
+}

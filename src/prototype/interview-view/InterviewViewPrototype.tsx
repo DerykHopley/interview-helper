@@ -1,9 +1,9 @@
 // PROTOTYPE — the Interview view (K1). Round 14: the missing states, and two places to manage Questions,
-// via ?variant=S1|S2 (K1–K3 from round 12 still work). ?token=expired, ?scenario=generating, ?q=<n>, ?flipped=1. Earlier rounds: docs/prototypes/interview-view/README.md.
+// via ?variant=S3|S1|S2 (K1–K3 from round 12 still work). ?token=expired, ?scenario=generating, ?q=<n>, ?flipped=1. Earlier rounds: docs/prototypes/interview-view/README.md.
 import { useState } from "react";
 import { PrototypeSwitcher, useVariant, type VariantDef } from "../PrototypeSwitcher";
 import { initialPicks, questions, scenarioById, useDeckRev, type Picks } from "./data";
-import { VariantS1, VariantS2 } from "./VariantS";
+import { VariantS1, VariantS2, VariantS3 } from "./VariantS";
 import { DEMO_ANSWER } from "./dictation";
 import { VariantK1 } from "./VariantK1";
 import { VariantK2 } from "./VariantK2";
@@ -11,6 +11,7 @@ import { VariantK3 } from "./VariantK3";
 import "./prototype.css";
 
 const variants: VariantDef[] = [
+  { key: "S3", name: "End card + quick jump" },
   { key: "S1", name: "End-of-deck card" },
   { key: "S2", name: "Questions list" },
   { key: "K1", name: "Answer bar" },
@@ -37,6 +38,7 @@ export function InterviewViewPrototype() {
 
   return (
     <>
+      {variant === "S3" && <VariantS3 {...props} />}
       {variant === "S1" && <VariantS1 {...props} />}
       {variant === "S2" && <VariantS2 {...props} />}
       {variant === "K1" && <VariantK1 {...props} />}

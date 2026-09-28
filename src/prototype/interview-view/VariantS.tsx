@@ -1,13 +1,14 @@
 // PROTOTYPE — round 14: K1 with the missing states (finding Matches, token expired, Gap, re-run matching, a new
 // Interview's Questions being written). S1 and S2 differ only in where Questions are managed:
 //   S1 — a card at the end of the deck (ask for more, add your own) plus a ⋯ menu on each Question card
+//   S3 — S1 plus a quick jump-to menu from the header (only the Questions)
 //   S2 — a "Questions" list from the header (jump to any, delete, add, ask for more) plus the same ⋯ menu
 import { useState } from "react";
 import { FlashcardShell, type SlotProps } from "./FlashcardShell";
 import { Hand } from "./VariantK";
 import { AnswerBar } from "./VariantK1";
 import { InterviewHeader } from "./InterviewHeader";
-import { CardMenu, EndCard, GeneratingCard, QuestionsSheet } from "./StateParts";
+import { CardMenu, EndCard, GeneratingCard, QuestionsSheet, QuickJump } from "./StateParts";
 import type { VariantProps } from "./data";
 
 export function VariantS1(props: VariantProps) {
@@ -27,4 +28,18 @@ export function VariantS2(props: VariantProps) {
   );
   const Empty = () => <><InterviewHeader picks={props.picks} answers={props.answers} /><GeneratingCard /></>;
   return <FlashcardShell {...props} Below={Hand} Overlay={AnswerBar} Header={Header} CardMenu={CardMenu} Empty={Empty} className="vk-table k1" />;
+}
+
+/** S3 — S1 (end-of-deck card + ⋯ menu) plus a quick jump-to menu from the header, listing only the Questions. */
+export function VariantS3(props: VariantProps) {
+  // ?jump=1 opens the jump menu (for screenshots)
+  const [jump, setJump] = useState(() => new URLSearchParams(location.search).has("jump"));
+  const Header = ({ picks, answers, index, goTo }: SlotProps) => (
+    <>
+      <InterviewHeader picks={picks} answers={answers} onQuestions={() => setJump((j) => !j)} />
+      {jump && <QuickJump picks={picks} index={index} goTo={goTo} onClose={() => setJump(false)} />}
+    </>
+  );
+  const Empty = () => <><InterviewHeader picks={props.picks} answers={props.answers} /><GeneratingCard /></>;
+  return <FlashcardShell {...props} Below={Hand} Overlay={AnswerBar} Header={Header} EndCard={EndCard} CardMenu={CardMenu} Empty={Empty} className="vk-table k1" />;
 }

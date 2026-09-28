@@ -196,4 +196,14 @@ S1 and S2 differ only in where you manage Questions:
 
 URL options: `?variant=S1|S2`, `?token=expired`, `?scenario=generating`, `?matched=1` (every Question already matched), `?list=1` (S2's list open), `?q=9` (S1's end card).
 
+**Decision:** S1, the end-of-deck card, plus a quick jump menu like S2's but with only the Questions. Round 15 tries that.
+
+## Round 15 — 2026-09-28
+
+S3 — End card and quick jump: S1 (end-of-deck card, and the ⋯ menu on each card), plus a **☰ Questions** button in the header. It opens a small menu listing only the numbered Questions, each with its status dot (✓ kept, ! Gap, dashed = not matched yet), and the current one highlighted. Tap one to go straight to it. Tapping outside the menu or pressing Escape closes it. Adding, deleting and asking for more stay on the end card and the ⋯ menu. `?jump=1` opens the menu.
+
+| State | Desktop | Galaxy S25 (360×780) |
+|---|---|---|
+| Jump menu open | [menu](round-15/desktop-S3-jump.png) | [menu](round-15/s25-S3-jump.png) |
+
 **Decision:** _pending_

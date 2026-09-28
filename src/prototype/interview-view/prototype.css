@@ -289,3 +289,14 @@ button { font: inherit; }
   .ih-qs { padding: 6px 10px; }
 }
 .vs-add-input { scrollbar-width: none; }
+
+/* S3: quick jump-to menu from the header */
+.vs-jump-scrim { position: fixed; inset: 0; z-index: 36; }
+.vs-jump { position: fixed; z-index: 37; top: 58px; right: 150px; width: min(420px, calc(100% - 16px)); max-height: min(70dvh, 520px); overflow: auto; padding: 6px; border-radius: 14px; background: #fffdf7; color: #1f2937; box-shadow: 0 16px 40px #000c; scrollbar-width: thin; }
+.vs-jump ol { list-style: none; margin: 0; padding: 0; }
+.vs-jump button { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; background: none; border: 0; color: inherit; font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.vs-jump button:hover { background: #0000000a; }
+.vs-jump button.is-current { background: #fef3c7; font-weight: 600; }
+.vs-jump-n { flex: none; width: 18px; text-align: right; color: #9ca3af; font-size: 12px; }
+.vs-jump-q { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .vs-jump { top: 72px; left: 8px; right: 8px; width: auto; } }
