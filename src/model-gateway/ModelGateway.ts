@@ -1,14 +1,18 @@
 import type { z } from "zod";
 
-/** The LLM jobs the app runs; each maps to a configured model in the Worker. */
-export type ModelJob = "question-generation" | "matching" | "match-reasons" | "co-writing";
+import type { AccessRefusal, ModelJob, WorkerError } from "../../shared/workerProtocol";
+
+export type { ModelJob } from "../../shared/workerProtocol";
 
 export type StructuredRequest<Schema extends z.ZodType> = {
   job: ModelJob;
   system: string;
   /** Untrusted text (Job Specs, Scenarios, typed Questions) goes here, delimited as data. */
   user: string;
-  /** Every reply must match this schema; a reply that doesn't is rejected with "invalid_model_reply". */
+  /**
+   * Every reply must match this schema; a reply that doesn't is rejected with "invalid_model_reply". It's sent to the
+   * model as strict structured output, so every field must be required: use `.nullable()`, not `.optional()`.
+   */
   schema: Schema;
 };
 
@@ -31,17 +35,10 @@ export type DecisionRequest<Keys extends string> = {
 };
 
 /** Whether an Access Token lets the app use LLM features right now. */
-export type AccessStatus = { ok: true; label: string; expiresAt: Date } | { ok: false; reason: "invalid" | "expired" };
+export type AccessStatus = { ok: true; label: string; expiresAt: Date } | { ok: false; reason: AccessRefusal };
 
-/** Why a model call failed, as the app can explain it to the Candidate. */
-export type ModelGatewayErrorCode =
-  | "missing_token"
-  | "invalid_token"
-  | "expired_token"
-  | "model_unavailable"
-  | "invalid_model_reply"
-  | "request_refused"
-  | "not_connected";
+/** Why a model call failed, as the app can explain it to the Candidate: a Worker error, or one on the app's side. */
+export type ModelGatewayErrorCode = WorkerError | "worker_unreachable" | "request_refused" | "not_connected";
 
 export class ModelGatewayError extends Error {
   constructor(readonly code: ModelGatewayErrorCode) {

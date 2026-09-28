@@ -17,9 +17,11 @@
     "composite": true,
     "emitDeclarationOnly": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.json.tsbuildinfo",
-    "outDir": "./node_modules/.tmp/tsconfig.app.json"
+    "outDir": "./node_modules/.tmp/tsconfig.app.json",
+    "rootDir": "."
   },
   "include": [
-    "src"
+    "src",
+    "shared"
   ]
 }

@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { createFakeModelGateway } from "../test/fakeModelGateway";
 import { renderApp } from "../test/renderApp";
 
@@ -54,5 +55,26 @@ describe("entering an Access Token", () => {
     renderApp({ gateway: gateway() });
 
     expect(await screen.findByText(/Access Token for cohort1 is active/)).toBeInTheDocument();
+  });
+
+  it("tells the Candidate when the app's server can't be reached, and lets them try again", async () => {
+    const unreachable = { ...gateway(), checkAccess: () => Promise.reject(new ModelGatewayError("worker_unreachable")) };
+    renderApp({ gateway: unreachable });
+
+    await enterToken(ACTIVE);
+
+    expect(await screen.findByText("Couldn't reach the app's server. Check your connection and try again.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+  });
+
+  it("tells the Candidate when the token they entered earlier has since expired", async () => {
+    const { unmount } = renderApp({ gateway: gateway() });
+    await enterToken(ACTIVE);
+    await screen.findByText(/Access Token for cohort1 is active/);
+    unmount();
+
+    renderApp({ gateway: createFakeModelGateway({ accessTokens: { [ACTIVE]: { ok: false, reason: "expired" } } }) });
+
+    expect(await screen.findByText("Your Access Token has expired. Ask for a new one.")).toBeInTheDocument();
   });
 });

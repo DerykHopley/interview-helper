@@ -23,6 +23,7 @@
     "test",
     "vitest.config.ts",
     "../src/model-gateway/workerGateway.ts",
-    "../src/model-gateway/ModelGateway.ts"
+    "../src/model-gateway/ModelGateway.ts",
+    "../shared"
   ]
 }

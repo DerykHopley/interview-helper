@@ -1,12 +1,12 @@
 // The Worker: the only server-side code (spec #1). Verifies Access Tokens and proxies model calls to OpenRouter.
+import { ACCESS_REFUSAL_ERROR, GenerateRequest, type AccessResponse, type GenerateResponse, type WorkerError } from "../../shared/workerProtocol";
 import { checkAccessToken } from "./accessToken";
 
 const OPENROUTER_CHAT = "https://openrouter.ai/api/v1/chat/completions";
 
 type Job = keyof Env["JOB_MODELS"];
-type GenerateRequest = { job: string; model?: string; system: string; user: string; schema: object };
 
-const error = (code: string, status: number) => Response.json({ error: code }, { status });
+const error = (code: WorkerError, status: number) => Response.json({ error: code }, { status });
 
 type Access = { label: string; expiresAt: Date };
 
@@ -15,16 +15,33 @@ async function authenticate(request: Request, env: Env): Promise<Access | Respon
   const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return error("missing_token", 401);
   const access = await checkAccessToken(token, env.ACCESS_TOKEN_SECRET);
-  if (!access.ok) return error(`${access.reason}_token`, 401);
+  if (!access.ok) return error(ACCESS_REFUSAL_ERROR[access.reason], 401);
   return { label: access.label, expiresAt: access.expiresAt };
 }
 
+/** Parses JSON without letting a parse error's message (which quotes the input) escape. */
+function parseJson(text: string): { ok: true; value: unknown } | { ok: false } {
+  try {
+    return { ok: true, value: JSON.parse(text) as unknown };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** The only thing the Worker ever logs: never request or response bodies, never the token (spec #1, story 78–79). */
+const logCall = (access: Access, job: string, model: string, cost: number | null) =>
+  console.log(JSON.stringify({ label: access.label, job, model, cost }));
+
 async function generate(request: Request, env: Env, access: Access) {
-  const { job, model: requested, system, user, schema } = await request.json<GenerateRequest>();
-  if (!(job in env.JOB_MODELS)) return error("unknown_job", 400);
+  const body = parseJson(await request.text());
+  const parsed = body.ok ? GenerateRequest.safeParse(body.value) : null;
+  if (!parsed?.success) return error("bad_request", 400);
+  const { job, model: requested, system, user, schema } = parsed.data;
+  if (!Object.hasOwn(env.JOB_MODELS, job)) return error("unknown_job", 400);
   // The job's default model, or one the request picks (the Developer panel), if it's on the allowed list.
   const model = requested ?? env.JOB_MODELS[job as Job];
   if (!(env.ALLOWED_MODELS as readonly string[]).includes(model)) return error("model_not_allowed", 400);
+
   const upstream = await fetch(OPENROUTER_CHAT, {
     method: "POST",
     headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
@@ -35,20 +52,21 @@ async function generate(request: Request, env: Env, access: Access) {
         { role: "user", content: user },
       ],
       response_format: { type: "json_schema", json_schema: { name: "reply", strict: true, schema } },
-      // Only providers that don't store or train on prompts (spec #1, "Prompt-injection hardening" / privacy).
+      // Only providers that don't store or train on prompts (spec #1, story 80).
       provider: { data_collection: "deny" },
       usage: { include: true },
     }),
   });
-  if (!upstream.ok) return error("model_unavailable", 502);
-  const reply = await upstream.json<{ choices?: { message?: { content?: string } }[]; usage?: { cost?: number } }>();
-  // The only thing the Worker ever logs: never request or response bodies, never the token (spec #1, story 78–79).
-  console.log(JSON.stringify({ label: access.label, job, model, cost: reply.usage?.cost ?? null }));
-  try {
-    return Response.json({ output: JSON.parse(reply.choices?.[0]?.message?.content ?? "") as unknown });
-  } catch {
-    return error("invalid_model_reply", 502);
+  if (!upstream.ok) {
+    logCall(access, job, model, null);
+    return error("model_unavailable", 502);
   }
+  const reply = parseJson(await upstream.text());
+  const completion = (reply.ok ? reply.value : null) as { choices?: { message?: { content?: string } }[]; usage?: { cost?: number } } | null;
+  logCall(access, job, model, completion?.usage?.cost ?? null);
+  const content = parseJson(completion?.choices?.[0]?.message?.content ?? "");
+  if (!content.ok) return error("invalid_model_reply", 502);
+  return Response.json({ output: content.value } satisfies GenerateResponse);
 }
 
 /** CORS for the web app's origin only: every reply to it, including errors, carries the headers so the app can
@@ -77,7 +95,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (!env.ACCESS_TOKEN_SECRET || !env.OPENROUTER_API_KEY) return error("worker_not_configured", 500);
     const auth = await authenticate(request, env);
     if (auth instanceof Response) return auth;
-    if (request.method === "GET" && pathname === "/v1/access") return Response.json({ label: auth.label, expiresAt: auth.expiresAt.toISOString() });
+    if (request.method === "GET" && pathname === "/v1/access") return Response.json({ label: auth.label, expiresAt: auth.expiresAt.toISOString() } satisfies AccessResponse);
     if (request.method === "POST" && pathname === "/v1/generate") return generate(request, env, auth);
   }
   return new Response("Not found", { status: 404 });
@@ -85,6 +103,14 @@ async function route(request: Request, env: Env): Promise<Response> {
 
 export default {
   async fetch(request, env) {
-    return withCors(await route(request, env), request, env);
+    let response: Response;
+    try {
+      response = await route(request, env);
+    } catch (e) {
+      // Last resort. Log only the error's type: its message could quote a request or reply.
+      console.error(JSON.stringify({ error: "internal_error", type: e instanceof Error ? e.name : typeof e }));
+      response = error("internal_error", 500);
+    }
+    return withCors(response, request, env);
   },
 } satisfies ExportedHandler<Env>;

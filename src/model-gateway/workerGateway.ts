@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { ModelGatewayError, type AccessStatus, type ModelGateway, type ModelGatewayErrorCode } from "./ModelGateway";
+import { isWorkerError, type AccessResponse, type GenerateRequest, type GenerateResponse } from "../../shared/workerProtocol";
+import { ModelGatewayError, type AccessStatus, type ModelGateway } from "./ModelGateway";
 
 type Options = {
   /** Where the Worker runs, e.g. http://localhost:8787 in local dev. */
@@ -9,26 +10,37 @@ type Options = {
   fetch?: typeof globalThis.fetch;
 };
 
-const KNOWN_ERRORS: ModelGatewayErrorCode[] = ["missing_token", "invalid_token", "expired_token", "model_unavailable", "invalid_model_reply"];
+/** The reply schema as the JSON Schema OpenRouter's strict structured outputs expect: no `$schema` key. */
+function toStrictJsonSchema(schema: z.ZodType) {
+  const jsonSchema: Record<string, unknown> = z.toJSONSchema(schema);
+  delete jsonSchema.$schema;
+  return jsonSchema;
+}
 
 /** The real Model Gateway: reaches models through the Worker, which checks the Access Token and calls OpenRouter. */
 export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThis.fetch.bind(globalThis) }: Options): ModelGateway {
   const call = async (path: string, init: RequestInit, token = getAccessToken()) => {
     const headers = new Headers(init.headers);
     if (token) headers.set("Authorization", `Bearer ${token}`);
-    const response = await fetch(`${baseUrl}${path}`, { ...init, headers });
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}${path}`, { ...init, headers });
+    } catch {
+      throw new ModelGatewayError("worker_unreachable"); // offline, DNS, CORS refused, Worker down
+    }
     if (response.ok) return (await response.json()) as unknown;
     const { error } = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new ModelGatewayError(KNOWN_ERRORS.find((code) => code === error) ?? (response.status >= 500 ? "model_unavailable" : "request_refused"));
+    throw new ModelGatewayError(isWorkerError(error) ? error : response.status >= 500 ? "model_unavailable" : "request_refused");
   };
 
   return {
     async generate({ job, system, user, schema }) {
+      const body: GenerateRequest = { job, system, user, schema: toStrictJsonSchema(schema) };
       const { output } = (await call("/v1/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job, system, user, schema: z.toJSONSchema(schema) }),
-      })) as { output: unknown };
+        body: JSON.stringify(body),
+      })) as GenerateResponse;
       const parsed = schema.safeParse(output);
       if (!parsed.success) throw new ModelGatewayError("invalid_model_reply");
       return parsed.data;
@@ -36,7 +48,7 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
 
     async checkAccess(token): Promise<AccessStatus> {
       try {
-        const { label, expiresAt } = (await call("/v1/access", { method: "GET" }, token)) as { label: string; expiresAt: string };
+        const { label, expiresAt } = (await call("/v1/access", { method: "GET" }, token)) as AccessResponse;
         return { ok: true, label, expiresAt: new Date(expiresAt) };
       } catch (e) {
         if (e instanceof ModelGatewayError && e.code === "expired_token") return { ok: false, reason: "expired" };

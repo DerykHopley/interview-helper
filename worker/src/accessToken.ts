@@ -5,15 +5,21 @@
 //   SIGNATURE  HMAC-SHA256 over "IH-<LABEL>-<EXPIRY>" with the Worker's secret, first 80 bits, Crockford base32
 // Rotating the secret invalidates every outstanding token. Uses Web Crypto, so it runs in the Worker and in Node.
 
+import type { AccessRefusal } from "../../shared/workerProtocol";
+
 const PREFIX = "IH";
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford base32: no I, L, O, U
 const SIGNATURE_BYTES = 10; // 80 bits
 const LABEL = /^[a-z0-9]{1,24}$/;
+/** The longest a token may last. ADR 0002's default is 8 hours; the owner may mint longer, up to a week. */
+export const MAX_LIFETIME_HOURS = 7 * 24;
+const MAX_LIFETIME_MS = MAX_LIFETIME_HOURS * 3_600_000;
 
-export type AccessCheck = { ok: true; label: string; expiresAt: Date } | { ok: false; reason: "invalid" | "expired" };
+export type AccessCheck = { ok: true; label: string; expiresAt: Date } | { ok: false; reason: AccessRefusal };
 
-export async function mintAccessToken({ label, expiresAt, secret }: { label: string; expiresAt: Date; secret: string }) {
-  if (!LABEL.test(label)) throw new Error("A label is 1–24 lowercase letters or digits, e.g. cohort1");
+export async function mintAccessToken({ label, expiresAt, secret, now = new Date() }: { label: string; expiresAt: Date; secret: string; now?: Date }) {
+  if (!LABEL.test(label)) throw new Error("A label is 1–24 lowercase letters or digits, with no hyphens, e.g. cohort1");
+  if (expiresAt.getTime() - now.getTime() > MAX_LIFETIME_MS) throw new Error(`A token can last at most ${MAX_LIFETIME_HOURS} hours (7 days)`);
   const unsigned = `${PREFIX}-${label.toUpperCase()}-${encodeNumber(Math.floor(expiresAt.getTime() / 1000))}`;
   return `${unsigned}-${await sign(unsigned, secret)}`;
 }
@@ -28,6 +34,8 @@ export async function checkAccessToken(token: string, secret: string, now = new 
   if (!timingSafeEqual(signature, await sign(`${PREFIX}-${label}-${expiry}`, secret))) return { ok: false, reason: "invalid" };
   const expiresAt = new Date(seconds * 1000);
   if (expiresAt <= now) return { ok: false, reason: "expired" };
+  // Refuse tokens that outlive the maximum, whatever minted them.
+  if (expiresAt.getTime() - now.getTime() > MAX_LIFETIME_MS) return { ok: false, reason: "invalid" };
   return { ok: true, label: label.toLowerCase(), expiresAt };
 }
 

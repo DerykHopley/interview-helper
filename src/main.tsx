@@ -4,9 +4,13 @@ import { App } from "./App";
 import { accessTokenStore } from "./access/accessTokenStore";
 import { createWorkerGateway } from "./model-gateway/workerGateway";
 
-// The Worker's URL: `npm run dev:worker` serves it on 8787 locally; set VITE_WORKER_URL for other environments.
+// The Worker's URL. In dev it defaults to `npm run dev:worker` on port 8787; a production build must set
+// VITE_WORKER_URL, rather than quietly calling the Candidate's own machine.
+const workerUrl = import.meta.env.VITE_WORKER_URL ?? (import.meta.env.DEV ? "http://localhost:8787" : undefined);
+if (!workerUrl) throw new Error("VITE_WORKER_URL isn't set for this build");
+
 const gateway = createWorkerGateway({
-  baseUrl: import.meta.env.VITE_WORKER_URL ?? "http://localhost:8787",
+  baseUrl: workerUrl,
   getAccessToken: () => accessTokenStore.get(),
 });
 

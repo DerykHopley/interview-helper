@@ -1,7 +1,10 @@
 import { env, exports } from "cloudflare:workers";
 import { mintAccessToken } from "../src/accessToken";
 
-export const validToken = () => mintAccessToken({ label: "cohort1", expiresAt: new Date("2099-01-01"), secret: env.ACCESS_TOKEN_SECRET });
+/** A token that expires in `hours` (whole seconds, as tokens carry). */
+export const inHours = (hours: number) => new Date(Math.floor((Date.now() + hours * 3_600_000) / 1000) * 1000);
+
+export const validToken = () => mintAccessToken({ label: "cohort1", expiresAt: inHours(2), secret: env.ACCESS_TOKEN_SECRET });
 
 export const QUESTIONS_SCHEMA = {
   type: "object",
