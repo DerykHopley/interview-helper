@@ -1,14 +1,17 @@
 // PROTOTYPE — Variant D2: classic dashboard. Tabs across the top (Interviews · Scenario Bank · Backup), the
 // Interviews as a sortable-looking table (rows become cards on a phone), and a side column of status cards:
 // Scenario Bank, backup, Gaps. "New Interview" opens a drawer from the right (full screen on a phone).
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { interviewHref, totalGaps, type Dashboard } from "./data";
 import { AccessChip, CreateInterviewForm, LockButton, Progress, StubPage } from "./Shared";
 
 type Tab = "interviews" | "bank" | "backup";
 
-export function VariantD2({ dash }: { dash: Dashboard }) {
-  const [tab, setTab] = useState<Tab>("interviews");
+export type D2Tab = Tab;
+
+/** `bankPage` replaces the Scenario Bank tab's placeholder (used by the Scenario Bank prototype). */
+export function VariantD2({ dash, initialTab = "interviews", bankPage }: { dash: Dashboard; initialTab?: Tab; bankPage?: ReactNode }) {
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [drawer, setDrawer] = useState(() => new URLSearchParams(location.search).has("create"));
   const gaps = totalGaps(dash.interviews);
 
@@ -24,7 +27,9 @@ export function VariantD2({ dash }: { dash: Dashboard }) {
         <span className="d2-right"><AccessChip dash={dash} /><LockButton /></span>
       </header>
 
-      {tab !== "interviews" ? (
+      {tab === "bank" && bankPage ? (
+        bankPage
+      ) : tab !== "interviews" ? (
         <main className="d2-main"><StubPage kind={tab} dash={dash} /></main>
       ) : (
         <main className="d2-main d2-grid">

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "prototype": "vite --open /?variant=K1",
     "prototype:access": "vite --open /prototype/access",
-    "prototype:dashboard": "vite --open /prototype/dashboard"
+    "prototype:dashboard": "vite --open /prototype/dashboard",
+    "prototype:scenario-bank": "vite --open /prototype/scenario-bank"
   },
   "dependencies": {
     "react": "^19.3.0",
