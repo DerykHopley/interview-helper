@@ -2,6 +2,8 @@
 
 Question: what should the Access Token, Unlock Key setup, unlock and Start over screens look like (ADR 0002, spec #1 stories 8–23)?
 
+**Outcome:** A2, checklist (round 1). The setup is one page of numbered steps (Access Token → Unlock Key → how to start), each with a one-line reason. Only the current step is open, and finished steps fold into a ✓ summary. A returning Candidate sees the same list with just the Unlock Key step open, which also holds Start over. Their Access Token status shows underneath.
+
 Prototype code lives on the throwaway branch `prototype/access`, not on main. It runs at `/prototype/access` (`npm run prototype:access`). Everything is in memory: nothing is encrypted or stored.
 
 To try each situation, open the prototype bar's **state** panel. It can jump to first visit, returning (locked), token expired or no token; simulate 15 minutes of inactivity (which locks the app); or expire the token. It also lists the sample tokens:
@@ -28,4 +30,4 @@ All three variants use the same form pieces, so the wording is identical and onl
 
 A1 and A2 share a simple stand-in for the inside of the app (Access status, Lock, an expired-token banner, and a link to the Interview view). It isn't part of what's being judged.
 
-**Decision:** _pending_
+**Decision:** A2, the checklist. It shows everything that's needed from the start, and gives a one-line reason for each of the two secrets.
