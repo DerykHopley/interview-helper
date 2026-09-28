@@ -2,6 +2,11 @@
 
 Question: what should the Scenario Bank look like (spec #1 stories 24–32 and 47–50)? It needs to list stories with their skill tags; read one in full; create one by hand, with a check for missing required parts; edit; delete; show where each story came from (by hand, co-written, demo); and remove all demo stories at once.
 
+**Outcome:** C4 (round 3):
+- B1's list and reading pane, with the selected story shown in full on the right.
+- A compact skills overview across the top (the top skills with bars; uncovered skills as + chips that start a pre-tagged story), shown by default.
+- Hide folds it into one line: "11 skills covered · 3 not covered yet · Show ▾".
+
 The Scenario Bank is a tab of the chosen dashboard (D2), so the variants are built inside the real D2 page rather than on a blank one. Prototype code lives on the throwaway branch `prototype/scenario-bank`, not on main. It runs at `/prototype/scenario-bank` (`npm run prototype:scenario-bank`). Everything is in memory. "Co-write with AI" only shows a note, because co-writing is its own prototype (#12).
 
 To try it:
@@ -46,4 +51,4 @@ C4 — Compact skills on top: C2's compact overview (the top four skills in two 
 | Shown (default) | [shown](round-3/desktop-C4.png) | [shown](round-3/s25-C4.png) |
 | Hidden | [hidden](round-3/desktop-C4-hidden.png) | [hidden](round-3/s25-C4-hidden.png) |
 
-**Decision:** _pending_
+**Decision:** C4. The compact skills overview sits across the top, shown by default; Hide folds it into one short line.
