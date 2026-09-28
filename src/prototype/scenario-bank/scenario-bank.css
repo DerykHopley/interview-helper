@@ -175,3 +175,5 @@
   .cb-top .cb-overview.is-compact { grid-template-columns: 1fr; }
   .cb-top .b3-skills { grid-template-columns: 1fr; }
 }
+.cb-mini { flex-wrap: nowrap; white-space: nowrap; gap: 16px; padding: 10px 14px; }
+@media (max-width: 640px) { .cb-mini { gap: 10px; font-size: 13px; padding: 10px 12px; } .cb-mini .cb-strip-toggle { margin-left: auto; } }

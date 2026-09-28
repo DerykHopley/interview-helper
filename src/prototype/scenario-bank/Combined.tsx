@@ -112,9 +112,9 @@ export function CombinedBank({ bank, placement }: { bank: Bank; placement: Place
               {overview}
             </>
           ) : (
-            <button className="cb-strip-bar" onClick={() => setTopShown(true)} aria-expanded="false">
+            <button className="cb-strip-bar cb-mini" onClick={() => setTopShown(true)} aria-expanded="false">
               <span><strong>{tagCount}</strong> skills covered</span>
-              <span className="cb-strip-gaps"><strong>{GAP_SKILLS.length}</strong> not covered yet: {GAP_SKILLS.join(", ")}</span>
+              <span className="cb-strip-gaps"><strong>{GAP_SKILLS.length}</strong> not covered yet</span>
               <span className="cb-strip-toggle">Show ▾</span>
             </button>
           )}

@@ -39,7 +39,7 @@ B1's list and reading pane is the core in every variant; only where B3's skills 
 
 ## Round 3 — 2026-09-28
 
-C4 — Compact skills on top: C2's compact overview (the top four skills in two columns, and the uncovered skills as chips with +) placed across the top of the page. It's shown by default. **Hide ▴** folds it into C3's one-line summary ("11 skills covered · 3 not covered yet: …"), and **Show ▾** brings it back. B1's list and reading pane sit underneath as before. `?hidden=1` opens it folded.
+C4 — Compact skills on top: C2's compact overview (the top four skills in two columns, and the uncovered skills as chips with +) placed across the top of the page. It's shown by default. **Hide ▴** folds it into a single short line, "11 skills covered · 3 not covered yet · Show ▾", which fits on one line on a phone too (the uncovered skill names are left out). **Show ▾** brings the overview back. B1's list and reading pane sit underneath as before. `?hidden=1` opens it folded.
 
 | State | Desktop | Galaxy S25 (360×780) |
 |---|---|---|
