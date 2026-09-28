@@ -39,10 +39,10 @@ The chat is the main thing in every variant; only how the draft shows beside it 
 
 W5 refined:
 - **Fixed reply box:** it stays at the bottom of the screen, like the Interview view's answer bar. The chat scrolls with the page and follows each new message, so you don't have to scroll after answering.
-- **Chips stay visible:** the part chips stick to the top while you scroll.
+- **Chips stay visible:** once you scroll past the part chips, they pin to the top of the screen as a solid bar. A placeholder keeps their space, so the page doesn't jump. CSS sticky positioning didn't work here, because the dashboard page clips sideways overflow. `?stuck=1` forces the pinned state.
 - **Review at the top:** when the draft is ready, the page jumps to the top, so the review starts at its first field.
 
-Headless screenshots always capture the top of the page, so the follow-the-newest-message scrolling needs checking in a real browser.
+Headless screenshots always capture the top of the page, and they draw fixed elements in the wrong place once the page has scrolled. The follow-the-newest-message scrolling and the pinned chips therefore need checking in a real browser.
 
 | State | Desktop | Galaxy S25 (360×780) |
 |---|---|---|

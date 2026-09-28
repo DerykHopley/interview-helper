@@ -39,6 +39,25 @@ export function QuietDraft({ seed, onRestart, mode }: { seed: Seed; onRestart: (
   const [open, setOpen] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(() => new URLSearchParams(location.search).has("drawer"));
   const thread = useRef<HTMLDivElement>(null);
+  // W5: once the chips scroll out of view, pin them to the top of the screen (sticky doesn't work inside
+  // the dashboard, which clips sideways overflow). A placeholder keeps their space so the page doesn't jump.
+  const stripSlot = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+  const [slotHeight, setSlotHeight] = useState(0);
+  useEffect(() => {
+    if (mode !== "strip") return;
+    const onScroll = () => {
+      const el = stripSlot.current;
+      if (!el) return;
+      setSlotHeight(el.firstElementChild?.getBoundingClientRect().height ?? 0);
+      // ?stuck=1 shows the pinned state without scrolling (for screenshots)
+      setStuck(el.getBoundingClientRect().top < 0 || new URLSearchParams(location.search).has("stuck"));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); };
+  }, [mode]);
   useEffect(() => {
     if (mode === "strip") {
       // W5: the page scrolls (reply box is fixed), so follow the newest message with the window.
@@ -68,7 +87,8 @@ export function QuietDraft({ seed, onRestart, mode }: { seed: Seed; onRestart: (
         )}
       </div>
       {mode === "strip" && (
-        <div className="qd-strip">
+        <div ref={stripSlot} style={{ minHeight: stuck ? slotHeight : undefined }}>
+        <div className={`qd-strip ${stuck ? "is-stuck" : ""}`}>
           {PARTS.map((p) => {
             const v = valueOf(cw, p.key);
             return (
@@ -80,6 +100,7 @@ export function QuietDraft({ seed, onRestart, mode }: { seed: Seed; onRestart: (
           {open && valueOf(cw, open) && (
             <div className="qd-peek"><strong>{PARTS.find((p) => p.key === open)?.label}</strong> {valueOf(cw, open)} <button className="cw-link" onClick={() => setOpen(null)}>close</button></div>
           )}
+        </div>
         </div>
       )}
       <RulesNote />
