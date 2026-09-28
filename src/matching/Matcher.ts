@@ -5,9 +5,11 @@
  */
 export interface Matcher {
   name: string;
-  rank(question: MatchQuestion, scenarios: MatchScenario[]): Promise<ScoredScenario[]>;
+  rank(question: QuestionText, scenarios: ScenarioText[]): Promise<ScoredScenario[]>;
 }
 
-export type MatchQuestion = { id: string; text: string; skill: string };
-export type MatchScenario = { id: string; text: string };
+/** The text of a Question, as the Matcher reads it. */
+export type QuestionText = { id: string; text: string };
+/** The text of one of the Candidate's Scenarios, as the Matcher reads it. */
+export type ScenarioText = { id: string; text: string };
 export type ScoredScenario = { scenarioId: string; score: number };

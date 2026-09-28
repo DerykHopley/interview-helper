@@ -2,3 +2,6 @@ node_modules
 dist
 .wrangler
 .dev.vars
+
+# Owner's real Scenarios for the Evaluation Set (#16) — never commit
+eval/private/

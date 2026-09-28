@@ -1,7 +1,7 @@
-import type { Matcher, MatchQuestion, MatchScenario } from "../../src/matching/Matcher";
+import type { Matcher, QuestionText, ScenarioText } from "../../src/matching/Matcher";
 
 /** A fixed collection of Scenarios and labelled Questions used to score Matchers (CONTEXT.md). Labels come with #14. */
-export type EvaluationSet = { scenarios: MatchScenario[]; questions: MatchQuestion[] };
+export type EvaluationSet = { scenarios: ScenarioText[]; questions: QuestionText[] };
 
 export type MatcherScore = { name: string; questionsScored: number };
 export type MatcherReport = { matchers: MatcherScore[] };

@@ -1,14 +1,13 @@
 import { exports } from "cloudflare:workers";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fakeOpenRouter } from "./fakeOpenRouter";
 
 describe("the Worker", () => {
   let openRouter: ReturnType<typeof fakeOpenRouter>;
+  beforeEach(() => (openRouter = fakeOpenRouter()));
   afterEach(() => openRouter.restore());
 
   it("answers a health check without calling OpenRouter", async () => {
-    openRouter = fakeOpenRouter();
-
     const response = await exports.default.fetch("http://worker.test/health");
 
     expect(response.status).toBe(200);
