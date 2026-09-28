@@ -2,7 +2,10 @@
 
 Question: what should the Interview view (Questions → Matches → pick → Gaps) look like?
 
-**Outcome:** K, dark table (round 5). Summary: one Question at a time on a flashcard deck, on a dark card table; "Deal my Matches" fans the Matches out below the Question card as tilted, overlapping cards, with the best in the middle; tap a card to keep it.
+**Outcome:** K1, the answer bar on the dark table (round 12). One Question at a time on a flashcard deck on a dark card table:
+- Swipe, the faint side arrows or ← → move between Questions.
+- Tapping the card, or "Deal my Matches", fans the Matches out below it as tilted, overlapping cards, with the kept card (or the best Match) in the middle. Tapping another card keeps it. Tapping the Question card again hides the Matches.
+- A chat-style bar fixed at the bottom takes a typed or spoken answer.
 
 Prototype code lives on the throwaway branch `prototype/interview-view`, not on main. Screenshots are 1440×900, taken on page load, with made-up data.
 
@@ -147,4 +150,4 @@ Question: how does the Candidate type or speak their answer to the Question? Thr
 - **Privacy:** Chrome's built-in speech-to-text sends the audio to Google's servers. That sits badly with ADR 0001 (Candidate data never leaves the browser) and with the OpenRouter no-retention settings. Options to weigh: speech recognition that runs on the device where the browser supports it, a Whisper-style model running in the browser (like the local embedding Matcher), or voice as a clearly labelled opt-in.
 - **Secure connection:** speech recognition only works on a secure page: `localhost`, or HTTPS. Opening the dev server from a phone over plain `http://` on the local network falls back to the simulated voice.
 
-**Decision:** _pending_
+**Decision:** K1, the answer bar, is the core interview flow. The deck stays in view, with a chat-style bar at the bottom for typing or speaking the answer.
