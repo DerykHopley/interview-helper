@@ -3,18 +3,55 @@
 // underneath as tilted, overlapping cards. The kept card (or the best Match) sits in the middle; tap another to keep it
 // and it slides to the middle.
 import { FlashcardShell, type SlotProps } from "./FlashcardShell";
-import { questions, scenarioById, usedFor, type VariantProps } from "./data";
+import { useEffect } from "react";
+import { TOKEN_EXPIRED, finishMatching, questions, rerunMatching, scenarioById, usedFor, type VariantProps } from "./data";
 
 export function Hand({ q, picks, pick, flipped, flip }: SlotProps) {
-  if (!flipped) return <button className="vg-deal" onClick={flip}>Deal my Matches</button>;
+  // Matches are found the first time a Question is dealt (spec story 65); the "Matcher" takes a moment.
+  const finding = flipped && !!q.unmatched && !TOKEN_EXPIRED;
+  useEffect(() => {
+    if (!finding) return;
+    const t = setTimeout(() => finishMatching(q.id), 1300);
+    return () => clearTimeout(t);
+  }, [finding, q.id]);
+
+  if (!flipped) return <button className="vg-deal" onClick={flip}>{q.unmatched ? "Find my Matches" : "Deal my Matches"}</button>;
+
+  if (q.unmatched && TOKEN_EXPIRED)
+    return (
+      <div className="vg-hand">
+        <div className="vs-notice is-error">
+          <div className="vg-label">Matches can't be found</div>
+          <div className="vg-title">Your Access Token has expired</div>
+          <p className="vg-reason">Finding Matches uses AI, so it needs a current token. Your stories and answers still work.</p>
+          <a className="vs-btn" href="/prototype/access?variant=A2&scenario=token-expired">Enter a new token</a>
+        </div>
+      </div>
+    );
+
+  if (finding)
+    return (
+      <div className="vg-hand vg-fan vs-finding" aria-live="polite">
+        {[-1, 0, 1].map((s) => (
+          <div key={s} className="vs-ghost" style={{ transform: `translateX(calc(-50% + ${s} * var(--spread))) translateY(${s === 0 ? -14 : 10}px) rotate(${s * 7}deg)`, zIndex: 10 - Math.abs(s) }}>
+            <span className="vs-shimmer" /><span className="vs-shimmer is-short" /><span className="vs-shimmer" />
+          </div>
+        ))}
+        <div className="vs-finding-label">Finding your Matches…</div>
+      </div>
+    );
+
   if (!q.matches.length)
     return (
       <div className="vg-hand">
-        <div className="vg-card vg-empty">
-          <div className="vg-label">Gap</div>
-          <div className="vg-title">No story in your hand</div>
-          <p className="vg-reason">{q.gapSuggestion}</p>
-          <button className="ve-keep">Co-write it</button>
+        <div className="vs-gap">
+          <div className="vs-gap-label">Gap · {q.skill}</div>
+          <div className="vs-gap-title">No story fits this Question yet</div>
+          {q.gapSuggestion && <p className="vs-gap-text">{q.gapSuggestion}</p>}
+          <div className="vs-gap-actions">
+            <a className="vs-btn" href="/prototype/co-writing?variant=W5&from=gap">Write a Scenario for this</a>
+            <button className="vs-link" onClick={() => rerunMatching(q.id)}>Re-run matching</button>
+          </div>
         </div>
       </div>
     );

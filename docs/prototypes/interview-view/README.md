@@ -168,3 +168,32 @@ On a phone it shrinks to ←, the role and company, and a lock icon, with the pr
 | Dealt | [page](round-13/desktop-K1-header-dealt.png) | [page](round-13/s25-K1-header-dealt.png) |
 
 **Decision:** _pending_
+
+## Round 14 — 2026-09-28
+
+The K1 Interview screen gets the states it was missing (issues #8, #9, #10 and #13). All versions share these:
+- **Finding Matches (#10):** a Question's Matches are found the first time it's dealt. While that happens, three shimmering placeholder cards fan out with "Finding your Matches…". The button reads "Find my Matches" until then. In the sample, Questions 6–8 haven't been matched yet.
+- **Access Token expired:** dealing an unmatched Question shows "Matches can't be found — your Access Token has expired", with "Enter a new token". Stories and answers keep working. The header chip reads "Access expired".
+- **Gap card on the dark table (#13):** a dashed orange outline ("Gap · legacy systems — No story fits this Question yet"), with the suggestion, **Write a Scenario for this** (opens the co-writing chat started from this Gap), and **Re-run matching**.
+- **⋯ menu on each Question card:** **Re-run matching** (needs an Access Token) and **Delete this Question**.
+- **A new Interview (#9):** "Writing your Questions…" with placeholder lines until about 8 Questions arrive. With an expired token it says "Questions can't be written right now" and offers typing your own instead.
+- **Your own Questions (#8):** they're marked "· typed by you", and their Matches are found when dealt.
+- **Ask for more (#9):** "Ask for 4 more Questions". It's off without a token, and after it's been used once.
+
+S1 and S2 differ only in where you manage Questions:
+
+| Variant | Desktop | Galaxy S25 (360×780) |
+|---|---|---|
+| S1 — End-of-deck card: after the last Question, a card says "That's all 8 Questions" with **Ask for 4 more Questions** and a box to add your own. | [end card](round-14/desktop-S1-end.png) | [end card](round-14/s25-S1-end.png) |
+| S2 — Questions list: a **☰ Questions** button in the header opens a side list of every Question, with its status (✓ kept, ! Gap, dashed = not matched yet). Tap one to jump to it, 🗑 to delete it; add your own or ask for more at the bottom. | [list](round-14/desktop-S2-list.png) | [list](round-14/s25-S2-list.png) |
+
+| Shared state | Desktop | Galaxy S25 |
+|---|---|---|
+| Finding Matches | [finding](round-14/desktop-finding.png) | [finding](round-14/s25-finding.png) |
+| Gap card | [Gap](round-14/desktop-gap.png) | [Gap](round-14/s25-gap.png) |
+| Token expired | [expired](round-14/desktop-expired.png) | |
+| New Interview, Questions being written | [writing](round-14/desktop-generating.png) · [token expired](round-14/desktop-generating-expired.png) | |
+
+URL options: `?variant=S1|S2`, `?token=expired`, `?scenario=generating`, `?matched=1` (every Question already matched), `?list=1` (S2's list open), `?q=9` (S1's end card).
+
+**Decision:** _pending_

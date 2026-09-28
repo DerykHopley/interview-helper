@@ -199,3 +199,93 @@ button { font: inherit; }
   .ih-bar { width: 60px; }
   .ve-swipe.has-header { padding-top: 96px; }
 }
+
+/* ---------- round 14: missing states ---------- */
+.ve-own { color: #6b7280; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.vs-btn { display: inline-block; text-align: center; text-decoration: none; background: #fcd34d; color: #111827 !important; border: 0; border-radius: 999px; padding: 10px 18px; font: inherit; font-weight: 700; cursor: pointer; }
+.vs-btn:disabled { opacity: .4; cursor: default; }
+.vs-btn.is-ghost { background: transparent; color: #1f2937 !important; border: 1.5px solid #1f2937; }
+.vs-link { background: none; border: 0; color: inherit; opacity: .8; text-decoration: underline; cursor: pointer; font: inherit; font-size: 14px; }
+
+/* finding Matches */
+.vs-ghost { position: absolute; left: 50%; top: 14px; width: 220px; height: var(--card-h); display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 14px; background: #111827; border: 2px solid #374151; }
+.vs-shimmer { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, #ffffff10 25%, #ffffff26 50%, #ffffff10 75%); background-size: 200% 100%; animation: vs-shimmer 1.2s linear infinite; }
+.vs-shimmer.is-short { width: 60%; }
+@keyframes vs-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.vs-finding-label { position: absolute; left: 50%; transform: translateX(-50%); bottom: -26px; white-space: nowrap; font-size: 13px; color: #d1d5db; z-index: 20; }
+
+/* expired token / Gap cards on the dark table */
+.vs-notice, .vs-gap { width: min(460px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: 8px; padding: 20px; border-radius: 16px; }
+.vs-notice.is-error { background: #111827; border: 2px solid #f59e0b; color: #f9fafb; }
+.vs-notice .vs-btn { align-self: flex-start; }
+.vs-gap { background: #0b1512; border: 2px dashed #fb923c; color: #f9fafb; }
+.vs-gap-label { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #fb923c; }
+.vs-gap-title { font-family: Georgia, serif; font-size: 20px; font-weight: 700; }
+.vs-gap-text { margin: 0; color: #d1d5db; font-size: 14px; line-height: 1.45; }
+.vs-gap-actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.vs-gap .vs-link { color: #d1d5db; }
+
+/* ⋯ menu on the Question card */
+.vs-menu { position: absolute; top: 10px; right: 44px; z-index: 5; }
+.vs-menu-btn { width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: #a16207; font-size: 20px; line-height: 1; cursor: pointer; }
+.vs-menu-btn:hover { background: #a162071a; }
+.vs-menu-list { position: absolute; right: 0; top: 36px; min-width: 230px; display: flex; flex-direction: column; padding: 6px; border-radius: 12px; background: #1f2937; box-shadow: 0 12px 30px #000a; }
+.vs-menu-list button { text-align: left; background: none; border: 0; color: #f9fafb; font: inherit; font-size: 14px; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+.vs-menu-list button:hover:not(:disabled) { background: #ffffff14; }
+.vs-menu-list button:disabled { color: #6b7280; cursor: default; }
+.vs-menu-list button span { font-size: 12px; }
+.vs-menu-list .is-danger { color: #fca5a5; }
+
+/* end-of-deck card (S1) */
+.ve-end { cursor: default; }
+.vs-end { flex: 1; }
+.vs-end, .vs-gen { display: flex; flex-direction: column; gap: 10px; padding: 28px; }
+.vs-end-title { font-family: Georgia, serif; font-size: 26px; font-weight: 700; line-height: 1.2; }
+.vs-end-sub { margin: 0; color: #6b7280; font-size: 14px; }
+.vs-end .vs-btn { align-self: flex-start; }
+.vs-or { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #a16207; margin-top: 6px; }
+.vs-more { font-size: 14px; color: #6b7280; }
+.vs-more.is-waiting { color: #a16207; font-style: italic; }
+.vs-add { display: flex; flex-direction: column; gap: 8px; }
+.vs-add .vs-btn { align-self: flex-start; }
+.vs-add-input { width: 100%; padding: 10px 12px; font: inherit; font-size: 16px; border-radius: 10px; border: 1.5px solid #d6cfbd; background: #fff; color: #1f2937; resize: none; outline: none; }
+.vs-add-input:focus { border-color: #b45309; }
+
+/* Questions list (S2) */
+.ih-qs { background: #ffffff14; color: #f9fafb; border: 0; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.ih-chip.is-expired { background: #f59e0b33; color: #fcd34d; }
+.vs-scrim { position: fixed; inset: 0; z-index: 40; background: #0009; }
+.vs-sheet { position: fixed; z-index: 50; top: 0; right: 0; bottom: 0; width: min(440px, 100%); display: flex; flex-direction: column; background: #fffdf7; color: #1f2937; box-shadow: -20px 0 50px #000a; }
+.vs-sheet-head { display: flex; align-items: baseline; gap: 8px; padding: 18px 20px 10px; }
+.vs-sheet-head strong { font-family: Georgia, serif; font-size: 22px; }
+.vs-sheet-head span { color: #6b7280; }
+.vs-x { margin-left: auto; background: none; border: 0; font-size: 26px; color: #6b7280; cursor: pointer; }
+.vs-list { flex: 1; overflow: auto; list-style: none; margin: 0; padding: 0 10px; }
+.vs-list li { display: flex; align-items: center; gap: 4px; border-radius: 10px; }
+.vs-list li.is-current { background: #fef3c7; }
+.vs-list-q { flex: 1; display: flex; gap: 10px; align-items: flex-start; text-align: left; background: none; border: 0; color: inherit; font: inherit; font-size: 14px; padding: 10px; cursor: pointer; }
+.vs-list-text { display: flex; flex-direction: column; gap: 2px; }
+.vs-list-meta { font-size: 12px; color: #6b7280; }
+.vs-dot { flex: none; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; border: 2px solid #d1d5db; color: #fff; }
+.vs-dot.is-kept { background: #16a34a; border-color: #16a34a; }
+.vs-dot.is-gap { background: #ea580c; border-color: #ea580c; }
+.vs-dot.is-new { border-style: dashed; }
+.vs-del { background: none; border: 0; opacity: .5; cursor: pointer; padding: 8px; }
+.vs-sheet-foot { display: flex; flex-direction: column; gap: 10px; padding: 14px 20px 90px; border-top: 1px solid #e7e0cc; }
+.vs-sheet-foot .vs-btn.is-ghost { align-self: flex-start; }
+.vs-add.is-compact .vs-add-input { min-height: 44px; }
+
+/* new Interview: Questions being written */
+.vs-gen { width: min(600px, 100%); min-height: 0; margin-top: 12px; border-radius: 20px; background: #fffdf7; color: #1f2937; box-shadow: 0 14px 30px #000a; }
+.vs-gen-lines { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.vs-gen .vs-shimmer { background: linear-gradient(90deg, #0000000d 25%, #0000001f 50%, #0000000d 75%); background-size: 200% 100%; }
+
+@media (max-width: 640px) {
+  .vs-ghost { width: 150px; }
+  .vs-end, .vs-gen { padding: 22px; }
+  .vs-end-title { font-size: 22px; }
+  .vs-menu { right: 40px; top: 6px; }
+  .ih-qs-text { display: none; }
+  .ih-qs { padding: 6px 10px; }
+}
+.vs-add-input { scrollbar-width: none; }

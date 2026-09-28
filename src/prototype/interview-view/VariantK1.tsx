@@ -7,7 +7,7 @@ import { appendText, useDictation } from "./dictation";
 import { scenarioById, type VariantProps } from "./data";
 import { InterviewHeader } from "./InterviewHeader";
 
-function AnswerBar({ q, picks, answers, setAnswer, answering, setAnswering }: SlotProps) {
+export function AnswerBar({ q, picks, answers, setAnswer, answering, setAnswering }: SlotProps) {
   const text = answers[q.id] ?? "";
   const d = useDictation((chunk) => setAnswer(q.id, (prev) => appendText(prev, chunk)));
   const kept = picks[q.id] && scenarioById(picks[q.id]!);
