@@ -2,6 +2,8 @@
 
 Question: what should the Backup tab look like? It covers Scenario Export and import, Pack import, the backup reminder and persistent storage (spec #1 stories 22–23, 42–46, 51–54; issues #6 and #7).
 
+**Outcome:** X4 (round 2). A slim status line at the top shows backup status, story and Pack counts, and storage, with a small Download backup file button at its end. Below it, the Restore from a backup and Packs panels sit side by side, each running its import step in place.
+
 The Backup page is a tab of the chosen dashboard (D2), so the variants are built inside the real D2 page. Prototype code lives on the throwaway branch `prototype/backup`, not on main. It runs at `/prototype/backup` (`npm run prototype:backup`). Nothing is encrypted or read from disk:
 - "Choose a file" opens a list of sample files, so every outcome can be tried.
 - "Download backup file" saves a placeholder file.
@@ -44,4 +46,4 @@ X4 — Status line + panels:
 | Never backed up | [page](round-2/desktop-X4.png) | [page](round-2/s25-X4.png) |
 | Backed up | [page](round-2/desktop-X4-backedup.png) | |
 
-**Decision:** _pending_
+**Decision:** X4. The slim status line with a Download backup file button sits on top, with the Restore and Packs panels below.
