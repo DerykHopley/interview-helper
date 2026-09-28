@@ -10,7 +10,8 @@
     "prototype:access": "vite --open /prototype/access",
     "prototype:dashboard": "vite --open /prototype/dashboard",
     "prototype:scenario-bank": "vite --open /prototype/scenario-bank",
-    "prototype:backup": "vite --open /prototype/backup"
+    "prototype:backup": "vite --open /prototype/backup",
+    "prototype:co-writing": "vite --open /prototype/co-writing"
   },
   "dependencies": {
     "react": "^19.3.0",

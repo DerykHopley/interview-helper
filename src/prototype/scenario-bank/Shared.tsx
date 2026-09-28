@@ -34,7 +34,7 @@ export function ScenarioReader({ s }: { s: Scenario }) {
 }
 
 /** Create or edit by hand (stories 28–31): tells you which required parts are missing instead of saving. */
-export function ScenarioForm({ initial, onSave, onCancel }: { initial: Scenario; onSave: (s: Scenario) => void; onCancel: () => void }) {
+export function ScenarioForm({ initial, onSave, onCancel, saveLabel = "Save story", cancelLabel = "Cancel" }: { initial: Scenario; onSave: (s: Scenario) => void; onCancel: () => void; saveLabel?: string; cancelLabel?: string }) {
   const [s, setS] = useState(initial);
   const [tried, setTried] = useState(false);
   const [tagText, setTagText] = useState(initial.tags.join(", "));
@@ -78,8 +78,8 @@ export function ScenarioForm({ initial, onSave, onCancel }: { initial: Scenario;
       </div>
       {tried && missing.length > 0 && <div className="sb-form-error">Still missing: {missing.map((k) => MISSING_TEXT[k]?.replace(/^Add (the |a )?|^Give it a /, "")).join(", ")}.</div>}
       <div className="sb-form-actions">
-        <button className="sb-primary">Save story</button>
-        <button type="button" className="sb-link" onClick={onCancel}>Cancel</button>
+        <button className="sb-primary">{saveLabel}</button>
+        <button type="button" className="sb-link" onClick={onCancel}>{cancelLabel}</button>
         <span className="sb-origin-note">Origin: {ORIGIN_LABEL[s.origin]}</span>
       </div>
     </form>
