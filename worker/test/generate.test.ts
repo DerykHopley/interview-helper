@@ -1,0 +1,96 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fakeOpenRouter } from "./fakeOpenRouter";
+import { completion, generate, QUESTIONS_SCHEMA, validToken } from "./helpers";
+
+describe("structured generation", () => {
+  let openRouter: ReturnType<typeof fakeOpenRouter>;
+  afterEach(() => openRouter.restore());
+
+  it("forwards to OpenRouter with the job's model, the schema and the privacy setting, and returns the parsed reply", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":["Tell me about a time you led a team."]}'));
+
+    const response = await generate({ job: "question-generation", system: "You write interview Questions.", user: "<job_spec>Lead engineer</job_spec>", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ output: { questions: ["Tell me about a time you led a team."] } });
+
+    const [sent] = openRouter.requests;
+    expect(sent.url).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(sent.headers.get("Authorization")).toBe("Bearer test-openrouter-key");
+    expect(sent.json()).toEqual({
+      model: "openai/gpt-5-mini",
+      messages: [
+        { role: "system", content: "You write interview Questions." },
+        { role: "user", content: "<job_spec>Lead engineer</job_spec>" },
+      ],
+      response_format: { type: "json_schema", json_schema: { name: "reply", strict: true, schema: QUESTIONS_SCHEMA } },
+      provider: { data_collection: "deny" },
+      usage: { include: true },
+    });
+  });
+
+  it("uses a model the request picks, if it's on the allowed list", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
+
+    const response = await generate({ job: "question-generation", model: "openai/gpt-5-nano", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(200);
+    expect(openRouter.requests[0].json()).toMatchObject({ model: "openai/gpt-5-nano" });
+  });
+
+  it("refuses a model that isn't on the allowed list, without calling OpenRouter", async () => {
+    openRouter = fakeOpenRouter();
+
+    const response = await generate({ job: "question-generation", model: "anthropic/claude-opus-5", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "model_not_allowed" });
+    expect(openRouter.requests).toHaveLength(0);
+  });
+
+  it("refuses a job it doesn't know, without calling OpenRouter", async () => {
+    openRouter = fakeOpenRouter();
+
+    const response = await generate({ job: "write-my-cv", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "unknown_job" });
+    expect(openRouter.requests).toHaveLength(0);
+  });
+
+  it("logs only the token label, job, model and cost, never the request, the reply or the token", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":["SECRET-REPLY-TEXT"]}', 0.00042));
+    const methods = ["log", "info", "warn", "error", "debug"] as const;
+    const spies = methods.map((m) => vi.spyOn(console, m).mockImplementation(() => {}));
+    const token = await validToken();
+
+    await generate({ job: "question-generation", system: "SECRET-SYSTEM-TEXT", user: "SECRET-JOB-SPEC-TEXT", schema: QUESTIONS_SCHEMA }, token);
+
+    const logged = spies.flatMap((spy) => spy.mock.calls.map((args) => args.map(String).join(" ")));
+    spies.forEach((spy) => spy.mockRestore());
+    expect(logged.map((line) => JSON.parse(line) as unknown)).toEqual([
+      { label: "cohort1", job: "question-generation", model: "openai/gpt-5-mini", cost: 0.00042 },
+    ]);
+    for (const secret of ["SECRET-SYSTEM-TEXT", "SECRET-JOB-SPEC-TEXT", "SECRET-REPLY-TEXT", token]) {
+      expect(logged.join("\n")).not.toContain(secret);
+    }
+  });
+
+  it("reports an unavailable model when OpenRouter fails", async () => {
+    openRouter = fakeOpenRouter(() => new Response("upstream error", { status: 503 }));
+
+    const response = await generate({ job: "question-generation", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "model_unavailable" });
+  });
+
+  it("reports an invalid reply when the model's content isn't JSON", async () => {
+    openRouter = fakeOpenRouter(() => completion("Sure! Here are some questions: ..."));
+
+    const response = await generate({ job: "question-generation", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "invalid_model_reply" });
+  });
+});

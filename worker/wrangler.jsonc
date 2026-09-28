@@ -3,7 +3,27 @@
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "interview-helper-worker",
   "main": "src/index.ts",
+  // The newest date the Vitest Workers pool's bundled runtime supports (see PR #27).
   "compatibility_date": "2026-08-15",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true }
+  // Workers Logs: on for now. The Worker itself only ever logs token label, job, model and cost (tested in
+  // worker/test/generate.test.ts). What Cloudflare records about each request by itself is checked on the
+  // deployed Worker in #23.
+  "observability": { "enabled": true },
+  "vars": {
+    // The web app's origin, allowed by CORS. Override per environment.
+    "ALLOWED_ORIGIN": "http://localhost:5173",
+    // Default model per job (spec #1, "Models and settings"). The Developer panel may pick another allowed model.
+    "JOB_MODELS": {
+      "question-generation": "openai/gpt-5-mini",
+      "matching": "openai/gpt-5-mini",
+      "match-reasons": "openai/gpt-5-mini",
+      "co-writing": "openai/gpt-5-mini"
+    },
+    // The only models the Worker forwards to.
+    "ALLOWED_MODELS": ["openai/gpt-5-nano", "openai/gpt-5-mini", "openai/gpt-5"]
+  }
+  // Secrets (never in this file): OPENROUTER_API_KEY and ACCESS_TOKEN_SECRET.
+  // Local dev: copy worker/dev.vars.example to worker/.dev.vars (gitignored) and fill them in. (Don't name the example
+  // .dev.vars.<anything>: Wrangler reads that as an environment's vars file and its empty values override the real ones.) Deployed: `wrangler secret put <NAME>`.
 }

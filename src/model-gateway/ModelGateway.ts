@@ -8,7 +8,7 @@ export type StructuredRequest<Schema extends z.ZodType> = {
   system: string;
   /** Untrusted text (Job Specs, Scenarios, typed Questions) goes here, delimited as data. */
   user: string;
-  /** Every reply must match this schema; a reply that doesn't is rejected. */
+  /** Every reply must match this schema; a reply that doesn't is rejected with "invalid_model_reply". */
   schema: Schema;
 };
 
@@ -30,6 +30,26 @@ export type DecisionRequest<Keys extends string> = {
   questions: Record<Keys, DecisionQuestion>;
 };
 
+/** Whether an Access Token lets the app use LLM features right now. */
+export type AccessStatus = { ok: true; label: string; expiresAt: Date } | { ok: false; reason: "invalid" | "expired" };
+
+/** Why a model call failed, as the app can explain it to the Candidate. */
+export type ModelGatewayErrorCode =
+  | "missing_token"
+  | "invalid_token"
+  | "expired_token"
+  | "model_unavailable"
+  | "invalid_model_reply"
+  | "request_refused"
+  | "not_connected";
+
+export class ModelGatewayError extends Error {
+  constructor(readonly code: ModelGatewayErrorCode) {
+    super(`Model call failed: ${code}`);
+    this.name = "ModelGatewayError";
+  }
+}
+
 /**
  * The single way the app reaches any model (spec #1, "Modules"). Remote calls go through the Worker; an
  * in-browser embedding model sits behind the same interface. It is the only thing faked in app-level tests.
@@ -39,4 +59,6 @@ export interface ModelGateway {
   embed(texts: string[]): Promise<number[][]>;
   /** Classify/score with Jev: typed answers only, no free text. */
   decide<Keys extends string>(request: DecisionRequest<Keys>): Promise<Record<Keys, DecisionAnswer>>;
+  /** Checks an Access Token with the Worker, before it's used. */
+  checkAccess(token: string): Promise<AccessStatus>;
 }
