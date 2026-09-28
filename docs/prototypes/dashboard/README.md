@@ -2,6 +2,12 @@
 
 Question: after unlocking, what should the Candidate's home look like? The core is the list of Interviews and creating one from a Job Spec. The Scenario Bank and Backup (import/export) need to be reachable from it.
 
+**Outcome:** D2, classic dashboard (round 1):
+- Tabs for Interviews · Scenario Bank · Backup.
+- The Interviews list is a table that turns into cards on a phone.
+- A side column holds status cards: Scenario Bank, Backup warning, Gaps by skill.
+- "New Interview" opens a drawer from the right, full screen on a phone.
+
 Prototype code lives on the throwaway branch `prototype/dashboard`, not on main. It runs at `/prototype/dashboard` (`npm run prototype:dashboard`). The data is made up and held in memory. "Generating Questions" is a 2-second timer, with no LLM call. Opening an Interview goes to the Interview view prototype (K1). The Scenario Bank and Backup pages are placeholders for now.
 
 The prototype bar's **state** panel switches between a new Candidate with no data and the sample data, and sets the Access Token to active, expired or none. The URL can also take `?scenario=empty`, `?token=expired|none` and `?create=1`.
@@ -19,4 +25,8 @@ All three variants use the same form for creating an Interview:
 | D2 — Classic dashboard: tabs (Interviews · Scenario Bank · Backup), a table of Interviews that turns into cards on a phone, and a side column of status cards (Scenario Bank with "Remove demo", a Backup warning with "Export now", Gaps by skill). "New Interview" opens a drawer from the right. | [home](round-1/desktop-D2.png) · [create drawer](round-1/desktop-D2-create.png) | [home](round-1/s25-D2.png) · [empty](round-1/s25-D2-empty.png) · [create, token expired](round-1/s25-D2-create.png) |
 | D3 — Next step: leads with "Pick up where you left off" (your most recent Interview and a Resume button), then a to-do list (fill Gaps, back up, remove demo stories), then all Interviews. A new Candidate sees the Job Spec box straight away. On a phone, the navigation becomes a bottom tab bar (Home · Stories · Backup). | [home](round-1/desktop-D3.png) | [home](round-1/s25-D3.png) · [empty](round-1/s25-D3-empty.png) · [create, token expired](round-1/s25-D3-create.png) |
 
-**Decision:** _pending_
+**Decision:** D2, the classic dashboard. The two screens are for different kinds of work: the card design stays in the Interview practice flow, and the dashboard uses a conventional layout for managing Interviews, stories and backups.
+
+Parked for later:
+- Interview date and application status on each Interview (#25). Useful, but it moves the app towards being an application manager, so it's out of scope for v1.
+- "Undo" after deleting an Interview. The browser's plain confirmation box is enough for now.
