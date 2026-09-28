@@ -33,4 +33,20 @@ The chat is the main thing in every variant; only how the draft shows beside it 
 | W5 — Draft chips above the chat: a row of part chips (✓ done, yellow = answering now). Click a done chip to see its words for a moment. | [mid-chat](round-2/desktop-W5.png) | [mid-chat](round-2/s25-W5.png) |
 | W6 — Draft in a drawer: no draft on screen. Each reply gets a small green "→ added to Situation" tag, and a "Draft 4/7" button opens the full draft as a side drawer. | [mid-chat](round-2/desktop-W6.png) · [drawer open](round-2/desktop-W6-drawer.png) | [mid-chat](round-2/s25-W6.png) |
 
+**Decision:** W5, the part chips above the chat. Two changes: you shouldn't have to scroll after every answer, and the review should start at the top of the page.
+
+## Round 3 — 2026-09-28
+
+W5 refined:
+- **Fixed reply box:** it stays at the bottom of the screen, like the Interview view's answer bar. The chat scrolls with the page and follows each new message, so you don't have to scroll after answering.
+- **Chips stay visible:** the part chips stick to the top while you scroll.
+- **Review at the top:** when the draft is ready, the page jumps to the top, so the review starts at its first field.
+
+Headless screenshots always capture the top of the page, so the follow-the-newest-message scrolling needs checking in a real browser.
+
+| State | Desktop | Galaxy S25 (360×780) |
+|---|---|---|
+| Mid-chat, reply box fixed at the bottom | [mid-chat](round-3/desktop-W5-mid.png) | [mid-chat](round-3/s25-W5-mid.png) |
+| Draft ready, review at the top | [review](round-3/desktop-W5-review.png) | [review](round-3/s25-W5-review.png) |
+
 **Decision:** _pending_

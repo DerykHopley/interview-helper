@@ -39,7 +39,17 @@ export function QuietDraft({ seed, onRestart, mode }: { seed: Seed; onRestart: (
   const [open, setOpen] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(() => new URLSearchParams(location.search).has("drawer"));
   const thread = useRef<HTMLDivElement>(null);
-  useEffect(() => { const el = thread.current; if (el) el.scrollTop = el.scrollHeight; }, [cw.messages.length]);
+  useEffect(() => {
+    if (mode === "strip") {
+      // W5: the page scrolls (reply box is fixed), so follow the newest message with the window.
+      window.scrollTo({ top: document.body.scrollHeight, behavior: cw.messages.length > 2 ? "smooth" : "auto" });
+      return;
+    }
+    const el = thread.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [cw.messages.length, mode]);
+  // When the draft is ready, bring the review to the top of the page.
+  useEffect(() => { if (cw.done) window.scrollTo({ top: 0 }); }, [cw.done]);
   const filled = PARTS.filter((p) => valueOf(cw, p.key)).length;
 
   if (cw.done)
@@ -81,7 +91,7 @@ export function QuietDraft({ seed, onRestart, mode }: { seed: Seed; onRestart: (
           </div>
         ))}
       </div>
-      <Reply cw={cw} />
+      {mode === "strip" ? <div className="qd-fixed-reply"><Reply cw={cw} /></div> : <Reply cw={cw} />}
     </section>
   );
 

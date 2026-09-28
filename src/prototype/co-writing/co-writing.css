@@ -153,3 +153,12 @@ aside.qd-rail { position: sticky; top: 12px; display: flex; flex-direction: colu
   .qd-thread { max-height: none; }
   .qd-head h1 { font-size: 21px; }
 }
+
+/* W5: page-scrolling thread with a reply box fixed to the bottom of the screen */
+.qd-m-strip { padding-bottom: 200px; }
+.qd-m-strip .qd-thread { max-height: none; overflow: visible; min-height: 0; }
+.qd-m-strip .qd-strip { position: sticky; top: 0; z-index: 20; padding: 8px 0; background: linear-gradient(#10201bf2 80%, #10201b00); }
+.qd-fixed-reply { position: fixed; left: 50%; transform: translateX(-50%); bottom: 72px; z-index: 30; width: min(760px, calc(100% - 32px)); border-radius: 16px; box-shadow: 0 10px 30px #000a; }
+.qd-fixed-reply .cw-reply { background: #0b1512; }
+.qd-fixed-reply { background: #0b1512; isolation: isolate; }
+@media (max-width: 640px) { .qd-fixed-reply { bottom: 60px; width: calc(100% - 16px); } .qd-m-strip { padding-bottom: 190px; } }
