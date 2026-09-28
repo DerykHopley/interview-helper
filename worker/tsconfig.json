@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [
+      "@cloudflare/vitest-pool-workers/types",
+      "./worker-configuration.d.ts"
+    ],
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "../node_modules/.tmp/worker-tsconfig.json.tsbuildinfo",
+    "outDir": "../node_modules/.tmp/worker-tsconfig.json"
+  },
+  "include": [
+    "src",
+    "test",
+    "vitest.config.ts"
+  ]
+}
