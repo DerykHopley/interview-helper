@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { blank, type Scenario } from "../scenario-bank/data";
 
-export type Msg = { from: "assistant" | "candidate" | "system"; text: string; flag?: boolean };
+export type Msg = { from: "assistant" | "candidate" | "system"; text: string; flag?: boolean; part?: string /* which draft part this reply filled */ };
 export type Seed = { kind: "scratch" } | { kind: "gap"; question: string; skill: string; interview: string };
 
 type Step = { key: keyof Scenario | "about"; ask: string; sample: string };
@@ -40,7 +40,8 @@ function reply(s: State, text: string): State {
   const answer = text.trim();
   if (!answer || s.i >= STEPS.length) return s;
   const step = STEPS[s.i];
-  const messages: Msg[] = [...s.messages, { from: "candidate", text: answer }];
+  const label = PARTS.find((p) => p.key === (step.key === "about" ? "title" : step.key))?.label;
+  const messages: Msg[] = [...s.messages, { from: "candidate", text: answer, part: step.key === "metrics" ? undefined : label }];
 
   // Measurable result: flag it rather than invent one (story 37).
   if (step.key === "metrics") {
@@ -50,6 +51,7 @@ function reply(s: State, text: string): State {
       messages.push({ from: "assistant", flag: true, text: "I didn't hear a number there. A measurable result makes the story much stronger — do you have one, even a rough one? If not, say “none” and I'll leave that part empty rather than guess." });
       return { ...s, messages, flagged: true };
     }
+    if (hasNumber) messages[messages.length - 1] = { ...messages[messages.length - 1], part: label };
     messages.push({
       from: "assistant",
       text: hasNumber

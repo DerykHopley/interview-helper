@@ -21,4 +21,16 @@ After approving, it shows "✓ Saved to your Scenario Bank". Starting from a Gap
 | W2 — Chat with live draft: chat on the left, and on the right the draft filling in part by part as you answer, showing which words went where and what's still missing ("Answering now…" / "Not yet"). When it's done, the right side becomes the editable review. On a phone, Chat and Draft are two tabs. | [mid-chat](round-1/desktop-W2-mid.png) · [from a Gap](round-1/desktop-W2-gap.png) · [missing-part flag](round-1/desktop-W2-flag.png) · [review](round-1/desktop-W2-draft.png) | [chat tab](round-1/s25-W2-mid.png) |
 | W3 — One question at a time: each AI question is a single cream card on the dark table, like the Interview view, with a row of chips for the story's parts showing progress above it and the answer box below. Earlier answers fold into "Show your answers so far". The last card turns into the review. | [mid](round-1/desktop-W3-mid.png) · [from a Gap](round-1/desktop-W3-gap.png) · [missing-part flag](round-1/desktop-W3-flag.png) | [mid](round-1/s25-W3-mid.png) · [review](round-1/s25-W3-draft.png) |
 
+**Decision:** Keep the chat. W2's live draft is useful but takes up too much of the screen. Round 2 tries quieter versions of it.
+
+## Round 2 — 2026-09-28
+
+The chat is the main thing in every variant; only how the draft shows beside it changes. The full draft still takes over at the end, as the review.
+
+| Variant | Desktop | Galaxy S25 (360×780) |
+|---|---|---|
+| W4 — Slim draft rail: a narrow dark column beside the chat, one line per part (✓, name, first few words). Click a line to read it in full. On a phone it shrinks to a compact block of ✓ part names above the chat. | [mid-chat](round-2/desktop-W4.png) | [mid-chat](round-2/s25-W4.png) |
+| W5 — Draft chips above the chat: a row of part chips (✓ done, yellow = answering now). Click a done chip to see its words for a moment. | [mid-chat](round-2/desktop-W5.png) | [mid-chat](round-2/s25-W5.png) |
+| W6 — Draft in a drawer: no draft on screen. Each reply gets a small green "→ added to Situation" tag, and a "Draft 4/7" button opens the full draft as a side drawer. | [mid-chat](round-2/desktop-W6.png) · [drawer open](round-2/desktop-W6-drawer.png) | [mid-chat](round-2/s25-W6.png) |
+
 **Decision:** _pending_

@@ -1,5 +1,5 @@
 // PROTOTYPE — the co-writing chat (issues #12, #13), shown inside the D2 dashboard's Scenario Bank tab, where
-// "Co-write with AI" leads. Three variants via ?variant=W1|W2|W3. ?from=gap starts from the Q6 Gap
+// "Co-write with AI" leads. Round 2 variants ?variant=W4|W5|W6 (quieter W2); round 1 W1|W2|W3. ?from=gap starts from the Q6 Gap
 // (legacy systems); ?answers=n pre-answers the first n questions with the sample answers (for screenshots).
 import { useState } from "react";
 import { PrototypeSwitcher, useVariant, type VariantDef } from "../PrototypeSwitcher";
@@ -9,11 +9,16 @@ import { GAP_SEED, type Seed } from "./cowrite";
 import { VariantW1 } from "./VariantW1";
 import { VariantW2 } from "./VariantW2";
 import { VariantW3 } from "./VariantW3";
+import { QuietDraft } from "./QuietDraft";
 import "../dashboard/dashboard.css";
 import "../scenario-bank/scenario-bank.css";
 import "./co-writing.css";
 
 const variants: VariantDef[] = [
+  { key: "W4", name: "Slim draft rail" },
+  { key: "W5", name: "Draft chips above chat" },
+  { key: "W6", name: "Draft in a drawer" },
+  { key: "W2", name: "Chat with live draft (round 1)" },
   { key: "W1", name: "Chat, then draft" },
   { key: "W2", name: "Chat with live draft" },
   { key: "W3", name: "One question at a time" },
@@ -27,7 +32,11 @@ export function CoWritingPrototype() {
   const restart = () => setRun((r) => r + 1);
   const props = { seed, onRestart: restart };
   const k = `${variant}-${seed.kind}-${run}`;
-  const page = variant === "W1" ? <VariantW1 key={k} {...props} /> : variant === "W2" ? <VariantW2 key={k} {...props} /> : <VariantW3 key={k} {...props} />;
+  const page =
+    variant === "W4" ? <QuietDraft key={k} {...props} mode="rail" />
+    : variant === "W5" ? <QuietDraft key={k} {...props} mode="strip" />
+    : variant === "W6" ? <QuietDraft key={k} {...props} mode="drawer" />
+    : variant === "W1" ? <VariantW1 key={k} {...props} /> : variant === "W2" ? <VariantW2 key={k} {...props} /> : <VariantW3 key={k} {...props} />;
 
   const state = (
     <div className="db-state">
