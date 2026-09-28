@@ -23,11 +23,13 @@ export function FlashcardShell({
   Below,
   CardBack,
   Overlay,
+  Header,
   className = "",
 }: VariantProps & {
   Below: ComponentType<SlotProps>;
   CardBack?: ComponentType<SlotProps>; // replaces the Question card's face while answering; hides `Below`
   Overlay?: ComponentType<SlotProps>; // rendered on top of the page (fixed bars, sheets)
+  Header?: ComponentType<SlotProps>; // fixed bar at the top of the page; stays put while cards swipe
   className?: string;
 }) {
   // ?q=<n> starts on Question n (for screenshots)
@@ -108,7 +110,7 @@ export function FlashcardShell({
 
   return (
     <div
-      className={`ve ve-swipe ${flipped ? "is-dealt" : ""} ${answering ? "is-answering" : ""} ${className}`}
+      className={`ve ve-swipe ${Header ? "has-header" : ""} ${flipped ? "is-dealt" : ""} ${answering ? "is-answering" : ""} ${className}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -120,6 +122,7 @@ export function FlashcardShell({
         }
       }}
     >
+      {Header && <Header {...slot} />}
       <button className="ve-side ve-side-left" style={{ visibility: hasPrev ? "visible" : "hidden" }} onClick={() => leave(1)} aria-label="Previous Question">‹</button>
       <button className="ve-side ve-side-right" style={{ visibility: hasNext ? "visible" : "hidden" }} onClick={() => leave(-1)} aria-label="Next Question">›</button>
 

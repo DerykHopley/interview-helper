@@ -5,6 +5,7 @@ import { Hand } from "./VariantK";
 import { AnswerStats, MicButton, SimulatedBadge } from "./AnswerParts";
 import { appendText, useDictation } from "./dictation";
 import { scenarioById, type VariantProps } from "./data";
+import { InterviewHeader } from "./InterviewHeader";
 
 function AnswerBar({ q, picks, answers, setAnswer, answering, setAnswering }: SlotProps) {
   const text = answers[q.id] ?? "";
@@ -37,6 +38,8 @@ function AnswerBar({ q, picks, answers, setAnswer, answering, setAnswering }: Sl
   );
 }
 
+const Header = ({ picks, answers }: SlotProps) => <InterviewHeader picks={picks} answers={answers} />;
+
 export function VariantK1(props: VariantProps) {
-  return <FlashcardShell {...props} Below={Hand} Overlay={AnswerBar} className="vk-table k1" />;
+  return <FlashcardShell {...props} Below={Hand} Overlay={AnswerBar} Header={Header} className="vk-table k1" />;
 }

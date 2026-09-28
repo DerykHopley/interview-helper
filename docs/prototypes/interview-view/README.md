@@ -151,3 +151,20 @@ Question: how does the Candidate type or speak their answer to the Question? Thr
 - **Secure connection:** speech recognition only works on a secure page: `localhost`, or HTTPS. Opening the dev server from a phone over plain `http://` on the local network falls back to the simulated voice.
 
 **Decision:** K1, the answer bar, is the core interview flow. The deck stays in view, with a chat-style bar at the bottom for typing or speaking the answer.
+
+## Round 13 — 2026-09-28
+
+K1 gets a header, so the practice screen connects to the rest of the app. The header is fixed to the top, so it stays put while cards swipe, and it matches the D2 dashboard's top bar. It has:
+- **← Interviews**, back to the dashboard.
+- **Which Interview:** the role and company.
+- **Progress:** a bar with "2/8 picked · 0 answered · 2 Gaps".
+- **Access · 6h left** and **🔒 Lock**.
+
+On a phone it shrinks to ←, the role and company, and a lock icon, with the progress line underneath. The Access status is hidden there.
+
+| State | Desktop | Galaxy S25 (360×780) |
+|---|---|---|
+| Before dealing | [page](round-13/desktop-K1-header.png) | [page](round-13/s25-K1-header.png) |
+| Dealt | [page](round-13/desktop-K1-header-dealt.png) | [page](round-13/s25-K1-header-dealt.png) |
+
+**Decision:** _pending_
