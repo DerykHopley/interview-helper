@@ -1,6 +1,6 @@
 // PROTOTYPE — the Scenario Bank (spec stories 24–32, 47–50), shown inside the chosen dashboard (D2) on its
 // Scenario Bank tab. Round 2: B1's list and pane with B3's skills overview in three placements, via
-// ?variant=C1|C2|C3 (round 1's B1–B3 are still reachable by key); ?scenario=empty starts with no stories;
+// ?variant=C4|C1|C2|C3 (round 1's B1–B3 are still reachable by key); ?scenario=empty starts with no stories;
 // ?mode=read|edit|choose|new opens a given state (for screenshots). All in memory.
 import { PrototypeSwitcher, useVariant, type VariantDef } from "../PrototypeSwitcher";
 import { useDashboard } from "../dashboard/data";
@@ -14,6 +14,7 @@ import "../dashboard/dashboard.css";
 import "./scenario-bank.css";
 
 const variants: VariantDef[] = [
+  { key: "C4", name: "Compact skills on top" },
   { key: "C1", name: "Skills above" },
   { key: "C2", name: "Skills in the list column" },
   { key: "C3", name: "Skills strip" },
@@ -37,7 +38,8 @@ export function ScenarioBankPrototype() {
   const dash = useDashboard();
   const bank = useBank();
   const page =
-    variant === "C1" ? <CombinedBank key="C1" bank={bank} placement="above" />
+    variant === "C4" ? <CombinedBank key="C4" bank={bank} placement="top" />
+    : variant === "C1" ? <CombinedBank key="C1" bank={bank} placement="above" />
     : variant === "C2" ? <CombinedBank key="C2" bank={bank} placement="column" />
     : variant === "C3" ? <CombinedBank key="C3" bank={bank} placement="strip" />
     : variant === "B1" ? <VariantB1 key="B1" bank={bank} />

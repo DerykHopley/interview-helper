@@ -3,6 +3,8 @@
 //   above  — B3's two panels full width above the list and pane
 //   column — a compact overview in the left column, above the list, so the reading pane stays in view
 //   strip  — a one-line summary that opens into the full panels
+//   top    — the compact overview (as in column) across the top, shown by default, with a Hide toggle that
+//            folds it into the one-line summary
 // Clicking a skill filters the list; "Write one" on an uncovered skill starts a new story tagged with it.
 import { useState } from "react";
 import { allTags, blank, type Bank, type Scenario } from "./data";
@@ -11,7 +13,7 @@ import { NewStoryChoice, OriginBadge, ScenarioForm, ScenarioReader, Tags, confir
 // Skills your Interviews' Gaps asked for (from the dashboard's sample data).
 const GAP_SKILLS = ["legacy systems", "prioritisation", "hiring"];
 
-type Placement = "above" | "column" | "strip";
+type Placement = "above" | "column" | "strip" | "top";
 type Mode = "read" | "edit" | "choose" | "new";
 
 function SkillsOverview({ bank, skill, onSkill, onWrite, compact }: {
@@ -68,6 +70,7 @@ export function CombinedBank({ bank, placement }: { bank: Bank; placement: Place
   const [query, setQuery] = useState("");
   const [skill, setSkill] = useState<string | null>(params.get("skill"));
   const [stripOpen, setStripOpen] = useState(params.has("open"));
+  const [topShown, setTopShown] = useState(!params.has("hidden"));
   const [paneOpen, setPaneOpen] = useState(params.has("mode")); // phone: pane shown instead of list
 
   const list = bank.scenarios.filter((s) => (!skill || s.tags.includes(skill)) && (s.title + s.tags.join(" ")).toLowerCase().includes(query.toLowerCase()));
@@ -82,7 +85,7 @@ export function CombinedBank({ bank, placement }: { bank: Bank; placement: Place
     const first = bank.scenarios.find((x) => !s || x.tags.includes(s));
     if (s && first && !selected?.tags.includes(s)) { setSelectedId(first.id); setMode("read"); }
   };
-  const overview = <SkillsOverview bank={bank} skill={skill} onSkill={filterBy} onWrite={write} compact={placement === "column"} />;
+  const overview = <SkillsOverview bank={bank} skill={skill} onSkill={filterBy} onWrite={write} compact={placement === "column" || placement === "top"} />;
 
   return (
     <main className={`d2-main cb cb-${placement}`}>
@@ -95,6 +98,26 @@ export function CombinedBank({ bank, placement }: { bank: Bank; placement: Place
             <span className="cb-strip-toggle">{stripOpen ? "Hide ▴" : "Skills overview ▾"}</span>
           </button>
           {stripOpen && overview}
+        </div>
+      )}
+
+      {placement === "top" && (
+        <div className={`cb-top ${paneOpen ? "is-hidden-phone" : ""}`}>
+          {topShown ? (
+            <>
+              <div className="cb-top-head">
+                <span className="cb-top-title">Skills overview</span>
+                <button className="sb-link" onClick={() => setTopShown(false)} aria-expanded="true">Hide ▴</button>
+              </div>
+              {overview}
+            </>
+          ) : (
+            <button className="cb-strip-bar" onClick={() => setTopShown(true)} aria-expanded="false">
+              <span><strong>{tagCount}</strong> skills covered</span>
+              <span className="cb-strip-gaps"><strong>{GAP_SKILLS.length}</strong> not covered yet: {GAP_SKILLS.join(", ")}</span>
+              <span className="cb-strip-toggle">Show ▾</span>
+            </button>
+          )}
         </div>
       )}
 

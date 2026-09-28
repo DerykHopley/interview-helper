@@ -35,4 +35,15 @@ B1's list and reading pane is the core in every variant; only where B3's skills 
 | C2 — Skills in the list column: a compact overview (top four skills, and Gap chips with +) above the search and list, so the story stays at the top of the page | [page](round-2/desktop-C2.png) · [filtered by a skill](round-2/desktop-C2-filtered.png) | [page](round-2/s25-C2.png) |
 | C3 — Skills strip: a one-line summary ("11 skills covered · 3 not covered yet: …") that opens into the full panels | [closed](round-2/desktop-C3.png) · [open](round-2/desktop-C3-open.png) | [closed](round-2/s25-C3.png) |
 
+**Decision:** C1 was too much. C2's compact version was preferred, but placed across the top with a Hide toggle and shown by default. Round 3 tries that.
+
+## Round 3 — 2026-09-28
+
+C4 — Compact skills on top: C2's compact overview (the top four skills in two columns, and the uncovered skills as chips with +) placed across the top of the page. It's shown by default. **Hide ▴** folds it into C3's one-line summary ("11 skills covered · 3 not covered yet: …"), and **Show ▾** brings it back. B1's list and reading pane sit underneath as before. `?hidden=1` opens it folded.
+
+| State | Desktop | Galaxy S25 (360×780) |
+|---|---|---|
+| Shown (default) | [shown](round-3/desktop-C4.png) | [shown](round-3/s25-C4.png) |
+| Hidden | [hidden](round-3/desktop-C4-hidden.png) | [hidden](round-3/s25-C4-hidden.png) |
+
 **Decision:** _pending_

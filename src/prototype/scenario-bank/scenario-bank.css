@@ -164,3 +164,14 @@
   .cb-overview { grid-template-columns: 1fr; }
   .cb-strip-toggle { margin-left: 0; }
 }
+
+/* C4: compact overview across the top, with Hide */
+.cb-top { display: flex; flex-direction: column; gap: 8px; }
+.cb-top-head { display: flex; justify-content: space-between; align-items: center; }
+.cb-top-title { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #9ca3af; }
+.cb-top .cb-overview.is-compact { grid-template-columns: 1.3fr 1fr; gap: 12px; }
+.cb-top .b3-skills { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+@media (max-width: 640px) {
+  .cb-top .cb-overview.is-compact { grid-template-columns: 1fr; }
+  .cb-top .b3-skills { grid-template-columns: 1fr; }
+}
