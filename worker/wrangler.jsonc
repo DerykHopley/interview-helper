@@ -1,0 +1,9 @@
+{
+  // The only server-side code: holds the OpenRouter key and Access Token secret, and proxies model calls.
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "interview-helper-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true }
+}
