@@ -9,7 +9,8 @@
     "prototype": "vite --open /?variant=K1",
     "prototype:access": "vite --open /prototype/access",
     "prototype:dashboard": "vite --open /prototype/dashboard",
-    "prototype:scenario-bank": "vite --open /prototype/scenario-bank"
+    "prototype:scenario-bank": "vite --open /prototype/scenario-bank",
+    "prototype:backup": "vite --open /prototype/backup"
   },
   "dependencies": {
     "react": "^19.3.0",

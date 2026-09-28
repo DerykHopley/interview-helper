@@ -9,8 +9,8 @@ type Tab = "interviews" | "bank" | "backup";
 
 export type D2Tab = Tab;
 
-/** `bankPage` replaces the Scenario Bank tab's placeholder (used by the Scenario Bank prototype). */
-export function VariantD2({ dash, initialTab = "interviews", bankPage }: { dash: Dashboard; initialTab?: Tab; bankPage?: ReactNode }) {
+/** `bankPage` / `backupPage` replace those tabs' placeholders (used by the Scenario Bank and Backup prototypes). */
+export function VariantD2({ dash, initialTab = "interviews", bankPage, backupPage }: { dash: Dashboard; initialTab?: Tab; bankPage?: ReactNode; backupPage?: ReactNode }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [drawer, setDrawer] = useState(() => new URLSearchParams(location.search).has("create"));
   const gaps = totalGaps(dash.interviews);
@@ -29,6 +29,8 @@ export function VariantD2({ dash, initialTab = "interviews", bankPage }: { dash:
 
       {tab === "bank" && bankPage ? (
         bankPage
+      ) : tab === "backup" && backupPage ? (
+        backupPage
       ) : tab !== "interviews" ? (
         <main className="d2-main"><StubPage kind={tab} dash={dash} /></main>
       ) : (
