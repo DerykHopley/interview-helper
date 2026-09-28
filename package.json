@@ -11,7 +11,8 @@
     "prototype:dashboard": "vite --open /prototype/dashboard",
     "prototype:scenario-bank": "vite --open /prototype/scenario-bank",
     "prototype:backup": "vite --open /prototype/backup",
-    "prototype:co-writing": "vite --open /prototype/co-writing"
+    "prototype:co-writing": "vite --open /prototype/co-writing",
+    "prototype:dev-panel": "vite --open /prototype/dev-panel?dev=1"
   },
   "dependencies": {
     "react": "^19.3.0",
