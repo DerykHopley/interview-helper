@@ -85,3 +85,10 @@
   .x2-status { flex-direction: column; align-items: flex-start; }
   .x2-status h1 { font-size: 21px; }
 }
+
+/* ---------- X4: X3's status line + X1's panels ---------- */
+.x4-line { align-items: center; margin-bottom: 16px; }
+.x4-status { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; }
+.x4-download { padding: 7px 14px; font-size: 14px; white-space: nowrap; }
+.x4-grid { align-items: start; }
+@media (max-width: 640px) { .x4-line { flex-direction: column; align-items: flex-start; } }

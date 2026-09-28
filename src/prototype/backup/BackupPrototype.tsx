@@ -1,5 +1,5 @@
 // PROTOTYPE — the Backup page (Scenario Export/import, Packs), shown inside the chosen dashboard (D2) on its
-// Backup tab. Three variants via ?variant=X1|X2|X3. ?backup=recent starts backed up; ?storage=denied starts
+// Backup tab. Three variants via ?variant=X4|X1|X2|X3. ?backup=recent starts backed up; ?storage=denied starts
 // without persistent storage; ?pick=<n> opens the import flow with sample file n (for screenshots).
 import { PrototypeSwitcher, useVariant, type VariantDef } from "../PrototypeSwitcher";
 import { useDashboard } from "../dashboard/data";
@@ -8,10 +8,12 @@ import { DEVICE_KEY, OTHER_KEY, SAMPLE_FILES, useBackup, type Backup } from "./b
 import { VariantX1 } from "./VariantX1";
 import { VariantX2 } from "./VariantX2";
 import { VariantX3 } from "./VariantX3";
+import { VariantX4 } from "./VariantX4";
 import "../dashboard/dashboard.css";
 import "./backup.css";
 
 const variants: VariantDef[] = [
+  { key: "X4", name: "Status line + panels" },
   { key: "X1", name: "Three panels" },
   { key: "X2", name: "One drop zone" },
   { key: "X3", name: "Pick a task" },
@@ -32,7 +34,7 @@ export function BackupPrototype() {
   const [variant, setVariant] = useVariant(variants);
   const dash = useDashboard();
   const backup = useBackup();
-  const page = variant === "X1" ? <VariantX1 key="X1" backup={backup} /> : variant === "X2" ? <VariantX2 key="X2" backup={backup} /> : <VariantX3 key="X3" backup={backup} />;
+  const page = variant === "X4" ? <VariantX4 key="X4" backup={backup} /> : variant === "X1" ? <VariantX1 key="X1" backup={backup} /> : variant === "X2" ? <VariantX2 key="X2" backup={backup} /> : <VariantX3 key="X3" backup={backup} />;
   return (
     <>
       <VariantD2 dash={dash} initialTab="backup" backupPage={page} />

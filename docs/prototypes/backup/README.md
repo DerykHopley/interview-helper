@@ -30,4 +30,18 @@ All three variants use the same import flow, so only the layout differs:
 | X2 — One drop zone: a large status card at the top ("Your stories aren't backed up" with Back up now), then one "Bring something in" area that accepts any file and works out whether it's a backup or a Pack, then Your Packs and a short History. | [page](round-1/desktop-X2.png) · [backed up](round-1/desktop-X2-backedup.png) · [different key](round-1/desktop-X2-otherkey.png) · [Pack preview](round-1/desktop-X2-pack.png) | [page](round-1/s25-X2.png) · [broken Pack](round-1/s25-X2-badpack.png) |
 | X3 — Pick a task: "What do you want to do?" with three large choices (Back up, marked Recommended when you've never backed up; Restore; Add a Pack). Choosing one opens a short guided flow with a Back link, under a slim status line. | [page](round-1/desktop-X3.png) · [restore flow](round-1/desktop-X3-restore.png) | [page](round-1/s25-X3.png) |
 
+**Decision:** Combine X3's slim status line with X1's panels, and shrink "Back up your stories" down to just its Download backup file button. Round 2 tries that.
+
+## Round 2 — 2026-09-28
+
+X4 — Status line + panels:
+- **Status line:** X3's slim line sits at the top: "⚠ Never backed up · 6 stories · 1 Pack · ✓ This browser has agreed to keep your data". X1's large "Back up your stories" panel is gone, and a small **Download backup file** button now sits at the right end of this line.
+- **Panels:** X1's **Restore from a backup** and **Packs** panels sit side by side underneath.
+- **On a phone:** the line wraps and the button sits below the status text.
+
+| State | Desktop | Galaxy S25 (360×780) |
+|---|---|---|
+| Never backed up | [page](round-2/desktop-X4.png) | [page](round-2/s25-X4.png) |
+| Backed up | [page](round-2/desktop-X4-backedup.png) | |
+
 **Decision:** _pending_
