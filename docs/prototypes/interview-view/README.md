@@ -2,10 +2,18 @@
 
 Question: what should the Interview view (Questions → Matches → pick → Gaps) look like?
 
-**Outcome:** K1, the answer bar on the dark table (round 12). One Question at a time on a flashcard deck on a dark card table:
+**Outcome:** S3, which is K1 (round 12) with the header, states and Question management from rounds 13–15. One Question at a time on a flashcard deck on a dark card table:
 - Swipe, the faint side arrows or ← → move between Questions.
 - Tapping the card, or "Deal my Matches", fans the Matches out below it as tilted, overlapping cards, with the kept card (or the best Match) in the middle. Tapping another card keeps it. Tapping the Question card again hides the Matches.
 - A chat-style bar fixed at the bottom takes a typed or spoken answer.
+- A fixed header (round 13): back to Interviews, which Interview this is, progress, Access status, Lock, and **☰ Questions** for the quick jump menu (round 15).
+- Missing states (round 14):
+  - Finding Matches placeholders.
+  - An expired-token notice.
+  - A dark-table Gap card with **Write a Scenario for this** and **Re-run matching**.
+  - A ⋯ menu on each card (re-run, delete).
+  - An end-of-deck card with ask for more and add your own.
+  - "Writing your Questions…" for a new Interview.
 
 Prototype code lives on the throwaway branch `prototype/interview-view`, not on main. Screenshots are 1440×900, taken on page load, with made-up data.
 
@@ -206,4 +214,4 @@ S3 — End card and quick jump: S1 (end-of-deck card, and the ⋯ menu on each c
 |---|---|---|
 | Jump menu open | [menu](round-15/desktop-S3-jump.png) | [menu](round-15/s25-S3-jump.png) |
 
-**Decision:** _pending_
+**Decision:** S3. The Interview screen is K1 with the round 14 states, the end-of-deck card, the ⋯ card menu and the quick jump menu.
