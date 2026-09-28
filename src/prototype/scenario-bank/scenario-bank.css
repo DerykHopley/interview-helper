@@ -143,3 +143,24 @@
   .sb-field-row { flex-direction: column; }
   .sb-reader, .sb-form { padding: 16px; }
 }
+
+/* ---------- round 2: B1 core + B3 skills overview ---------- */
+.cb { display: flex; flex-direction: column; gap: 18px; }
+.cb-overview { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+.cb-overview.is-compact { grid-template-columns: 1fr; gap: 10px; }
+.cb-overview.is-compact .b3-panel { padding: 14px; }
+.cb-overview.is-compact .b3-skills button { grid-template-columns: 1fr 80px 20px; }
+.cb-gap-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cb-gap-chips button { background: #c2410c1f; border: 1px solid #c2410c66; color: #fdba74; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.cb-gap-chips button span { color: #fcd34d; margin-left: 2px; }
+.cb-filter { font-size: 13px; color: #d1d5db; padding: 6px 10px; border-radius: 8px; background: #22c55e1a; border: 1px solid #22c55e44; }
+.cb-strip { display: flex; flex-direction: column; gap: 12px; }
+.cb-strip-bar { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: center; width: 100%; text-align: left; padding: 12px 16px; border-radius: 12px; border: 1px solid #374151; background: #111827; color: #e5e7eb; font: inherit; font-size: 14px; cursor: pointer; }
+.cb-strip-bar strong { color: #86efac; }
+.cb-strip-gaps strong { color: #fdba74; }
+.cb-strip-gaps { color: #fdba74; }
+.cb-strip-toggle { margin-left: auto; color: #fcd34d; font-weight: 600; }
+@media (max-width: 640px) {
+  .cb-overview { grid-template-columns: 1fr; }
+  .cb-strip-toggle { margin-left: 0; }
+}
