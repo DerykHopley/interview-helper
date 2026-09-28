@@ -31,7 +31,7 @@
 .dp-log { overflow: auto; display: flex; flex-direction: column; gap: 8px; }
 
 /* P1 side drawer */
-.dp-tab-handle { position: fixed; z-index: 60; right: 0; top: 45%; writing-mode: vertical-rl; background: #d946ef; color: #fff; border: 0; border-radius: 8px 0 0 8px; padding: 12px 6px; font-weight: 800; letter-spacing: .1em; cursor: pointer; }
+.dp-tab-handle { position: fixed; z-index: 60; right: 0; bottom: 150px; writing-mode: vertical-rl; background: #d946ef; color: #fff; border: 0; border-radius: 8px 0 0 8px; padding: 12px 6px; font-weight: 800; letter-spacing: .1em; cursor: pointer; }
 .dp-drawer { position: fixed; z-index: 70; top: 0; right: 0; bottom: 0; width: min(560px, 100%); overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 100px; background: #0b1220; border-left: 2px solid #d946ef; box-shadow: -20px 0 50px #000c; }
 .dp-head { display: flex; align-items: baseline; gap: 12px; }
 .dp-head strong { font-size: 16px; color: #f0abfc; }
@@ -90,3 +90,4 @@
 .dp-call-total { display: flex; justify-content: space-between; color: #f0abfc; font-weight: 700; padding: 4px 2px; }
 .dp-dock-body > * { min-width: 0; }
 @media (max-width: 640px) { .dp-dock-body { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .dp-tab-handle { bottom: 140px; padding: 10px 5px; } }

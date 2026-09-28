@@ -2,6 +2,11 @@
 
 Question: what should the owner-only Developer panel look like (issue #17, Should; spec stories 107–111)? For each job it sets the model (from the Worker's allowed list), Prompt Variant, temperature, max tokens and reasoning effort. Those settings override the config defaults in this browser only. It also shows each LLM call's tokens and cost, priced from OpenRouter's models endpoint. It's hidden behind a toggle and is never part of the Candidate's screens.
 
+**Outcome:** P1, side drawer.
+- **Opening it:** a magenta DEV tab on the right edge, just above the answer box.
+- **Settings tab:** one job at a time, chosen with chips. Changed values are outlined, and there are per-job and Reset all buttons.
+- **Calls tab:** a two-line entry per call showing tokens, time and cost, plus the session total.
+
 The panel sits over the chosen Interview screen (S3). Prototype code lives on the throwaway branch `prototype/dev-panel`, not on main. It runs at `/prototype/dev-panel` (`npm run prototype:dev-panel`, which adds `?dev=1`).
 
 - **Hidden until revealed:** it only appears with `?dev=1` or **Ctrl+Shift+D**. In the real build it should also be left out of builds Candidates get.
@@ -22,4 +27,4 @@ The panel is deliberately styled differently from the Candidate's screens (monos
 
 With nothing in the URL the panel doesn't appear: [hidden](round-1/desktop-hidden.png).
 
-**Decision:** _pending_
+**Decision:** P1, the side drawer, with the DEV tab moved down to sit just above the Candidate's answer box instead of halfway down the right edge ([desktop](round-1/desktop-P1-closed.png) · [S25](round-1/s25-P1-closed.png)).
