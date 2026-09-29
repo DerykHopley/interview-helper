@@ -158,6 +158,8 @@ Question: how does the Candidate type or speak their answer to the Question? Thr
 - **Privacy:** Chrome's built-in speech-to-text sends the audio to Google's servers. That sits badly with ADR 0001 (Candidate data never leaves the browser) and with the OpenRouter no-retention settings. Options to weigh: speech recognition that runs on the device where the browser supports it, a Whisper-style model running in the browser (like the local embedding Matcher), or voice as a clearly labelled opt-in.
 - **Secure connection:** speech recognition only works on a secure page: `localhost`, or HTTPS. Opening the dev server from a phone over plain `http://` on the local network falls back to the simulated voice.
 
+**Follow-up (2026-09-29):** the answer bar is built in #31 (typed, saved per Question), #32 (Feedback checked against the picked Scenario) and #33 (voice). Voice uses a Whisper model in the browser rather than the browser's own speech-to-text, so audio never leaves the device and it works in Firefox too.
+
 **Decision:** K1, the answer bar, is the core interview flow. The deck stays in view, with a chat-style bar at the bottom for typing or speaking the answer.
 
 ## Round 13 — 2026-09-28

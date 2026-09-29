@@ -8,7 +8,7 @@ Throwaway UI prototypes were used to choose each screen's design before building
 | Dashboard | D2 — classic dashboard | #8, #9 | [dashboard](dashboard/README.md) |
 | Scenario Bank | C4 — list and reading pane, compact skills overview | #5, #7 | [scenario-bank](scenario-bank/README.md) |
 | Backup and Packs | X4 — status line and panels | #6, #7 | [backup](backup/README.md) |
-| Interview practice | S3 — flashcard deck on a dark table, dealt hand, answer bar, header, missing states, end card, quick jump | #8–#11, #13 | [interview-view](interview-view/README.md) |
+| Interview practice | S3 — flashcard deck on a dark table, dealt hand, answer bar, header, missing states, end card, quick jump | #8–#11, #13, #31–#33 | [interview-view](interview-view/README.md) |
 | Co-writing | W5 — chat with pinned part chips, fixed reply box | #12, #13 | [co-writing](co-writing/README.md) |
 | Developer panel | P1 — side drawer | #17 | [dev-panel](dev-panel/README.md) |
 
