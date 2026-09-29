@@ -17,7 +17,7 @@ flowchart LR
   T4["#4 Vault: Unlock Key & encryption"]
   T5["#5 Scenario Bank, by hand"]
   T6["#6 Scenario Export & import"]
-  T7["#7 Pack import & Demo Scenarios"]
+  T7["#7 Pack presets & Demo Scenarios"]
   T8["#8 Interviews with typed Questions"]
   T9["#9 Question generation"]
   T10["#10 Matching (default LLM Matcher)"]
@@ -33,8 +33,12 @@ flowchart LR
   T20["#20 Jev Matcher"]
   T21["#21 Local & embedding Matchers"]
   T22["#22 Honesty check & real-data run"]
-  T23["#23 Deploy & README"]
+  T23["#23 Deployed end-to-end check & README"]
   T24["#24 Reflection document (human)"]
+  T30["#30 Deploy app & Worker (human)"]
+  T31["#31 Answer bar: typed answers"]
+  T32["#32 Feedback on an answer"]
+  T33["#33 Voice input (in-browser Whisper)"]
 
   %% critical path (thick arrows)
   T2 ==> T4 ==> T5 ==> T10 ==> T14
@@ -47,24 +51,27 @@ flowchart LR
   T3 --> T9 & T10 & T12
   T4 --> T8
   T5 --> T6 & T7 & T12
-  T8 --> T9 & T10
+  T8 --> T9 & T10 & T31
   T10 --> T11 & T13 & T17
   T12 --> T13 & T22
-  T6 --> T22
   T7 --> T16
   T14 --> T19 & T20 & T21 & T22
   T15 --> T17
-  T9 & T11 & T13 --> T23
+  T31 --> T32 & T33
+  T11 --> T32
+  T30 & T9 & T10 --> T23
 
+  classDef done fill:#EEF0F4,color:#8A93A6,stroke:#C5CAD6,stroke-width:1px
   classDef must fill:#2E3A8C,color:#fff,stroke:#2E3A8C
   classDef mustcrit fill:#2E3A8C,color:#fff,stroke:#D9822B,stroke-width:4px
   classDef should fill:#E2F2EF,color:#0B4F49,stroke:#0F7B72,stroke-width:2px
   classDef could fill:#fff,color:#4A5263,stroke:#8A93A6,stroke-width:2px,stroke-dasharray:5 4
 
-  class T2,T4,T5,T10,T14,T15,T16,T18,T24 mustcrit
-  class T3,T7,T8,T9,T11,T12,T13,T23 must
-  class T6,T17,T19,T22 should
-  class T20,T21 could
+  class T2,T3,T4,T5 done
+  class T10,T14,T15,T16,T18,T24 mustcrit
+  class T8,T9,T12,T23,T30,T31 must
+  class T6,T7,T11,T13,T17,T19,T20,T32,T33 should
+  class T21,T22 could
 ```
 
 ## Running it locally

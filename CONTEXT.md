@@ -15,7 +15,7 @@ A single real story from the Candidate's own career, in a fixed format, used as 
 _Avoid_: Story, experience, example, anecdote
 
 **Demo Scenario**:
-A copy of a Pack's Example Scenario that a Candidate deliberately added to their own Scenarios to try the app, visibly labelled as demo and removable in one step.
+A copy of a Pack's Example Scenario, added to the Candidate's own Scenarios when they choose that Pack. It is matched like their own, visibly labelled as demo, and removable in one step.
 _Avoid_: Sample data, starter Scenario
 
 **Unlock Key**:
@@ -29,7 +29,7 @@ _Avoid_: Backup, Pack
 ### Practice
 
 **Interview**:
-One job the Candidate is preparing for: its Job Spec, the Questions for it, and the Scenario the Candidate picked for each Question. A Candidate can have several Interviews.
+One job the Candidate is preparing for: its role and company, its Job Spec (none when it comes from a Pack), the Questions for it, and for each Question its Matches, the Scenario the Candidate picked and their Answer. A Candidate can have several Interviews.
 _Avoid_: Session, application, prep
 
 **Job Spec**:
@@ -43,6 +43,14 @@ _Avoid_: Prompt
 **Match**:
 A Scenario ranked as good evidence for a Question, with a short reason. A Question shows up to three Matches, best first, and the Candidate picks one; a Match already picked elsewhere in the same Interview is labelled as used.
 _Avoid_: Suggestion, recommendation
+
+**Answer**:
+What the Candidate typed or said in reply to a Question, saved as their latest attempt.
+_Avoid_: Response, reply, attempt
+
+**Feedback**:
+Short points on an Answer, checked against the Scenario picked for that Question: missing parts, a missing measurable result, claims not in the Scenario, and whether it addresses the Question's skill. It never suggests facts the Candidate didn't supply.
+_Avoid_: Critique, score, review
 
 **Gap**:
 A Question for which no Scenario is a good enough Match, which suggests a Scenario the Candidate has not yet written.
@@ -79,9 +87,9 @@ _Avoid_: Database, store, session
 ### Shared content
 
 **Pack**:
-An importable bundle of shared interview content, such as instructions, Questions or Example Scenarios, that can be added without changing the app.
+A role preset, such as Engineering Manager or Software Developer, in one plain-text file: Questions and Example Scenarios. Choosing one creates an Interview from its Questions and adds its Example Scenarios as Demo Scenarios.
 _Avoid_: Interview pack, template, module
 
 **Example Scenario**:
-A worked Scenario in a Pack that shows the format and what a strong answer looks like. It is never matched as a Candidate's own evidence.
+A worked Scenario in a Pack that shows the format and what a strong answer looks like. It is never matched itself; only its copy as a Demo Scenario is.
 _Avoid_: Sample, template Scenario
