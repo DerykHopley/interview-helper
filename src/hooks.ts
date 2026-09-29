@@ -1,5 +1,5 @@
 // Small React helpers shared across the app.
-import { useEffect, useRef, type DependencyList } from "react";
+import { useEffect, useRef, type DependencyList, type RefObject } from "react";
 
 /** A ref that always holds the latest `value`, so an effect can call the newest callback without re-running. */
 export function useLatest<T>(value: T) {
@@ -24,4 +24,20 @@ export function useCancellableEffect(effect: (isCurrent: () => boolean) => void 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- callers' deps are checked via `additionalHooks`
   }, deps);
+}
+
+/** For a small pop-up menu: while `open`, Escape or a pointer press outside `root` calls `close`. */
+export function useDismiss(open: boolean, root: RefObject<HTMLElement | null>, close: () => void) {
+  const latest = useLatest(close);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && latest.current();
+    const onOutside = (e: PointerEvent) => !root.current?.contains(e.target as Node) && latest.current();
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onOutside);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onOutside);
+    };
+  }, [open, root, latest]);
 }

@@ -1,0 +1,97 @@
+import { useState } from "react";
+import { useCancellableEffect } from "../hooks";
+import type { Interview } from "./interview";
+import type { InterviewStore, SavedInterview } from "./interviewStore";
+import { NewInterview } from "./NewInterview";
+
+/** The Interviews tab, the dashboard's home (D2): the Candidate's Interviews, and creating one. */
+export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpen: (id: string) => void }) {
+  const [interviews, setInterviews] = useState<SavedInterview[] | null>(null);
+  const [unreadable, setUnreadable] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  useCancellableEffect(
+    (isCurrent) => {
+      store.list().then(
+        (result) => {
+          if (!isCurrent()) return;
+          setInterviews(result.interviews);
+          setUnreadable(result.unreadable);
+        },
+        () => isCurrent() && setFailure("Couldn't open your Interviews. Lock the app and unlock it again."),
+      );
+    },
+    [store],
+  );
+
+  async function create(interview: Interview) {
+    onOpen(await store.save(interview));
+  }
+
+  async function remove(interview: SavedInterview) {
+    const n = interview.questions.length;
+    if (!confirm(`Delete "${interview.role}" and its ${n} ${n === 1 ? "Question" : "Questions"}? This can't be undone.`)) return;
+    try {
+      await store.delete(interview.id);
+      setInterviews((await store.list()).interviews);
+    } catch {
+      setFailure(`Couldn't delete "${interview.role}". Try again.`); // only if the Vault is locked or storage fails
+    }
+  }
+
+  if (!interviews) return failure ? <p role="alert" className="notice-blocking">{failure}</p> : null;
+  return (
+    <div className="home">
+      <div className="bank-head">
+        <h2 className="page-title">Interviews</h2>
+        <button type="button" className="button-primary" onClick={() => setCreating(true)}>
+          + New Interview
+        </button>
+      </div>
+      {failure && (
+        <p role="alert" className="notice-warn">
+          {failure}
+        </p>
+      )}
+      {unreadable > 0 && (
+        <p role="alert" className="notice-warn">
+          {unreadable === 1 ? "1 Interview" : `${unreadable} Interviews`} couldn't be read, so {unreadable === 1 ? "it isn't" : "they aren't"} shown.
+        </p>
+      )}
+      <table className="interviews" aria-label="Interviews">
+        <thead>
+          <tr>
+            <th scope="col">Role</th>
+            <th scope="col">Questions</th>
+            <th scope="col">
+              <span className="visually-hidden">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {interviews.map((interview) => (
+            <tr key={interview.id}>
+              <th scope="row">
+                <span className="interview-role">{interview.role}</span>
+                {interview.company && <span className="interview-company">{interview.company}</span>}
+              </th>
+              <td>{interview.questions.length}</td>
+              <td>
+                <div className="actions">
+                  <button type="button" className="button-secondary" onClick={() => onOpen(interview.id)}>
+                    Practise
+                  </button>
+                  <button type="button" className="button-link" aria-label={`Delete ${interview.role}`} onClick={() => void remove(interview)}>
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {creating && <NewInterview onCreate={create} onCancel={() => setCreating(false)} />}
+    </div>
+  );
+}

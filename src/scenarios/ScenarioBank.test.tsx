@@ -2,8 +2,19 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { corruptStoredRecord, everythingStored } from "../test/browserStorage";
-import { setUpWithoutToken, unlockWith } from "../test/candidate";
+import { openTab, setUpWithoutToken as setUpApp, unlockWith as unlockApp } from "../test/candidate";
 import { renderApp } from "../test/renderApp";
+
+/** Sets up, or unlocks, and opens the Scenario Bank tab (the dashboard opens on Interviews). */
+async function setUpWithoutToken() {
+  const unlockKey = await setUpApp();
+  await openTab("Scenario Bank");
+  return unlockKey;
+}
+async function unlockWith(unlockKey: string) {
+  await unlockApp(unlockKey);
+  await openTab("Scenario Bank");
+}
 
 const CHECKOUT = {
   Title: "Rescued the failing checkout migration",
