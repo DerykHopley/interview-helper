@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { AccessChip } from "../access/AccessChip";
-import { useCancellableEffect } from "../hooks";
-import type { Interview } from "../interviews/interview";
-import { interviewStore, type SavedInterview } from "../interviews/interviewStore";
+import { interviewStore } from "../interviews/interviewStore";
 import { InterviewScreen } from "../interviews/InterviewScreen";
 import { InterviewsHome } from "../interviews/InterviewsHome";
 import { JumpMenu } from "../interviews/JumpMenu";
+import { useOpenInterview } from "../interviews/useOpenInterview";
 import { ScenarioBank } from "../scenarios/ScenarioBank";
-import { ScenarioBankCard } from "./ScenarioBankCard";
+import { countOf } from "../text";
 import { useAutoLock } from "../vault/useAutoLock";
 import type { UnlockedVault } from "../vault/vault";
+import { ScenarioBankCard } from "./ScenarioBankCard";
 
 const TABS = [
   { key: "interviews", label: "Interviews" },
@@ -24,46 +24,25 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
   useAutoLock(onLock);
   const interviews = useMemo(() => interviewStore(vault), [vault]);
   const [view, setView] = useState<View>({ tab: "interviews" });
-  const open = "interviewId" in view ? view.interviewId : null;
   const tab = "tab" in view ? view.tab : null;
-  const [opened, setOpened] = useState<SavedInterview | null>(null); // the open Interview, once read
-  const [position, setPosition] = useState(0); // which card of its deck is showing
-
-  useCancellableEffect(
-    (isCurrent) => {
-      setPosition(0);
-      if (!open) return setOpened(null);
-      interviews.get(open).then(
-        (found) => isCurrent() && setOpened(found),
-        () => {},
-      );
-    },
-    [interviews, open],
-  );
-
-  async function saveOpened(interview: Interview) {
-    if (!opened) return;
-    await interviews.save(interview, opened.id);
-    setOpened({ ...interview, id: opened.id });
-  }
+  const openInterview = useOpenInterview(interviews, "interviewId" in view ? view.interviewId : null);
+  const ready = openInterview?.status === "ready" ? openInterview : null;
 
   return (
     <>
       <header className="top-bar">
-        {open ? (
+        {openInterview ? (
           <>
             <button type="button" className="button-back" onClick={() => setView({ tab: "interviews" })}>
               ← Interviews
             </button>
-            {opened && (
+            {ready && (
               <>
                 <h1 className="top-bar-interview">
-                  <span className="interview-role">{opened.role}</span>
-                  {opened.company && <span className="interview-company">{opened.company}</span>}
+                  <span className="interview-role">{ready.interview.role}</span>
+                  {ready.interview.company && <span className="interview-company">{ready.interview.company}</span>}
                 </h1>
-                <p className="top-bar-progress">
-                  {opened.questions.length} {opened.questions.length === 1 ? "Question" : "Questions"}
-                </p>
+                <p className="top-bar-progress">{countOf(ready.interview.questions.length, "Question")}</p>
               </>
             )}
           </>
@@ -89,15 +68,22 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
           </>
         )}
         <div className="top-bar-end">
-          {opened && <JumpMenu questions={opened.questions} current={position} onJump={setPosition} />}
+          {ready && <JumpMenu questions={ready.interview.questions} current={ready.position} onJump={ready.move} />}
           <AccessChip vault={vault} />
-          <button type="button" className="button-lock" onClick={onLock}>
+          <button type="button" className="button-header" onClick={onLock}>
             Lock
           </button>
         </div>
       </header>
       <main className="dashboard">
-        {opened && <InterviewScreen key={opened.id} interview={opened} onChange={saveOpened} position={position} onMove={setPosition} />}
+        {openInterview?.status === "missing" && (
+          <p role="alert" className="notice-blocking">
+            This Interview couldn't be opened. It may have been deleted, or its data is damaged.
+          </p>
+        )}
+        {ready && (
+          <InterviewScreen key={ready.interview.id} interview={ready.interview} onChange={ready.save} position={ready.position} onMove={ready.move} />
+        )}
         {tab && (
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
             {tab === "interviews" ? (

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import { scenarioBank } from "../scenarios/scenarioBank";
+import { wordFor } from "../text";
 import type { UnlockedVault } from "../vault/vault";
 
 /** D2's side column card for the Scenario Bank. #7 adds "N demo · Remove demo". */
@@ -25,7 +26,7 @@ export function ScenarioBankCard({ vault, onOpen }: { vault: UnlockedVault; onOp
       </h3>
       {count !== null && (
         <p className="side-card-count">
-          <strong>{count}</strong> {count === 1 ? "Scenario" : "Scenarios"}
+          <strong>{count}</strong> {wordFor(count, "Scenario")}
         </p>
       )}
       <button type="button" className="button-secondary" onClick={onOpen}>

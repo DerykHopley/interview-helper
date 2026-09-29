@@ -5,6 +5,7 @@ import { scenarioBank, type SavedScenario } from "./scenarioBank";
 import { ScenarioForm } from "./ScenarioForm";
 import { OriginBadge, ScenarioReader, SkillTags } from "./ScenarioReader";
 import type { Scenario } from "./scenarioFormat";
+import { unreadableNotice } from "../text";
 import { hasSkill, skillCounts } from "./skills";
 import { SkillsOverview } from "./SkillsOverview";
 
@@ -97,7 +98,7 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
         )}
         {unreadable > 0 && (
           <p role="alert" className="notice-warn">
-            {unreadable === 1 ? "1 Scenario" : `${unreadable} Scenarios`} couldn't be read, so {unreadable === 1 ? "it isn't" : "they aren't"} shown.
+            {unreadableNotice(unreadable, "Scenario")}
           </p>
         )}
         <input

@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { useDismiss, useLatest } from "../hooks";
+import { useLatest } from "../hooks";
+import { PopupMenu } from "../PopupMenu";
+import { countOf } from "../text";
 import type { Interview, Question } from "./interview";
 import type { SavedInterview } from "./interviewStore";
 
@@ -13,6 +15,12 @@ type Props = {
 };
 
 const SWIPE_PX = 50;
+
+/** Whether a pop-up menu is open: then ← → belong to it, not the deck. */
+const menuOpen = () => document.querySelector('[role="menu"]') !== null;
+
+/** Controls a swipe mustn't start on: pressing them is a tap, not the start of a swipe. */
+const isControl = (target: EventTarget | null) => target instanceof Element && target.closest("button, a, input, textarea, select, [role=menu]") !== null;
 
 /** True while the Candidate is typing, when the arrow keys must move the text cursor, not the deck. */
 const isTyping = (target: EventTarget | null) =>
@@ -31,7 +39,7 @@ export function InterviewScreen({ interview, onChange, position, onMove }: Props
   // ← and → move through the deck, except while typing in a box.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target) || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (isTyping(e.target) || menuOpen() || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === "ArrowLeft") latestGo.current(-1);
       if (e.key === "ArrowRight") latestGo.current(1);
     };
@@ -41,7 +49,9 @@ export function InterviewScreen({ interview, onChange, position, onMove }: Props
 
   async function remove(question: Question) {
     if (!confirm(`Delete this Question? This can't be undone.\n\n"${question.text}"`)) return;
-    await save({ ...interview, questions: questions.filter((q) => q.id !== question.id) }, "Couldn't delete the Question. Try again.");
+    const index = questions.indexOf(question);
+    if (!(await save({ ...interview, questions: questions.filter((q) => q.id !== question.id) }, "Couldn't delete the Question. Try again."))) return;
+    if (index > 0 && index === questions.length - 1) onMove(index - 1); // the last one: show the one before it
   }
 
   async function add(question: Question) {
@@ -65,7 +75,9 @@ export function InterviewScreen({ interview, onChange, position, onMove }: Props
       className="deck"
       role="group"
       aria-label="Question deck"
-      onPointerDown={(e) => (swipeFrom.current = isTyping(e.target) ? null : e.clientX)}
+      // Swipes are for touch; a mouse drag selects text instead.
+      onPointerDown={(e) => (swipeFrom.current = e.pointerType !== "mouse" && !isControl(e.target) ? e.clientX : null)}
+      onPointerCancel={() => (swipeFrom.current = null)}
       onPointerUp={(e) => {
         if (swipeFrom.current === null) return;
         const dx = e.clientX - swipeFrom.current;
@@ -113,7 +125,7 @@ function EndCard({ count, onAdd }: { count: number; onAdd: (question: Question) 
   const [text, setText] = useState("");
   const [skill, setSkill] = useState("");
   const [saving, setSaving] = useState(false);
-  const title = count === 0 ? "No Questions yet" : `That's all ${count} ${count === 1 ? "Question" : "Questions"}`;
+  const title = count === 0 ? "No Questions yet" : `That's all ${countOf(count, "Question")}`;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -159,29 +171,12 @@ function EndCard({ count, onAdd }: { count: number; onAdd: (question: Question) 
 
 /** The ⋯ menu on a Question card. #10 adds "Re-run matching". */
 function CardMenu({ onDelete }: { onDelete: () => void }) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  useDismiss(open, root, () => setOpen(false));
   return (
-    <div className="card-menu" ref={root}>
-      <button type="button" className="card-menu-button" aria-label="More for this Question" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        ⋯
-      </button>
-      {open && (
-        <div className="card-menu-list" role="menu" aria-label="This Question">
-          <button
-            type="button"
-            role="menuitem"
-            className="jump-item"
-            onClick={() => {
-              setOpen(false);
-              onDelete();
-            }}
-          >
-            Delete this Question
-          </button>
-        </div>
-      )}
-    </div>
+    <PopupMenu
+      label="This Question"
+      className="card-menu"
+      trigger={{ text: "⋯", ariaLabel: "More for this Question", className: "card-menu-button" }}
+      items={[{ key: "delete", label: "Delete this Question", onSelect: onDelete }]}
+    />
   );
 }

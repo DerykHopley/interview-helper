@@ -16,6 +16,8 @@
   /* Panels on the table */
   --panel-dark: #111827;
   --panel-raised: #ffffff14;
+  --shadow-color: #000a; /* raised cards and pop-ups */
+  --scrim: #000a; /* behind a drawer */
 
   /* Meaning */
   --accent: #fcd34d;

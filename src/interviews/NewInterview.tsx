@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { Interview } from "./interview";
 import { SAMPLE_JOB_SPEC } from "./sampleJobSpec";
 
@@ -18,6 +18,26 @@ export function NewInterview({ onCreate, onCancel }: { onCreate: (interview: Int
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const missing = (Object.keys(REQUIRED) as Name[]).filter((name) => !fields[name].trim());
+  const dialog = useRef<HTMLDivElement>(null);
+
+  // A modal drawer: focus starts on the first field and stays inside until it closes.
+  useEffect(() => {
+    dialog.current?.querySelector<HTMLElement>("input")?.focus();
+  }, []);
+
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.key === "Escape") return onCancel();
+    if (e.key !== "Tab") return;
+    const focusable = [...(dialog.current?.querySelectorAll<HTMLElement>("input, textarea, button") ?? [])].filter((el) => !el.hasAttribute("disabled"));
+    const [first, last] = [focusable[0], focusable[focusable.length - 1]];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last?.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first?.focus();
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -63,14 +83,14 @@ export function NewInterview({ onCreate, onCancel }: { onCreate: (interview: Int
 
   return (
     <div className="drawer-backdrop">
-      <div className="drawer" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}>
+      <div className="drawer" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} ref={dialog} onKeyDown={onKeyDown}>
         <form className="form" onSubmit={(e) => void submit(e)} noValidate>
           <h2 id={`${id}-title`} className="pane-title">
             New Interview
           </h2>
           {field("role", "Role", false, "e.g. Senior Product Engineer")}
           {field("company", "Company", false, "Optional")}
-          {field("jobSpec", "Job Spec", true, "Paste the job description here — the whole ad is fine.")}
+          {field("jobSpec", "Job Spec", true, "Paste the Job Spec here — all of it is fine.")}
           <button type="button" className="button-link" onClick={() => setFields((f) => ({ ...f, jobSpec: SAMPLE_JOB_SPEC }))}>
             Use a sample Job Spec
           </button>

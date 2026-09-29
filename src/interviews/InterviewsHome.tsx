@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import type { Interview } from "./interview";
 import type { InterviewStore, SavedInterview } from "./interviewStore";
+import { countOf, unreadableNotice } from "../text";
 import { NewInterview } from "./NewInterview";
 
 /** The Interviews tab, the dashboard's home (D2): the Candidate's Interviews, and creating one. */
@@ -10,6 +11,11 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
   const [unreadable, setUnreadable] = useState(0);
   const [creating, setCreating] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  const closeDrawer = () => {
+    setCreating(false);
+    opener.current?.focus(); // back to where the Candidate was
+  };
 
   useCancellableEffect(
     (isCurrent) => {
@@ -30,8 +36,7 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
   }
 
   async function remove(interview: SavedInterview) {
-    const n = interview.questions.length;
-    if (!confirm(`Delete "${interview.role}" and its ${n} ${n === 1 ? "Question" : "Questions"}? This can't be undone.`)) return;
+    if (!confirm(`Delete "${interview.role}" and its ${countOf(interview.questions.length, "Question")}? This can't be undone.`)) return;
     try {
       await store.delete(interview.id);
       setInterviews((await store.list()).interviews);
@@ -45,7 +50,7 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
     <div className="home">
       <div className="bank-head">
         <h2 className="page-title">Interviews</h2>
-        <button type="button" className="button-primary" onClick={() => setCreating(true)}>
+        <button type="button" className="button-primary" ref={opener} onClick={() => setCreating(true)}>
           + New Interview
         </button>
       </div>
@@ -56,9 +61,11 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
       )}
       {unreadable > 0 && (
         <p role="alert" className="notice-warn">
-          {unreadable === 1 ? "1 Interview" : `${unreadable} Interviews`} couldn't be read, so {unreadable === 1 ? "it isn't" : "they aren't"} shown.
+          {unreadableNotice(unreadable, "Interview")}
         </p>
       )}
+      {interviews.length === 0 && <p className="bank-hint">No Interviews yet. Create one by pasting a Job Spec.</p>}
+      {interviews.length > 0 && (
       <table className="interviews" aria-label="Interviews">
         <thead>
           <tr>
@@ -91,7 +98,8 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
           ))}
         </tbody>
       </table>
-      {creating && <NewInterview onCreate={create} onCancel={() => setCreating(false)} />}
+      )}
+      {creating && <NewInterview onCreate={create} onCancel={closeDrawer} />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-// A made-up job ad for trying the app ("Use a sample Job Spec"). The company is fictional, and the ad says so.
+// A made-up Job Spec for trying the app ("Use a sample Job Spec"). The company is fictional, and the text says so.
 // One line per paragraph or bullet, so it wraps naturally in the Job Spec box.
 export const SAMPLE_JOB_SPEC = [
   "Senior Product Engineer, Warehouse Tools — Harbourline Freight (a fictional company, for trying the app)",
