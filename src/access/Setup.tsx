@@ -41,6 +41,11 @@ export function Setup({ onComplete }: { onComplete: (unlockKey: string, accessTo
           <UnlockKeyReveal unlockKey={unlockKey} onSaved={() => setStep("start")} />
         </ChecklistStep>
         <ChecklistStep n={3} title="Choose how to start" why="Your own Scenarios, written by hand or with help." state={stateOf("start")}>
+          {/* Starting asks the browser for persistent storage (ADR 0001); Firefox shows a prompt at that moment. */}
+          <p className="notice-info">
+            Your browser may ask to let this site keep its data. Choose Allow: otherwise it can delete your Scenarios when
+            space runs low, or after 7 days away (Safari).
+          </p>
           <button type="button" className="choice" disabled={starting} onClick={() => void start()}>
             <strong>Start with my own Scenarios</strong>
             <span className="choice-detail">Write your first Scenario, by hand or with help.</span>

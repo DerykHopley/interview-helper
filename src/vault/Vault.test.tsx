@@ -199,6 +199,16 @@ describe("starting over", () => {
 });
 
 describe("persistent storage", () => {
+  it("explains, before the browser asks, why to allow it", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "I don't have one yet" }));
+    await user.click(screen.getByLabelText(/I've saved my Unlock Key/));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(screen.getByText(/Your browser may ask to let this site keep its data. Choose Allow/)).toBeInTheDocument();
+  });
+
   it("asks the browser to keep the app's data when the Candidate sets up", async () => {
     // jsdom has no StorageManager, so this stands in for the browser's.
     const persist = vi.fn(() => Promise.resolve(true));
