@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { useCancellableEffect, useLatest } from "../hooks";
 import { useModelGateway } from "../model-gateway/context";
 import { ModelGatewayError, type AccessStatus } from "../model-gateway/ModelGateway";
 
@@ -37,6 +38,7 @@ type Props = {
   onActive: (token: string, active: Active) => void;
   /** The token should no longer be kept: the Candidate replaced it, or the Worker now refuses it. */
   onForget?: () => void;
+  /** Offers "I don't have one yet" (setup only). */
   onSkip?: () => void;
 };
 
@@ -50,26 +52,19 @@ export function AccessTokenPanel({ remembered, onActive, onForget, onSkip }: Pro
   const [checking, setChecking] = useState(false);
 
   // The latest callbacks, so the recheck runs once per remembered token rather than on every render.
-  const callbacks = useRef({ onActive, onForget });
-  useEffect(() => {
-    callbacks.current = { onActive, onForget };
-  });
+  const callbacks = useLatest({ onActive, onForget });
 
-  useEffect(() => {
+  useCancellableEffect((isCurrent) => {
     if (!remembered) return;
-    let current = true;
     void checkWith(gateway, remembered).then((result) => {
-      if (!current) return;
+      if (!isCurrent()) return;
       const outcome = outcomeOf(result, true);
       if (outcome.active) callbacks.current.onActive(remembered, outcome.active);
       else if (!(result instanceof ModelGatewayError)) callbacks.current.onForget?.(); // keep it if we just couldn't ask
       setActive(outcome.active);
       setMessage(outcome.message);
     });
-    return () => {
-      current = false;
-    };
-  }, [gateway, remembered]);
+  }, [gateway, remembered, callbacks]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();

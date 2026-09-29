@@ -17,13 +17,38 @@ describe("first visit", () => {
 
     expect(screen.getByLabelText("Your Unlock Key")).toHaveTextContent(UNLOCK_KEY);
     expect(screen.getByText(/We only show this once/)).toBeInTheDocument();
-    expect(screen.getByText(/your stories can't be recovered/)).toBeInTheDocument();
+    expect(screen.getByText(/your Scenarios can't be recovered/)).toBeInTheDocument();
     const next = screen.getByRole("button", { name: "Continue" });
     expect(next).toBeDisabled();
 
     await user.click(screen.getByLabelText(/I've saved my Unlock Key/));
 
     expect(next).toBeEnabled();
+  });
+});
+
+describe("saving the Unlock Key", () => {
+  it("copies it to the clipboard", async () => {
+    const user = userEvent.setup(); // also stands in for the browser's clipboard
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "I don't have one yet" }));
+    const unlockKey = screen.getByLabelText("Your Unlock Key").textContent;
+
+    await user.click(screen.getByRole("button", { name: "Copy" }));
+
+    expect(await navigator.clipboard.readText()).toBe(unlockKey);
+    expect(screen.getByRole("button", { name: "✓ Copied" })).toBeInTheDocument();
+  });
+
+  it("offers it as a .txt download", async () => {
+    renderApp();
+    await userEvent.setup().click(await screen.findByRole("button", { name: "I don't have one yet" }));
+    const unlockKey = screen.getByLabelText("Your Unlock Key").textContent;
+
+    const link = screen.getByRole("link", { name: "Download .txt" });
+
+    expect(link).toHaveAttribute("download", "interview-helper-unlock-key.txt");
+    expect(decodeURIComponent(link.getAttribute("href")!)).toContain(unlockKey);
   });
 });
 
@@ -34,7 +59,7 @@ describe("returning", () => {
     unmount();
 
     renderApp();
-    expect(await screen.findByRole("heading", { name: "Unlock your stories" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Unlock your Scenarios" })).toBeInTheDocument();
     await unlockWith(unlockKey);
 
     expect(await screen.findByRole("button", { name: "Lock" })).toBeInTheDocument();
@@ -85,7 +110,7 @@ describe("locking", () => {
 
     await userEvent.setup().click(screen.getByRole("button", { name: "Lock" }));
 
-    expect(await screen.findByRole("heading", { name: "Unlock your stories" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Unlock your Scenarios" })).toBeInTheDocument();
     await unlockWith(unlockKey);
     expect(await screen.findByRole("button", { name: "Lock" })).toBeInTheDocument();
   });
@@ -99,7 +124,7 @@ describe("locking", () => {
     expect(screen.getByRole("button", { name: "Lock" })).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(1 * MINUTE); });
 
-    expect(screen.getByRole("heading", { name: "Unlock your stories" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Unlock your Scenarios" })).toBeInTheDocument();
   });
 
   it("counts the 15 minutes from the Candidate's last activity", async () => {
@@ -113,7 +138,29 @@ describe("locking", () => {
 
     expect(screen.getByRole("button", { name: "Lock" })).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(5 * MINUTE); });
-    expect(screen.getByRole("heading", { name: "Unlock your stories" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Unlock your Scenarios" })).toBeInTheDocument();
+  });
+
+  it("locks on return when the device slept past 15 minutes, even though no timer fired", async () => {
+    useFakeClock();
+    renderApp();
+    await setUp();
+
+    vi.setSystemTime(Date.now() + 20 * MINUTE); // the wall clock moves on; paused timers don't
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+
+    expect(screen.getByRole("heading", { name: "Unlock your Scenarios" })).toBeInTheDocument();
+  });
+
+  it("locks, rather than counting it as activity, when the first thing after a long sleep is a keypress", async () => {
+    useFakeClock();
+    renderApp();
+    await setUp();
+
+    vi.setSystemTime(Date.now() + 20 * MINUTE);
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true })); });
+
+    expect(screen.getByRole("heading", { name: "Unlock your Scenarios" })).toBeInTheDocument();
   });
 });
 
@@ -164,5 +211,32 @@ describe("persistent storage", () => {
     } finally {
       Reflect.deleteProperty(navigator, "storage");
     }
+  });
+
+  it("asks again when the Candidate unlocks, in case the browser said no before", async () => {
+    const { unmount } = renderApp();
+    const unlockKey = await setUp();
+    unmount();
+    const persist = vi.fn(() => Promise.resolve(true));
+    Object.defineProperty(navigator, "storage", { value: { persist }, configurable: true });
+    try {
+      renderApp();
+      await unlockWith(unlockKey);
+      await screen.findByRole("button", { name: "Lock" });
+
+      expect(persist).toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(navigator, "storage");
+    }
+  });
+});
+
+describe("when the browser won't store data", () => {
+  it("explains why, instead of showing a blank page", async () => {
+    // Some private-browsing modes and blocked site data refuse IndexedDB like this.
+    vi.stubGlobal("indexedDB", { open: () => { throw new DOMException("The operation is insecure.", "SecurityError"); } });
+    renderApp();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/This browser won't let the app store data/);
   });
 });

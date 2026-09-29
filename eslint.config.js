@@ -16,7 +16,10 @@ export default tseslint.config(
     files: ["src/**/*.{ts,tsx}"],
     languageOptions: { globals: globals.browser },
     plugins: { "react-hooks": reactHooks },
-    rules: reactHooks.configs.recommended.rules,
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      "react-hooks/exhaustive-deps": ["warn", { additionalHooks: "useCancellableEffect" }],
+    },
   },
   {
     files: ["eval/**/*.ts", "*.config.{js,ts}"],

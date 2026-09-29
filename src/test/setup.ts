@@ -9,6 +9,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
   sessionStorage.clear();
   localStorage.clear();
   globalThis.indexedDB = new IDBFactory(); // each test starts as a first visit

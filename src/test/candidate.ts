@@ -14,7 +14,7 @@ export async function finishSetup() {
   const unlockKey = (await screen.findByLabelText("Your Unlock Key")).textContent;
   await user().click(screen.getByLabelText(/I've saved my Unlock Key/));
   await user().click(screen.getByRole("button", { name: "Continue" }));
-  await user().click(screen.getByRole("button", { name: /Start with my own stories/ }));
+  await user().click(screen.getByRole("button", { name: /Start with my own Scenarios/ }));
   await screen.findByRole("button", { name: "Lock" });
   return unlockKey;
 }

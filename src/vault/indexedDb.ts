@@ -2,7 +2,7 @@
 // the Vault's own settings in "meta" and encrypted records in "records", both keyed by a string id.
 const DB_NAME = "interview-helper";
 const STORES = ["meta", "records"] as const;
-export type Store = (typeof STORES)[number];
+type Store = (typeof STORES)[number];
 
 export type Database = {
   get<T>(store: Store, id: string): Promise<T | undefined>;

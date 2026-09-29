@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { ChecklistStep } from "./ChecklistStep";
 
 const START_OVER_WORD = "DELETE";
 
@@ -15,8 +16,12 @@ export function Unlock({ onUnlock, onStartOver }: Props) {
 
   return (
     <section>
-      <h2>Unlock your stories</h2>
-      {lost ? <StartOver onStartOver={onStartOver} onCancel={() => setLost(false)} /> : <UnlockForm onUnlock={onUnlock} onLost={() => setLost(true)} />}
+      <h2>Unlock your Scenarios</h2>
+      <ol>
+        <ChecklistStep n={1} title="Unlock Key" why="The key you saved when you set up. It never expires." state="current">
+          {lost ? <StartOver onStartOver={onStartOver} onCancel={() => setLost(false)} /> : <UnlockForm onUnlock={onUnlock} onLost={() => setLost(true)} />}
+        </ChecklistStep>
+      </ol>
     </section>
   );
 }
@@ -33,7 +38,6 @@ function UnlockForm({ onUnlock, onLost }: { onUnlock: Props["onUnlock"]; onLost:
   return (
     <form onSubmit={(e) => void submit(e)}>
       <label htmlFor="unlock-key">Unlock Key</label>
-      <p>The key you saved when you set up. It never expires.</p>
       <input id="unlock-key" value={value} onChange={(e) => { setValue(e.target.value); setWrong(false); }} autoComplete="off" spellCheck={false} />
       {wrong && <p role="alert">That key doesn't match. Check for typos — it's 24 letters and numbers.</p>}
       <button type="submit" disabled={!value.trim()}>
@@ -53,7 +57,7 @@ function StartOver({ onStartOver, onCancel }: { onStartOver: Props["onStartOver"
   return (
     <form onSubmit={(e) => { e.preventDefault(); if (ready) void onStartOver(); }}>
       <p>
-        Without your Unlock Key, your saved stories can't be opened. Starting over <strong>deletes them from this browser</strong> and
+        Without your Unlock Key, your saved Scenarios can't be opened. Starting over <strong>deletes them from this browser</strong> and
         gives you a new key.
       </p>
       <label htmlFor="start-over-word">Confirmation word</label>

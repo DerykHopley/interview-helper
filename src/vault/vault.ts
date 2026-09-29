@@ -12,6 +12,9 @@ type Meta = { salt: Uint8Array<ArrayBuffer>; check: Uint8Array<ArrayBuffer> };
 type Sealed = { iv: Uint8Array<ArrayBuffer>; data: ArrayBuffer };
 
 export type UnlockedVault = {
+  /** Drops the encryption key: every later get, put or delete is refused. */
+  lock(): void;
+  isLocked(): boolean;
   get<T>(id: string): Promise<T | undefined>;
   put(id: string, value: unknown): Promise<void>;
   delete(id: string): Promise<void>;
@@ -42,7 +45,9 @@ export function createVault(db: Database): Vault {
       const meta = await db.get<Meta>("meta", META_ID);
       if (!meta) return null;
       const { check, key } = await derive(unlockKey, meta.salt);
-      return equal(check, meta.check) ? unlocked(db, key) : null;
+      if (!constantTimeEqual(check, meta.check)) return null;
+      requestPersistentStorage(); // again, in case the browser said no before
+      return unlocked(db, key);
     },
     wipe: () => db.clear(),
   };
@@ -54,23 +59,37 @@ function requestPersistentStorage() {
   void navigator.storage?.persist?.().catch(() => false);
 }
 
-function unlocked(db: Database, key: CryptoKey): UnlockedVault {
+function unlocked(db: Database, cryptoKey: CryptoKey): UnlockedVault {
+  let key: CryptoKey | null = cryptoKey;
+  const keyOrRefuse = () => {
+    if (!key) throw new Error("The Vault is locked");
+    return key;
+  };
   // Each record's id is bound in as additional data, so a record copied under another id won't decrypt.
   const aad = (id: string) => new TextEncoder().encode(id);
   return {
+    lock() {
+      key = null;
+    },
+    isLocked: () => key === null,
     async get<T>(id: string) {
+      const key = keyOrRefuse();
       const sealed = await db.get<Sealed>("records", id);
       if (!sealed) return undefined;
       const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: sealed.iv, additionalData: aad(id) }, key, sealed.data);
       return JSON.parse(new TextDecoder().decode(plain)) as T;
     },
     async put(id, value) {
+      const key = keyOrRefuse();
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const plain = new TextEncoder().encode(JSON.stringify(value));
       const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: aad(id) }, key, plain);
       await db.put("records", id, { iv, data } satisfies Sealed);
     },
-    delete: (id) => db.delete("records", id),
+    async delete(id) {
+      keyOrRefuse();
+      await db.delete("records", id);
+    },
   };
 }
 
@@ -85,7 +104,8 @@ async function derive(unlockKey: string, salt: Uint8Array<ArrayBuffer>) {
   return { check, key };
 }
 
-function equal(a: Uint8Array, b: Uint8Array) {
+/** Compares without stopping at the first difference, so timing doesn't reveal how much of a key matched. */
+function constantTimeEqual(a: Uint8Array, b: Uint8Array) {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
