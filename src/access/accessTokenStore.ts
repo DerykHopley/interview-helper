@@ -1,27 +1,13 @@
-// Where the Candidate's Access Token lives until the Vault arrives (#4): sessionStorage, so it survives a reload
-// but not closing the tab. It only gates LLM calls and expires within hours. #4 moves it into encrypted storage.
-const KEY = "interview-helper.access-token";
+// The Access Token in use, held in memory only, so the Model Gateway can send it with each call. Its lasting copy is
+// encrypted in the Vault (ADR 0001); this one is filled on unlock and emptied on lock, a reload or closing the tab.
+let current: string | null = null;
 
 export const accessTokenStore = {
-  get(): string | null {
-    try {
-      return sessionStorage.getItem(KEY);
-    } catch {
-      return null;
-    }
-  },
+  get: () => current,
   set(token: string) {
-    try {
-      sessionStorage.setItem(KEY, token);
-    } catch {
-      // Storage unavailable (e.g. private mode): the token lasts until the page closes.
-    }
+    current = token;
   },
   clear() {
-    try {
-      sessionStorage.removeItem(KEY);
-    } catch {
-      // Nothing stored.
-    }
+    current = null;
   },
 };
