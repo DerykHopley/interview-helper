@@ -39,7 +39,7 @@ describe("the dashboard", () => {
     renderApp();
     await setUpWithoutToken();
 
-    expect(screen.getByRole("button", { name: "Access · none" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Access · none" })).toBeInTheDocument();
   });
 
   it("opens the Access Token by itself when the stored one has expired", async () => {

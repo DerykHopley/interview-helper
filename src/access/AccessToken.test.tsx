@@ -99,7 +99,7 @@ describe("entering an Access Token", () => {
     renderApp({ gateway: slow });
     const unlockKey = await setUpWithoutToken();
 
-    await user.click(screen.getByRole("button", { name: "Access · none" }));
+    await user.click(await screen.findByRole("button", { name: "Access · none" }));
     await enterAccessToken(ACTIVE);
     await user.click(screen.getByRole("button", { name: "Lock" }));
     await act(() => Promise.resolve(answer({ ok: true, label: "cohort1", expiresAt: new Date("2099-01-01T08:00:00Z") })));
