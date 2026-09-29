@@ -11,10 +11,7 @@ export function App({ createGateway }: { createGateway: CreateGateway }) {
   const [gateway] = useState(() => createGateway(accessTokenInUse));
   return (
     <ModelGatewayProvider gateway={gateway}>
-      <main className="page">
-        <h1 className="brand">Interview Helper</h1>
-        <VaultGate />
-      </main>
+      <VaultGate />
     </ModelGatewayProvider>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useCancellableEffect, useLatest } from "../hooks";
 import { useModelGateway } from "../model-gateway/context";
 import { ModelGatewayError, type AccessStatus } from "../model-gateway/ModelGateway";
@@ -11,14 +11,16 @@ const MESSAGES = {
 };
 
 export type Active = Extract<AccessStatus, { ok: true }>;
-type Outcome = { active: Active; message: null } | { active: null; message: string };
+/** How a check ended: accepted, refused, or the Worker couldn't be asked. */
+export type CheckResult = "active" | "invalid" | "expired" | "unreachable";
+type Outcome = { result: CheckResult } & ({ active: Active; message: null } | { active: null; message: string });
 
 /** What to show after checking a token. `remembered` means it was stored earlier, not typed just now. */
 function outcomeOf(result: AccessStatus | ModelGatewayError, remembered: boolean): Outcome {
-  if (result instanceof ModelGatewayError) return { active: null, message: MESSAGES.unreachable };
-  if (result.ok) return { active: result, message: null };
-  if (result.reason === "invalid") return { active: null, message: MESSAGES.invalid };
-  return { active: null, message: remembered ? MESSAGES.rememberedExpired : MESSAGES.expired };
+  if (result instanceof ModelGatewayError) return { result: "unreachable", active: null, message: MESSAGES.unreachable };
+  if (result.ok) return { result: "active", active: result, message: null };
+  if (result.reason === "invalid") return { result: "invalid", active: null, message: MESSAGES.invalid };
+  return { result: "expired", active: null, message: remembered ? MESSAGES.rememberedExpired : MESSAGES.expired };
 }
 
 export const describeActive = (active: Active) =>
@@ -38,27 +40,32 @@ type Props = {
   onActive: (token: string, active: Active) => void;
   /** The token should no longer be kept: the Candidate replaced it, or the Worker now refuses it. */
   onForget?: () => void;
+  /** Told how each check ended, for the remembered token and for typed ones. */
+  onChecked?: (result: CheckResult) => void;
   /** Offers "I don't have one yet" (setup only). */
   onSkip?: () => void;
 };
 
 /** Entering and checking an Access Token (A2 checklist step 1, and inside the app). It keeps nothing itself: where
  * the token is kept is up to the caller. */
-export function AccessTokenPanel({ remembered, onActive, onForget, onSkip }: Props) {
+export function AccessTokenPanel({ remembered, onActive, onForget, onChecked, onSkip }: Props) {
   const gateway = useModelGateway();
   const [active, setActive] = useState<Active | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // Once the Candidate enters a token, a still-pending check of the remembered one no longer counts.
+  const superseded = useRef(false);
   const [value, setValue] = useState("");
   const [checking, setChecking] = useState(false);
 
   // The latest callbacks, so the recheck runs once per remembered token rather than on every render.
-  const callbacks = useLatest({ onActive, onForget });
+  const callbacks = useLatest({ onActive, onForget, onChecked });
 
   useCancellableEffect((isCurrent) => {
     if (!remembered) return;
     void checkWith(gateway, remembered).then((result) => {
-      if (!isCurrent()) return;
+      if (!isCurrent() || superseded.current) return;
       const outcome = outcomeOf(result, true);
+      callbacks.current.onChecked?.(outcome.result);
       if (outcome.active) callbacks.current.onActive(remembered, outcome.active);
       else if (!(result instanceof ModelGatewayError)) callbacks.current.onForget?.(); // keep it if we just couldn't ask
       setActive(outcome.active);
@@ -69,9 +76,11 @@ export function AccessTokenPanel({ remembered, onActive, onForget, onSkip }: Pro
   async function submit(event: FormEvent) {
     event.preventDefault();
     const token = value.trim();
+    superseded.current = true;
     setChecking(true);
     try {
       const outcome = outcomeOf(await checkWith(gateway, token), false);
+      onChecked?.(outcome.result);
       if (outcome.active) onActive(token, outcome.active);
       setActive(outcome.active);
       setMessage(outcome.message);
