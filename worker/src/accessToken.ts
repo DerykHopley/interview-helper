@@ -2,7 +2,10 @@
 // Format: IH-<LABEL>-<EXPIRY>-<SIGNATURE>, short enough to read out or paste, e.g. IH-COHORT1-1Z3K9QT-7M2XD9PQRW4TK6BA.
 //   LABEL      the group's label, letters and digits (shown in usage logs)
 //   EXPIRY     Unix seconds, Crockford base32
-//   SIGNATURE  HMAC-SHA256 over "IH-<LABEL>-<EXPIRY>" with the Worker's secret, first 80 bits, Crockford base32
+//   SIGNATURE  HMAC-SHA256 over "IH-<LABEL>-<EXPIRY>" with the Worker's secret, first 80 bits, Crockford base32.
+//              RFC 2104 §5 suggests keeping at least half the hash (128 bits); 80 is a deliberate trade to keep the
+//              token short enough to read out. Forging needs online guesses against the Worker, one per request, and
+//              2^80 of them can't happen within a token's 7-day maximum lifetime.
 // Rotating the secret invalidates every outstanding token. Uses Web Crypto, so it runs in the Worker and in Node.
 
 import type { AccessRefusal } from "../../shared/workerProtocol";
