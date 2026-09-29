@@ -27,7 +27,7 @@ export function JumpMenu({ questions, current, onJump }: { questions: Question[]
 
 /** ! for a Gap, a circle once matched, a dashed circle before; #11 adds ✓ for a kept Match. */
 function StatusDot({ question }: { question: Question }) {
-  const status = question.matching?.gap ? "gap" : question.matching ? "matched" : "unmatched";
+  const status = question.matchResult?.gap ? "gap" : question.matchResult ? "matched" : "unmatched";
   const label = { gap: "Gap", matched: "matched", unmatched: "not matched yet" }[status];
   return (
     <span className={`jump-dot is-${status}`} aria-hidden="false">

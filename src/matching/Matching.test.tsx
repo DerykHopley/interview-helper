@@ -1,8 +1,8 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ModelGatewayError } from "../model-gateway/ModelGateway";
-import { createScenario, lastUnlockKey, openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
+import { createScenario, openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
 import { createFakeModelGateway, type ReplyFor } from "../test/fakeModelGateway";
 import { renderApp } from "../test/renderApp";
 
@@ -19,7 +19,8 @@ const MENTORING = { ...CHECKOUT, Title: "Mentored two juniors through their firs
 const CONFLICT = { ...CHECKOUT, Title: "Disagreed with the CTO on build vs buy", Skills: "influencing" };
 const QUESTION = "Tell me about a time you delivered under a tight deadline.";
 
-/** The Scenarios a matching or reasons request sent, as the model sees them (id and title at least). */
+/** The Scenarios a matching or reasons request sent, as the model sees them (id and title at least). This reads the
+ * shared prompt layout (promptVariants.ts `matchingMessage`), so a layout change updates it here too. */
 const sentScenarios = (user: string) => JSON.parse(user.split("Scenarios:\n")[1]) as { id: string; title: string }[];
 
 /** A "matching" reply scoring each Scenario by its title. */
@@ -35,10 +36,11 @@ const reasons =
 const GOOD = { matching: [scores({ [CHECKOUT.Title]: 92 })], "match-reasons": [reasons({ [CHECKOUT.Title]: "You shipped a late migration." })] };
 const find = () => userEvent.setup().click(screen.getByRole("button", { name: "Find my Matches" }));
 
-/** Sets up, adds these Scenarios, creates an Interview and types one Question (with a skill) into it. */
+/** Sets up, adds these Scenarios, creates an Interview and types one Question (with a skill) into it. Returns the
+ * Unlock Key. */
 async function interviewWithScenarios(scenarios: Record<string, string>[], skill = "delivery under pressure") {
   const user = userEvent.setup();
-  await setUpWithoutToken();
+  const unlockKey = await setUpWithoutToken();
   await openTab("Scenario Bank");
   for (const scenario of scenarios) await createScenario(scenario);
   await openTab("Interviews");
@@ -50,6 +52,7 @@ async function interviewWithScenarios(scenarios: Record<string, string>[], skill
   if (skill) await user.type(screen.getByLabelText("Skill it tests (optional)"), skill);
   await user.click(screen.getByRole("button", { name: "Add Question" }));
   await screen.findByRole("article", { name: "Question 1 of 1" });
+  return unlockKey;
 }
 
 describe("dealing Matches", () => {
@@ -130,7 +133,7 @@ describe("saved Matches", () => {
     const gateway = createFakeModelGateway({ generate: GOOD });
     const generate = vi.spyOn(gateway, "generate");
     const { unmount } = renderApp({ gateway });
-    await interviewWithScenarios([CHECKOUT]);
+    const unlockKey = await interviewWithScenarios([CHECKOUT]);
     await find();
     await screen.findByRole("list", { name: "Matches" });
     expect(generate).toHaveBeenCalledTimes(2); // scoring, then reasons
@@ -138,7 +141,6 @@ describe("saved Matches", () => {
     await user.click(screen.getByRole("button", { name: "Hide my Matches" }));
     await user.click(screen.getByRole("button", { name: "Deal my Matches" }));
     expect(await screen.findByRole("list", { name: "Matches" })).toHaveTextContent("You shipped a late migration.");
-    const unlockKey = lastUnlockKey();
     unmount();
 
     renderApp({ gateway });
@@ -284,5 +286,143 @@ describe("Gaps across the app", () => {
     const uncovered = await screen.findByRole("region", { name: "Not covered yet" });
     await user.click(within(uncovered).getByRole("button", { name: "Write a Scenario for legacy systems" }));
     expect(await screen.findByLabelText("Skills *")).toHaveValue("legacy systems");
+  });
+});
+
+describe("review fixes", () => {
+  it("keeps both Questions' Matches when their replies arrive together", async () => {
+    const user = userEvent.setup();
+    const held: (() => void)[] = [];
+    const later = (reply: ReplyFor): ReplyFor => (request) => new Promise((release) => held.push(() => release(reply(request))));
+    const gateway = createFakeModelGateway({
+      generate: {
+        matching: [later(scores({ [CHECKOUT.Title]: 92 })), later(scores({ [CHECKOUT.Title]: 88 }))],
+        "match-reasons": [reasons({ [CHECKOUT.Title]: "First Question's reason." }), reasons({ [CHECKOUT.Title]: "Second Question's reason." })],
+      },
+    });
+    renderApp({ gateway });
+    await interviewWithScenarios([CHECKOUT]);
+    await user.click(screen.getByRole("button", { name: "Next Question" }));
+    await user.type(screen.getByLabelText("Your Question"), "Describe a project you're proud of.");
+    await user.click(screen.getByRole("button", { name: "Add Question" }));
+    await screen.findByRole("article", { name: "Question 2 of 2" });
+
+    await user.click(screen.getByRole("button", { name: "Find my Matches" }));
+    await user.click(screen.getByRole("button", { name: "Previous Question" }));
+    await user.click(screen.getByRole("button", { name: "Find my Matches" }));
+    await waitFor(() => expect(held).toHaveLength(2));
+    await act(() => Promise.resolve(held.forEach((release) => release())));
+
+    await screen.findByRole("list", { name: "Matches" });
+    await user.click(screen.getByRole("button", { name: "← Interviews" }));
+    await user.click(await screen.findByRole("button", { name: "Practise" }));
+    // Both Questions kept their Matches (whichever reply each got): each deals saved ones, with no new model call.
+    expect(await screen.findByRole("button", { name: "Deal my Matches" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Next Question" }));
+    expect(screen.getByRole("button", { name: "Deal my Matches" })).toBeInTheDocument();
+  });
+
+  it("treats a scoring reply that leaves out a Scenario as failed, not as a Gap", async () => {
+    const missingOne: ReplyFor = ({ user: sent }) => ({ scores: sentScenarios(sent).slice(1).map(({ id }) => ({ id, score: 20 })) });
+    // A Gap's suggestion is scripted, so a false Gap would show if the missing Scenario counted as 0.
+    renderApp({ gateway: createFakeModelGateway({ generate: { matching: [missingOne], "match-reasons": [{ suggestion: "A false Gap." }] } }) });
+    await interviewWithScenarios([CHECKOUT, MENTORING]);
+
+    await find();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Finding Matches didn't work this time.");
+    expect(screen.queryByRole("region", { name: "No Scenario fits this Question yet" })).not.toBeInTheDocument();
+  });
+
+  it("treats a scoring reply that scores a Scenario twice as failed", async () => {
+    const twice: ReplyFor = ({ user: sent }) => ({ scores: [...sentScenarios(sent), ...sentScenarios(sent)].map(({ id }) => ({ id, score: 90 })) });
+    // Reasons are scripted, so only the duplicate check can refuse this reply.
+    const bothReasons = reasons({ [CHECKOUT.Title]: "A reason.", [MENTORING.Title]: "Another reason." });
+    renderApp({ gateway: createFakeModelGateway({ generate: { matching: [twice], "match-reasons": [bothReasons] } }) });
+    await interviewWithScenarios([CHECKOUT, MENTORING]);
+
+    await find();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Finding Matches didn't work this time.");
+  });
+
+  it("treats a reasons reply without a reason for every Match as failed, not a blank card", async () => {
+    renderApp({ gateway: createFakeModelGateway({ generate: { matching: [scores({ [CHECKOUT.Title]: 92, [MENTORING.Title]: 80 })], "match-reasons": [reasons({ [CHECKOUT.Title]: "Only one." })] } }) });
+    await interviewWithScenarios([CHECKOUT, MENTORING]);
+
+    await find();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Finding Matches didn't work this time.");
+  });
+
+  it("says when the model ran out of room, rather than a general failure", async () => {
+    renderApp({ gateway: { ...createFakeModelGateway(), generate: () => Promise.reject(new ModelGatewayError("reply_cut_off")) } });
+    await interviewWithScenarios([CHECKOUT]);
+
+    await find();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("The model ran out of room before it finished.");
+  });
+
+  it("says when Scenarios have changed since the Matches were found, and offers a re-run", async () => {
+    const user = userEvent.setup();
+    renderApp({ gateway: createFakeModelGateway({ generate: GOOD }) });
+    await interviewWithScenarios([CHECKOUT]);
+    await find();
+    await screen.findByRole("list", { name: "Matches" });
+    await user.click(screen.getByRole("button", { name: "← Interviews" }));
+    await openTab("Scenario Bank");
+    await user.click(await screen.findByRole("button", { name: /Rescued the failing checkout migration/ }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.type(screen.getByLabelText("Result *"), " And the team kept it running.");
+    await user.click(screen.getByRole("button", { name: "Save Scenario" }));
+    await screen.findByRole("article", { name: CHECKOUT.Title });
+
+    await openTab("Interviews");
+    await user.click(await screen.findByRole("button", { name: "Practise" }));
+    await user.click(await screen.findByRole("button", { name: "Deal my Matches" }));
+
+    expect(await screen.findByText(/Your Scenarios have changed since these Matches were found/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Re-run matching" })).toBeInTheDocument();
+  });
+
+  it("counts a skill's Gaps together on the dashboard, ignoring capitals", async () => {
+    const user = userEvent.setup();
+    const gap = { suggestion: "A story." };
+    renderApp({ gateway: createFakeModelGateway({ generate: { matching: [scores({}), scores({})], "match-reasons": [gap, gap] } }) });
+    await interviewWithScenarios([CHECKOUT], "Legacy systems");
+    await find();
+    await screen.findByRole("region", { name: "No Scenario fits this Question yet" });
+    await user.click(screen.getByRole("button", { name: "Next Question" }));
+    await user.type(screen.getByLabelText("Your Question"), "Another legacy one.");
+    await user.type(screen.getByLabelText("Skill it tests (optional)"), "legacy systems");
+    await user.click(screen.getByRole("button", { name: "Add Question" }));
+    await screen.findByRole("article", { name: "Question 2 of 2" });
+    await find();
+    await screen.findByRole("region", { name: "No Scenario fits this Question yet" });
+    await user.click(screen.getByRole("button", { name: "← Interviews" }));
+
+    const gaps = await screen.findByRole("region", { name: "Gaps" });
+    expect(within(gaps).getAllByRole("listitem")).toHaveLength(1);
+    expect(gaps).toHaveTextContent("Legacy systems ×2");
+  });
+
+  it("copes with the app locking while Matches are being found", async () => {
+    const user = userEvent.setup();
+    let release: () => void = () => {};
+    const gateway = createFakeModelGateway({
+      generate: { matching: [(request: Parameters<ReplyFor>[0]) => new Promise((r) => (release = () => r(scores({ [CHECKOUT.Title]: 92 })(request))))], "match-reasons": [reasons({ [CHECKOUT.Title]: "A reason." })] },
+    });
+    renderApp({ gateway });
+    const unlockKey = await interviewWithScenarios([CHECKOUT]);
+    await find();
+    await screen.findByText("Finding your Matches…");
+
+    await user.click(screen.getByRole("button", { name: "Lock" }));
+    await act(() => Promise.resolve(release()));
+    await unlockWith(unlockKey);
+
+    await user.click(await screen.findByRole("button", { name: "Practise" }));
+    expect(await screen.findByRole("button", { name: "Find my Matches" })).toBeInTheDocument(); // nothing half-saved
   });
 });

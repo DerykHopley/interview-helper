@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { AccessChip } from "../access/AccessChip";
-import { gapCount, gapsBySkill, NO_SKILL } from "../interviews/gaps";
+import { gapCount, gapsBySkill, NO_SKILL, type SkillGaps } from "../interviews/gaps";
 import { interviewStore } from "../interviews/interviewStore";
 import { InterviewScreen } from "../interviews/InterviewScreen";
 import { InterviewsHome } from "../interviews/InterviewsHome";
@@ -26,30 +26,32 @@ type View = { tab: Tab } | { interviewId: string };
 export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () => void }) {
   useAutoLock(onLock);
   const interviews = useMemo(() => interviewStore(vault), [vault]);
-  const [view, setShownView] = useState<View>({ tab: "interviews" });
+  const [view, setViewState] = useState<View>({ tab: "interviews" });
   /** Shows a tab or an Interview; `newScenarioSkill` opens the Scenario Bank on a new Scenario with that skill. */
   const setView = (next: View, newScenarioSkill: string | null = null) => {
     setNewScenarioSkill(newScenarioSkill);
-    setShownView(next);
+    setViewState(next);
   };
   const tab = "tab" in view ? view.tab : null;
   const openInterview = useOpenInterview(interviews, "interviewId" in view ? view.interviewId : null);
   const ready = openInterview?.status === "ready" ? openInterview : null;
   const [accessRequests, setAccessRequests] = useState(0); // each one opens the Access Token panel
   const [newScenarioSkill, setNewScenarioSkill] = useState<string | null>(null); // a Gap's skill, for a new Scenario
-  const [gapSkills, setGapSkills] = useState<string[]>([]);
+  const [gaps, setGaps] = useState<SkillGaps>([]);
 
-  // The Scenario Bank's "Not covered yet" comes from the Interviews' saved Gaps, read afresh each time it opens.
+  // Gaps by skill, for the Interviews tab's Gaps card and the Scenario Bank's "Not covered yet": read afresh from the
+  // Interviews' saved Gaps each time a tab opens.
   useCancellableEffect(
     (isCurrent) => {
-      if (tab !== "scenario-bank") return;
+      if (!tab) return;
       interviews.list().then(
-        (result) => isCurrent() && setGapSkills(gapsBySkill(result.interviews).map((g) => g.skill).filter((s) => s !== NO_SKILL)),
+        (result) => isCurrent() && setGaps(gapsBySkill(result.interviews)),
         () => {},
       );
     },
     [interviews, tab],
   );
+  const openGaps = ready ? gapCount(ready.interview) : 0;
 
   return (
     <>
@@ -66,7 +68,7 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
                   {ready.interview.company && <span className="interview-company">{ready.interview.company}</span>}
                 </h1>
                 <p className="top-bar-progress">
-                  {[countOf(ready.interview.questions.length, "Question"), gapCount(ready.interview) > 0 && countOf(gapCount(ready.interview), "Gap")]
+                  {[countOf(ready.interview.questions.length, "Question"), openGaps > 0 && countOf(openGaps, "Gap")]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
@@ -112,7 +114,7 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
           <InterviewScreen
             key={ready.interview.id}
             interview={ready.interview}
-            onChange={ready.save}
+            onChange={ready.update}
             position={ready.position}
             onMove={ready.move}
             vault={vault}
@@ -128,11 +130,11 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
                 <InterviewsHome store={interviews} onOpen={(interviewId) => setView({ interviewId })} />
                 <aside className="side-column" aria-label="Status">
                   <ScenarioBankCard vault={vault} onOpen={() => setView({ tab: "scenario-bank" })} />
-                  <GapsCard store={interviews} />
+                  <GapsCard gaps={gaps} />
                 </aside>
               </div>
             ) : (
-              <ScenarioBank vault={vault} gapSkills={gapSkills} startNew={newScenarioSkill} />
+              <ScenarioBank vault={vault} gapSkills={gaps.map((g) => g.skill).filter((s) => s !== NO_SKILL)} startNew={newScenarioSkill} />
             )}
           </div>
         )}

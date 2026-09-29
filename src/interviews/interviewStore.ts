@@ -39,6 +39,17 @@ export function interviewStore(vault: UnlockedVault) {
       const checked = interviewSchema.parse(interview);
       return write(() => vault.put(id, checked)).then(() => id);
     },
+    /** Applies a change to the stored Interview, in turn with other writes, so two changes that overlap (e.g. two
+     * Questions' Matches arriving together) both land. Resolves to the saved Interview. */
+    update(id: string, change: (current: Interview) => Interview) {
+      return write(async () => {
+        const parsed = interviewSchema.safeParse(await vault.get<unknown>(id));
+        if (!parsed.success) throw new Error("This Interview can't be read");
+        const next = interviewSchema.parse(change(parsed.data));
+        await vault.put(id, next);
+        return { ...next, id };
+      });
+    },
     delete: (id: string) => write(() => vault.delete(id)),
   };
 }

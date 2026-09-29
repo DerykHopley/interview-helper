@@ -1,19 +1,18 @@
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
-import { useCancellableEffect, useLatest } from "../hooks";
-import { MatchesPanel, type MatchProblem } from "../matching/MatchesPanel";
-import { useMatching } from "../matching/useMatching";
-import { ModelGatewayError } from "../model-gateway/ModelGateway";
-import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useLatest } from "../hooks";
+import { MatchesPanel } from "../matching/MatchesPanel";
+import { useQuestionMatches } from "../matching/useQuestionMatches";
 import type { UnlockedVault } from "../vault/vault";
+import { NO_SKILL } from "./gaps";
 import { PopupMenu } from "../PopupMenu";
 import { countOf } from "../text";
-import type { Interview, Matching, Question } from "./interview";
+import type { Interview, Question } from "./interview";
 import type { SavedInterview } from "./interviewStore";
 
 type Props = {
   interview: SavedInterview;
-  /** Saves a changed Interview; the screen then shows the saved version. */
-  onChange: (interview: Interview) => Promise<void>;
+  /** Changes the Interview, given its latest saved version; the screen then shows the result. */
+  onChange: (change: (current: Interview) => Interview) => Promise<void>;
   /** Which card is showing: a Question's index, or the number of Questions for the end card. */
   position: number;
   onMove: (position: number) => void;
@@ -25,13 +24,7 @@ type Props = {
   onWriteScenario: (skill: string | undefined) => void;
 };
 
-/** How a failed matching call reads to the Candidate. */
-function problemOf(e: unknown): MatchProblem {
-  if (!(e instanceof ModelGatewayError)) return "failed";
-  if (e.code === "expired_token") return "expired-token";
-  if (e.code === "missing_token" || e.code === "invalid_token") return "no-token";
-  return e.code === "worker_unreachable" ? "unreachable" : "failed";
-}
+
 
 const SWIPE_PX = 50;
 
@@ -45,70 +38,11 @@ const isControl = (target: EventTarget | null) => target instanceof Element && t
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
-/** The S3 Interview screen: one Question at a time on a deck, ending in a card for adding your own. Matches (#10),
- * asking for more (#9) and the answer bar (#31) join it later. */
+/** The S3 Interview screen: one Question at a time on a deck, each dealing its Matches, ending in a card for adding
+ * your own. Asking for more (#9) and the answer bar (#31) join it later. */
 export function InterviewScreen({ interview, onChange, position, onMove, vault, onNeedToken, onOpenScenarioBank, onWriteScenario }: Props) {
   const { questions } = interview;
-  const find = useMatching(vault);
-  const bank = useMemo(() => scenarioBank(vault), [vault]);
-  const [scenarios, setScenarios] = useState<SavedScenario[] | null>(null); // null until read
-  const [dealt, setDealt] = useState<Set<string>>(new Set());
-  const [finding, setFinding] = useState<Set<string>>(new Set());
-  const [problems, setProblems] = useState<Map<string, MatchProblem>>(new Map());
-  const latest = useLatest(interview);
-  const readScenarios = () => bank.list().then(({ scenarios }) => setScenarios(scenarios));
-
-  useCancellableEffect(
-    (isCurrent) => {
-      bank.list().then(
-        ({ scenarios }) => isCurrent() && setScenarios(scenarios),
-        () => {},
-      );
-    },
-    [bank],
-  );
-
-  const toggle = <T,>(set: Set<T>, value: T, on: boolean) => {
-    const next = new Set(set);
-    if (on) next.add(value);
-    else next.delete(value);
-    return next;
-  };
-
-  /** Finds the Question's Matches (again, for a re-run), and saves them on it. */
-  async function match(question: Question) {
-    setDealt((d) => toggle(d, question.id, true));
-    setFinding((f) => toggle(f, question.id, true));
-    setProblems((p) => new Map([...p].filter(([id]) => id !== question.id)));
-    try {
-      const matching = await find(question);
-      if (!matching) {
-        setProblems((p) => new Map(p).set(question.id, "no-scenarios"));
-        return;
-      }
-      await saveMatching(question.id, matching);
-      await readScenarios().catch(() => {});
-    } catch (e) {
-      setProblems((p) => new Map(p).set(question.id, problemOf(e)));
-    } finally {
-      setFinding((f) => toggle(f, question.id, false));
-    }
-  }
-
-  async function saveMatching(questionId: string, matching: Matching) {
-    const current = latest.current; // the Interview may have changed while the model was answering
-    await save(
-      { ...current, questions: current.questions.map((q) => (q.id === questionId ? { ...q, matching } : q)) },
-      "Couldn't save the Matches. Try again.",
-    );
-  }
-
-  /** Deals a Question's Matches: saved ones show at once; otherwise they're found now (the first time). */
-  function deal(question: Question) {
-    if (dealt.has(question.id)) return setDealt((d) => toggle(d, question.id, false));
-    if (question.matching) return setDealt((d) => toggle(d, question.id, true));
-    void match(question);
-  }
+  const matches = useQuestionMatches(vault, onChange);
   const at = Math.min(position, questions.length);
   const go = (to: number) => onMove(Math.max(0, Math.min(to, questions.length)));
   const latestGo = useLatest((by: number) => go(at + by));
@@ -129,19 +63,19 @@ export function InterviewScreen({ interview, onChange, position, onMove, vault, 
   async function remove(question: Question) {
     if (!confirm(`Delete this Question? This can't be undone.\n\n"${question.text}"`)) return;
     const index = questions.indexOf(question);
-    if (!(await save({ ...interview, questions: questions.filter((q) => q.id !== question.id) }, "Couldn't delete the Question. Try again."))) return;
+    if (!(await save((current) => ({ ...current, questions: current.questions.filter((q) => q.id !== question.id) }), "Couldn't delete the Question. Try again."))) return;
     if (index > 0 && index === questions.length - 1) onMove(index - 1); // the last one: show the one before it
   }
 
   async function add(question: Question) {
-    if (await save({ ...interview, questions: [...questions, question] }, "Couldn't add the Question. Try again.")) onMove(questions.length);
+    if (await save((current) => ({ ...current, questions: [...current.questions, question] }), "Couldn't add the Question. Try again.")) onMove(questions.length);
   }
 
-  /** Saves, and says so if it failed (the Vault locked meanwhile, or storage is full). */
-  async function save(next: Interview, onFailure: string) {
+  /** Saves a change, and says so if it failed (the Vault locked meanwhile, or storage is full). */
+  async function save(change: (current: Interview) => Interview, onFailure: string) {
     setFailure(null);
     try {
-      await onChange(next);
+      await onChange(change);
       return true;
     } catch {
       setFailure(onFailure);
@@ -180,26 +114,15 @@ export function InterviewScreen({ interview, onChange, position, onMove, vault, 
             n={at + 1}
             of={questions.length}
             onDelete={() => void remove(questions[at])}
-            onRematch={() => void match(questions[at])}
+            onRematch={() => matches.match(questions[at])}
           />
-          {!finding.has(questions[at].id) && (
-            <button type="button" className="button-deal" onClick={() => deal(questions[at])}>
-              {dealt.has(questions[at].id) ? "Hide my Matches" : questions[at].matching ? "Deal my Matches" : "Find my Matches"}
-            </button>
-          )}
-          {dealt.has(questions[at].id) && (
-            <MatchesPanel
-              finding={finding.has(questions[at].id)}
-              problem={problems.get(questions[at].id) ?? null}
-              matching={questions[at].matching}
-              skill={questions[at].skill}
-              scenarios={scenarios}
-              onRetry={() => void match(questions[at])}
-              onNeedToken={onNeedToken}
-              onOpenScenarioBank={onOpenScenarioBank}
-              onWriteScenario={() => onWriteScenario(questions[at].skill)}
-            />
-          )}
+          <DealtMatches
+            question={questions[at]}
+            matches={matches}
+            onNeedToken={onNeedToken}
+            onOpenScenarioBank={onOpenScenarioBank}
+            onWriteScenario={() => onWriteScenario(questions[at].skill)}
+          />
         </div>
       ) : (
         <EndCard count={questions.length} onAdd={add} />
@@ -216,7 +139,7 @@ function QuestionCard({ question, n, of, onDelete, onRematch }: { question: Ques
     <article className="question-card" aria-label={`Question ${n} of ${of}`}>
       <CardMenu onDelete={onDelete} onRematch={onRematch} />
       <p className="label-caps question-skill">
-        {question.skill ?? "No skill given"}
+        {question.skill ?? NO_SKILL}
         {question.origin === "typed" && <span className="question-origin"> · typed by you</span>}
       </p>
       <p className="question-text">{question.text}</p>
@@ -286,5 +209,39 @@ function CardMenu({ onDelete, onRematch }: { onDelete: () => void; onRematch: ()
         { key: "delete", label: "Delete this Question", onSelect: onDelete },
       ]}
     />
+  );
+}
+
+/** The deal button under a Question card, and what it deals. */
+function DealtMatches({ question, matches, onNeedToken, onOpenScenarioBank, onWriteScenario }: {
+  question: Question;
+  matches: ReturnType<typeof useQuestionMatches>;
+  onNeedToken: () => void;
+  onOpenScenarioBank: () => void;
+  onWriteScenario: () => void;
+}) {
+  const { dealt, finding, problem } = matches.stateOf(question.id);
+  return (
+    <>
+      {!finding && (
+        <button type="button" className="button-deal" onClick={() => matches.deal(question)}>
+          {dealt ? "Hide my Matches" : question.matchResult ? "Deal my Matches" : "Find my Matches"}
+        </button>
+      )}
+      {dealt && (
+        <MatchesPanel
+          finding={finding}
+          problem={problem}
+          matchResult={question.matchResult}
+          stale={matches.isStale(question)}
+          skill={question.skill}
+          scenarios={matches.scenarios}
+          onRetry={() => matches.match(question)}
+          onNeedToken={onNeedToken}
+          onOpenScenarioBank={onOpenScenarioBank}
+          onWriteScenario={onWriteScenario}
+        />
+      )}
+    </>
   );
 }

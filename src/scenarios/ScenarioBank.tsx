@@ -12,8 +12,6 @@ import { SkillsOverview } from "./SkillsOverview";
 type Pane = { mode: "read" | "edit"; id: string } | { mode: "new" } | { mode: "none" };
 type Loaded = { scenarios: SavedScenario[]; unreadable: number };
 
-/** The Candidate's Scenarios (C4 design): a skills overview on top, then a list on the left and the selected
- * Scenario in full on the right. On a phone the list and the Scenario are two screens. */
 type Props = {
   vault: UnlockedVault;
   /** Skills the Interviews' Gaps asked for, for "Not covered yet". */
@@ -23,6 +21,8 @@ type Props = {
   startNew?: string | null;
 };
 
+/** The Candidate's Scenarios (C4 design): a skills overview on top, then a list on the left and the selected
+ * Scenario in full on the right. On a phone the list and the Scenario are two screens. */
 export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) {
   const bank = useMemo(() => scenarioBank(vault), [vault]);
   const [loaded, setLoaded] = useState<Loaded | null>(null);

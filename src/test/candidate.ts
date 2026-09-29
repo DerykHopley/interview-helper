@@ -10,14 +10,9 @@ export async function enterAccessToken(token: string) {
   await user().click(screen.getByRole("button", { name: "Continue" }));
 }
 
-let lastKey = "";
-/** The Unlock Key from the most recent setup, for tests whose setup happens inside a helper. */
-export const lastUnlockKey = () => lastKey;
-
 /** Finishes first-visit setup, from the Unlock Key step on, and returns the Unlock Key the app showed. */
 export async function finishSetup() {
   const unlockKey = (await screen.findByLabelText("Your Unlock Key")).textContent;
-  lastKey = unlockKey;
   await user().click(screen.getByLabelText(/I've saved my Unlock Key/));
   await user().click(screen.getByRole("button", { name: "Continue" }));
   await user().click(screen.getByRole("button", { name: /Start with my own Scenarios/ }));

@@ -36,7 +36,7 @@ async function generate(request: Request, env: Env, access: Access) {
   const body = parseJson(await request.text());
   const parsed = body.ok ? GenerateRequest.safeParse(body.value) : null;
   if (!parsed?.success) return error("bad_request", 400);
-  const { job, model: requested, maxTokens, system, user, schema } = parsed.data;
+  const { job, model: requested, maxTokens, reasoningEffort, system, user, schema } = parsed.data;
   if (!Object.hasOwn(env.JOB_MODELS, job)) return error("unknown_job", 400);
   // The job's default model, or one the request picks (the Developer panel), if it's on the allowed list.
   const model = requested ?? env.JOB_MODELS[job as Job];
@@ -59,7 +59,7 @@ async function generate(request: Request, env: Env, access: Access) {
       provider: { data_collection: "deny" },
       usage: { include: true },
       max_tokens: maxTokens ?? settings.max_tokens,
-      reasoning: { effort: settings.reasoning_effort },
+      reasoning: { effort: reasoningEffort ?? settings.reasoning_effort },
     }),
   });
   if (!upstream.ok) {
@@ -72,8 +72,10 @@ async function generate(request: Request, env: Env, access: Access) {
     usage?: { cost?: number };
   } | null;
   logCall(access, job, model, completion?.usage?.cost ?? null);
+  const finish = completion?.choices?.[0]?.finish_reason;
   // Ran out of tokens (reasoning counts too): the reply is empty or partial, so say so rather than fail to parse it.
-  if (completion?.choices?.[0]?.finish_reason === "length") return error("reply_cut_off", 502);
+  if (finish === "length") return error("reply_cut_off", 502);
+  if (finish === "error") return error("model_unavailable", 502);
   const content = parseJson(completion?.choices?.[0]?.message?.content ?? "");
   if (!content.ok) return error("invalid_model_reply", 502);
   return Response.json({ output: content.value } satisfies GenerateResponse);

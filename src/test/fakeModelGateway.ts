@@ -1,6 +1,6 @@
 import type { AccessStatus, DecisionAnswer, ModelGateway, ModelJob } from "../model-gateway/ModelGateway";
 
-/** Makes a reply from the request, e.g. to answer about the Scenarios it sent. */
+/** Makes a reply from the request, e.g. to answer about the Scenarios it sent, or a promise of one. */
 export type ReplyFor = (request: { job: ModelJob; system: string; user: string }) => unknown;
 /** Per job, the replies in order: each a scripted value, or a ReplyFor function. */
 type Script = Partial<Record<ModelJob, unknown[]>>;
@@ -41,7 +41,8 @@ export function createFakeModelGateway({
       const scripted = queues[request.job]?.shift();
       const next: unknown = typeof scripted === "function" ? (scripted as ReplyFor)(request) : scripted;
       if (next === undefined) return Promise.reject(new Error(`No scripted reply for job "${request.job}"`));
-      return Promise.resolve(request.schema.parse(next));
+      // A ReplyFor may return a promise, to hold a reply back until the test releases it.
+      return Promise.resolve(next).then((value) => request.schema.parse(value));
     },
     embed(texts) {
       if (embeddings.length < texts.length) return Promise.reject(new Error("Not enough scripted embeddings"));

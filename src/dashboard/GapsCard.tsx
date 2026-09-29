@@ -1,24 +1,9 @@
-import { useState } from "react";
-import { useCancellableEffect } from "../hooks";
-import { gapsBySkill } from "../interviews/gaps";
-import type { InterviewStore } from "../interviews/interviewStore";
-import { countOf } from "../text";
+import type { SkillGaps } from "../interviews/gaps";
+import { countOf, hasOrHave } from "../text";
 
 /** D2's side-column "Gaps by skill" card: the skills the Candidate's Interviews found no Scenario for. Hidden when
  * there are none. */
-export function GapsCard({ store }: { store: InterviewStore }) {
-  const [gaps, setGaps] = useState<{ skill: string; count: number }[]>([]);
-
-  useCancellableEffect(
-    (isCurrent) => {
-      store.list().then(
-        ({ interviews }) => isCurrent() && setGaps(gapsBySkill(interviews)),
-        () => {},
-      );
-    },
-    [store],
-  );
-
+export function GapsCard({ gaps }: { gaps: SkillGaps }) {
   const total = gaps.reduce((sum, g) => sum + g.count, 0);
   if (total === 0) return null;
   return (
@@ -27,7 +12,7 @@ export function GapsCard({ store }: { store: InterviewStore }) {
         Gaps
       </h3>
       <p className="side-card-text">
-        {countOf(total, "Question")} {total === 1 ? "has" : "have"} no good Scenario yet.
+        {countOf(total, "Question")} {hasOrHave(total)} no good Scenario yet.
       </p>
       <ul className="gap-chips">
         {gaps.map(({ skill, count }) => (

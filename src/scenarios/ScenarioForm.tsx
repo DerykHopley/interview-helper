@@ -34,8 +34,6 @@ const HINT: Partial<Record<Name, string>> = {
   measurableResults: 'Optional. If you can, add a number or what changed, e.g. "errors down 40%". One per line.',
 };
 
-/** Creating or editing a Scenario by hand (spec #1, stories 28–31). It says which required parts are missing
- * rather than saving an incomplete Scenario. */
 type Props = {
   initial?: Scenario;
   /** For a new Scenario: a skill to start with, e.g. from a Gap. */
@@ -44,6 +42,8 @@ type Props = {
   onCancel: () => void;
 };
 
+/** Creating or editing a Scenario by hand (spec #1, stories 28–31). It says which required parts are missing
+ * rather than saving an incomplete Scenario. */
 export function ScenarioForm({ initial, skill = "", onSave, onCancel }: Props) {
   const [fields, setFields] = useState<Fields>(() => (initial ? toFields(initial) : { ...EMPTY, skills: skill }));
   const origin: Origin = initial?.origin ?? "hand-written"; // editing never changes where a Scenario came from

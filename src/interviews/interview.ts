@@ -4,15 +4,17 @@ import { z } from "zod";
 
 const text = z.string().trim().min(1);
 
-/** A Question's latest Matches (#10): saved so reopening doesn't spend again; re-run replaces them. */
-export const matchingSchema = z.object({
+/** A Question's latest Matches, or its Gap (#10): saved so reopening doesn't spend again; re-run replaces it. */
+export const matchResultSchema = z.object({
   gap: z.boolean(),
   matches: z.array(z.object({ scenarioId: z.string(), score: z.number(), reason: z.string() })),
   /** For a Gap: the kind of Scenario that would answer it. */
   suggestion: z.string().optional(),
   matchedAt: z.string(),
+  /** Of the Scenarios matched against, so the screen can tell when they've changed since. */
+  scenariosFingerprint: z.string(),
 });
-export type Matching = z.infer<typeof matchingSchema>;
+export type MatchResult = z.infer<typeof matchResultSchema>;
 
 export const questionSchema = z.object({
   id: z.string(),
@@ -20,7 +22,7 @@ export const questionSchema = z.object({
   /** The skill it tests. Optional for a typed Question. */
   skill: text.optional(),
   origin: z.enum(["typed", "generated", "pack"]),
-  matching: matchingSchema.optional(),
+  matchResult: matchResultSchema.optional(),
 });
 export type Question = z.infer<typeof questionSchema>;
 

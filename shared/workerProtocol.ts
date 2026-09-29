@@ -30,12 +30,16 @@ export const ACCESS_REFUSAL_ERROR = { invalid: "invalid_token", expired: "expire
 /** GET /v1/access → 200 */
 export type AccessResponse = { label: string; expiresAt: string };
 
-/** POST /v1/generate body. `schema` is the reply's JSON Schema; `model` may pick another allowed model, and
- * `maxTokens` a lower cap than the job's own. */
+/** The reasoning efforts a request may pick (OpenRouter's, less the costliest). */
+export const REASONING_EFFORTS = ["none", "minimal", "low", "medium", "high"] as const;
+
+/** POST /v1/generate body. `schema` is the reply's JSON Schema; `model` may pick another allowed model, `maxTokens`
+ * a lower cap than the job's own (the cap is a ceiling), and `reasoningEffort` another allowed effort. */
 export const GenerateRequest = z.object({
   job: z.string(),
   model: z.string().optional(),
   maxTokens: z.number().int().positive().optional(),
+  reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
   system: z.string(),
   user: z.string(),
   schema: z.record(z.string(), z.unknown()),
