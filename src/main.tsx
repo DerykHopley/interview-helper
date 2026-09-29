@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import "./styles/app.css";
 import { createWorkerGateway } from "./model-gateway/workerGateway";
 
 // The Worker's URL. In dev it defaults to `npm run dev:worker` on port 8787; a production build must set

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { generateUnlockKey } from "../vault/unlockKey";
-import { AccessTokenPanel, describeActive, type Active } from "./AccessTokenPanel";
+import { AccessTokenPanel, type Active } from "./AccessTokenPanel";
 import { ChecklistStep } from "./ChecklistStep";
 
 const STEPS = ["token", "key", "start"] as const;
@@ -22,15 +22,15 @@ export function Setup({ onComplete }: { onComplete: (unlockKey: string, accessTo
 
   return (
     <section>
-      <h2>Set up in three steps</h2>
-      <p>Your Scenarios stay in this browser. Two different things keep them safe and let you use AI.</p>
-      <ol>
+      <h2 className="page-title">Set up in three steps</h2>
+      <p className="lede">Your Scenarios stay in this browser. Two different things keep them safe and let you use AI.</p>
+      <ol className="checklist">
         <ChecklistStep
           n={1}
           title="Access Token"
           why="From your teacher or group. Lets the app use AI for a limited time."
           state={stateOf("token")}
-          summary={token ? describeActive(token.active) : "skipped — you can add it later"}
+          summary={token ? `${token.active.label}, active until ${token.active.expiresAt.toLocaleString()}` : "skipped — you can add it later"}
         >
           <AccessTokenPanel
             onActive={(value, active) => { setToken({ value, active }); setStep("key"); }}
@@ -41,8 +41,9 @@ export function Setup({ onComplete }: { onComplete: (unlockKey: string, accessTo
           <UnlockKeyReveal unlockKey={unlockKey} onSaved={() => setStep("start")} />
         </ChecklistStep>
         <ChecklistStep n={3} title="Choose how to start" why="Your own Scenarios, written by hand or with help." state={stateOf("start")}>
-          <button type="button" disabled={starting} onClick={() => void start()}>
-            <strong>Start with my own Scenarios</strong> Write your first Scenario, by hand or with help.
+          <button type="button" className="choice" disabled={starting} onClick={() => void start()}>
+            <strong>Start with my own Scenarios</strong>
+            <span className="choice-detail">Write your first Scenario, by hand or with help.</span>
           </button>
         </ChecklistStep>
       </ol>
@@ -57,22 +58,31 @@ function UnlockKeyReveal({ unlockKey, onSaved }: { unlockKey: string; onSaved: (
 
   return (
     <>
-      <p aria-label="Your Unlock Key">{unlockKey}</p>
-      <button type="button" onClick={() => void navigator.clipboard.writeText(unlockKey).then(() => setCopied(true))}>
-        {copied ? "✓ Copied" : "Copy"}
-      </button>
-      <a href={download} download="interview-helper-unlock-key.txt">
-        Download .txt
-      </a>
-      <p>
+      <p className="unlock-key" aria-label="Your Unlock Key">
+        {unlockKey.split("-").map((group, i) => (
+          <span key={i} className="unlock-key-group">
+            {i > 0 && <span className="unlock-key-separator">-</span>}
+            {group}
+          </span>
+        ))}
+      </p>
+      <div className="actions">
+        <button type="button" className="button-secondary" onClick={() => void navigator.clipboard.writeText(unlockKey).then(() => setCopied(true))}>
+          {copied ? "✓ Copied" : "Copy"}
+        </button>
+        <a className="button-secondary" href={download} download="interview-helper-unlock-key.txt">
+          Download .txt
+        </a>
+      </div>
+      <p className="notice-warn">
         <strong>We only show this once.</strong> If you lose it, your Scenarios can't be recovered — not by us, not by
         anyone.
       </p>
-      <label>
+      <label className="checkbox">
         <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
         I've saved my Unlock Key in a password manager or somewhere safe
       </label>
-      <button type="button" disabled={!saved} onClick={onSaved}>
+      <button type="button" className="button-primary" disabled={!saved} onClick={onSaved}>
         Continue
       </button>
     </>

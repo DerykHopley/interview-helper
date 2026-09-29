@@ -82,27 +82,35 @@ export function AccessTokenPanel({ remembered, onActive, onForget, onSkip }: Pro
 
   if (active) {
     return (
-      <section>
-        <h2>Access</h2>
-        <p>{describeActive(active)}</p>
-        <button type="button" onClick={() => { onForget?.(); setActive(null); setValue(""); }}>
+      <>
+        <p className="status-ok">{describeActive(active)}</p>
+        <button type="button" className="button-link" onClick={() => { onForget?.(); setActive(null); setValue(""); }}>
           Use a different token
         </button>
-      </section>
+      </>
     );
   }
   return (
-    <form onSubmit={(e) => void submit(e)}>
-      <h2>Access</h2>
-      <label htmlFor="access-token">Access Token</label>
-      <p>From your teacher or group. Lets the app use AI for a limited time.</p>
-      <input id="access-token" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="off" spellCheck={false} />
-      {message && <p role="alert">{message}</p>}
-      <button type="submit" disabled={!value.trim() || checking}>
+    <form className="form" onSubmit={(e) => void submit(e)}>
+      <label htmlFor="access-token" className="visually-hidden">
+        Access Token
+      </label>
+      <input
+        id="access-token"
+        className="field field-mono"
+        placeholder="IH-XXXXXX-XXXXXXX-XXXXXXXXXXXXXXXX"
+        aria-invalid={message !== null}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        autoComplete="off"
+        spellCheck={false}
+      />
+      {message && <p role="alert" className="error">{message}</p>}
+      <button type="submit" className="button-primary" disabled={!value.trim() || checking}>
         Continue
       </button>
       {onSkip && (
-        <button type="button" onClick={onSkip}>
+        <button type="button" className="button-link" onClick={onSkip}>
           I don't have one yet
         </button>
       )}

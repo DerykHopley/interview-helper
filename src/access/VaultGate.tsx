@@ -20,7 +20,7 @@ export function VaultGate() {
       return null;
     case "unavailable":
       return (
-        <p role="alert">
+        <p role="alert" className="notice-blocking">
           This browser won't let the app store data, so it can't keep your Scenarios. This can happen in a private window
           or when site data is blocked. Try a normal window, or allow site data for this site.
         </p>
@@ -47,10 +47,17 @@ function UnlockedApp({ vault, onLock }: { vault: UnlockedVault; onLock: () => vo
   useAutoLock(onLock);
   return (
     <section>
-      <AccessStatus vault={vault} />
-      <button type="button" onClick={onLock}>
-        Lock
-      </button>
+      <div className="top-bar">
+        <h2 className="page-title">Your Scenarios</h2>
+        <button type="button" className="button-lock" onClick={onLock}>
+          Lock
+        </button>
+      </div>
+      <div className="card">
+        <h3 className="card-title">Access Token</h3>
+        <p className="card-why">From your teacher or group. Lets the app use AI for a limited time.</p>
+        <AccessStatus vault={vault} />
+      </div>
     </section>
   );
 }

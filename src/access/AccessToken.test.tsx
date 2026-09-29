@@ -22,7 +22,7 @@ describe("entering an Access Token", () => {
 
     await enterAccessToken(ACTIVE);
 
-    expect(await screen.findByText(/Access Token for cohort1 is active/)).toBeInTheDocument();
+    expect(await screen.findByText(/cohort1, active until/)).toBeInTheDocument();
   });
 
   it("tells the Candidate when a token isn't recognised", async () => {
