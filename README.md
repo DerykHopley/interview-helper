@@ -67,9 +67,9 @@ flowchart LR
   classDef should fill:#E2F2EF,color:#0B4F49,stroke:#0F7B72,stroke-width:2px
   classDef could fill:#fff,color:#4A5263,stroke:#8A93A6,stroke-width:2px,stroke-dasharray:5 4
 
-  class T2,T3,T4,T5 done
-  class T10,T14,T15,T16,T18,T24 mustcrit
-  class T8,T9,T12,T23,T30,T31 must
+  class T2,T3,T4,T5,T8,T10 done
+  class T14,T15,T16,T18,T24 mustcrit
+  class T9,T12,T23,T30,T31 must
   class T6,T7,T11,T13,T17,T19,T20,T32,T33 should
   class T21,T22 could
 ```
