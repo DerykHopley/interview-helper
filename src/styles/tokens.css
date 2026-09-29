@@ -1,0 +1,41 @@
+/* Design tokens: the "card table" look agreed in the prototypes (docs/prototypes/access, interview-view K). Every
+ * screen styles itself with these, so the app stays one visual system as later tickets add screens. */
+:root {
+  /* The table: a dark green felt, and the light cards dealt onto it. */
+  --table: #0b1512;
+  --table-glow: #1f3b33;
+  --on-table: #f9fafb;
+  --on-table-muted: #9ca3af;
+  --card: #fffdf7;
+  --ink: #1f2937;
+  --ink-muted: #6b7280;
+  --line: #d6cfbd;
+  --faint: #ffffff0a;
+  --faint-line: #ffffff14;
+
+  /* Meaning */
+  --accent: #fcd34d;
+  --accent-ink: #111827;
+  --focus: #b45309;
+  --ok: #16a34a;
+  --ok-soft: #86efac;
+  --note-bg: #f3efe3;
+  --warn-bg: #fef3c7;
+  --warn-line: #f59e0b66;
+  --danger: #dc2626;
+  --danger-ink: #b91c1c;
+  --danger-card: #3b0d0d;
+  --danger-on-card: #fecaca;
+  --danger-line: #7f1d1d;
+
+  /* Type */
+  --font-body: system-ui, sans-serif;
+  --font-display: Georgia, serif;
+  --font-mono: ui-monospace, monospace;
+
+  /* Shape */
+  --radius-card: 14px;
+  --radius-field: 10px;
+  --radius-pill: 999px;
+  --gutter: 16px;
+}

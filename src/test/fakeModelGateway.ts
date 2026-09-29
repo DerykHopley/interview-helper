@@ -3,6 +3,13 @@ import type { AccessStatus, DecisionAnswer, ModelGateway, ModelJob } from "../mo
 type Script = Partial<Record<ModelJob, unknown[]>>;
 type DecisionScript = Partial<Record<ModelJob, Record<string, DecisionAnswer>[]>>;
 
+/** A fake Model Gateway that can also say which Access Token a real one would send with its next call. */
+export type FakeModelGateway = ModelGateway & {
+  /** Given by the app, as the Worker gateway is (see `CreateGateway`). */
+  connect(getAccessToken: () => string | null): void;
+  accessTokenToSend(): string | null;
+};
+
 /**
  * A Model Gateway with scripted replies, per job, in order. Generated replies still go through the request's
  * schema, so a scripted reply that doesn't match is rejected just like a real one. Unscripted calls fail loudly.
@@ -18,10 +25,15 @@ export function createFakeModelGateway({
   embeddings?: number[][];
   /** How the Worker would answer for each token; any other token is invalid. */
   accessTokens?: Record<string, AccessStatus>;
-} = {}): ModelGateway {
+} = {}): FakeModelGateway {
   const queues = structuredClone(generate);
   const decisions = structuredClone(decide);
+  let getAccessToken = (): string | null => null;
   return {
+    connect(source) {
+      getAccessToken = source;
+    },
+    accessTokenToSend: () => getAccessToken(),
     generate(request) {
       const next = queues[request.job]?.shift();
       if (next === undefined) return Promise.reject(new Error(`No scripted reply for job "${request.job}"`));

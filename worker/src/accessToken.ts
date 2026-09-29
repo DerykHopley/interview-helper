@@ -2,13 +2,16 @@
 // Format: IH-<LABEL>-<EXPIRY>-<SIGNATURE>, short enough to read out or paste, e.g. IH-COHORT1-1Z3K9QT-7M2XD9PQRW4TK6BA.
 //   LABEL      the group's label, letters and digits (shown in usage logs)
 //   EXPIRY     Unix seconds, Crockford base32
-//   SIGNATURE  HMAC-SHA256 over "IH-<LABEL>-<EXPIRY>" with the Worker's secret, first 80 bits, Crockford base32
+//   SIGNATURE  HMAC-SHA256 over "IH-<LABEL>-<EXPIRY>" with the Worker's secret, first 80 bits, Crockford base32.
+//              RFC 2104 §5 suggests keeping at least half the hash (128 bits); 80 is a deliberate trade to keep the
+//              token short enough to read out. Forging needs online guesses against the Worker, one per request, and
+//              2^80 of them can't happen within a token's 7-day maximum lifetime.
 // Rotating the secret invalidates every outstanding token. Uses Web Crypto, so it runs in the Worker and in Node.
 
+import { ALPHABET, encodeBytes, fixConfusables } from "../../shared/crockford";
 import type { AccessRefusal } from "../../shared/workerProtocol";
 
 const PREFIX = "IH";
-const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford base32: no I, L, O, U
 const SIGNATURE_BYTES = 10; // 80 bits
 const LABEL = /^[a-z0-9]{1,24}$/;
 /** The longest a token may last. ADR 0002's default is 8 hours; the owner may mint longer, up to a week. */
@@ -39,24 +42,10 @@ export async function checkAccessToken(token: string, secret: string, now = new 
   return { ok: true, label: label.toLowerCase(), expiresAt };
 }
 
-/** In the base32 parts, maps characters people confuse (O→0, I/L→1) so a hand-typed token still checks. */
-const fixConfusables = (part: string) => part.replace(/O/g, "0").replace(/[IL]/g, "1");
-
 async function sign(message: string, secret: string) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message)));
   return encodeBytes(mac.slice(0, SIGNATURE_BYTES));
-}
-
-function encodeBytes(bytes: Uint8Array) {
-  let bits = 0, value = 0, out = "";
-  for (const byte of bytes) {
-    value = (value << 8) | byte;
-    bits += 8;
-    while (bits >= 5) { out += ALPHABET[(value >>> (bits - 5)) & 31]; bits -= 5; }
-  }
-  if (bits > 0) out += ALPHABET[(value << (5 - bits)) & 31];
-  return out;
 }
 
 function encodeNumber(n: number) {

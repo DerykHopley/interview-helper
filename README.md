@@ -110,6 +110,10 @@ It prints the token, for example `IH-COHORT1-1NBP7RK-PH6XVCZGFXZXAM9R`, and when
   ACCESS_TOKEN_SECRET=<the deployed secret> npm run token -- --label cohort1
   ```
 
+### Why the signature is 80 bits
+
+The token's signature is HMAC-SHA256 cut to its first 80 bits. RFC 2104 §5 suggests keeping at least half the hash (128 bits), which would make the signature 26 characters instead of 16. We chose the shorter token so it can be read out or typed. To forge one, an attacker has to guess the signature by sending requests to the Worker, one guess per request, and 2^80 guesses can't happen before a token expires (7 days at most).
+
 ### Revoking tokens
 
 Tokens can't be revoked one at a time. To end every outstanding token at once, change the Worker's `ACCESS_TOKEN_SECRET` (for the deployed Worker, `wrangler secret put ACCESS_TOKEN_SECRET`). Then mint new tokens with the new secret.

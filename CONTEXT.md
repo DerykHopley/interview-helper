@@ -72,6 +72,10 @@ _Avoid_: Eval results, comparison, scorecard
 A time-limited pass, issued by the app owner to a group, that allows use of the app's LLM features.
 _Avoid_: Password, login, Unlock Key
 
+**Vault**:
+The Candidate's encrypted storage in their own browser, opened with their Unlock Key. It is either new (not yet set up), locked or unlocked, and locks itself after 15 minutes of inactivity.
+_Avoid_: Database, store, session
+
 ### Shared content
 
 **Pack**:
