@@ -1,8 +1,116 @@
-// The Worker: the only server-side code (spec #1). Model endpoints and Access Token checks arrive with #3.
+// The Worker: the only server-side code (spec #1). Verifies Access Tokens and proxies model calls to OpenRouter.
+import { ACCESS_REFUSAL_ERROR, GenerateRequest, type AccessResponse, type GenerateResponse, type WorkerError } from "../../shared/workerProtocol";
+import { checkAccessToken } from "./accessToken";
+
+const OPENROUTER_CHAT = "https://openrouter.ai/api/v1/chat/completions";
+
+type Job = keyof Env["JOB_MODELS"];
+
+const error = (code: WorkerError, status: number) => Response.json({ error: code }, { status });
+
+type Access = { label: string; expiresAt: Date };
+
+/** Checks the Access Token on the request. Returns who it belongs to, or the error response to send. */
+async function authenticate(request: Request, env: Env): Promise<Access | Response> {
+  const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token) return error("missing_token", 401);
+  const access = await checkAccessToken(token, env.ACCESS_TOKEN_SECRET);
+  if (!access.ok) return error(ACCESS_REFUSAL_ERROR[access.reason], 401);
+  return { label: access.label, expiresAt: access.expiresAt };
+}
+
+/** Parses JSON without letting a parse error's message (which quotes the input) escape. */
+function parseJson(text: string): { ok: true; value: unknown } | { ok: false } {
+  try {
+    return { ok: true, value: JSON.parse(text) as unknown };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** The only thing the Worker ever logs: never request or response bodies, never the token (spec #1, story 78–79). */
+const logCall = (access: Access, job: string, model: string, cost: number | null) =>
+  console.log(JSON.stringify({ label: access.label, job, model, cost }));
+
+async function generate(request: Request, env: Env, access: Access) {
+  const body = parseJson(await request.text());
+  const parsed = body.ok ? GenerateRequest.safeParse(body.value) : null;
+  if (!parsed?.success) return error("bad_request", 400);
+  const { job, model: requested, system, user, schema } = parsed.data;
+  if (!Object.hasOwn(env.JOB_MODELS, job)) return error("unknown_job", 400);
+  // The job's default model, or one the request picks (the Developer panel), if it's on the allowed list.
+  const model = requested ?? env.JOB_MODELS[job as Job];
+  if (!(env.ALLOWED_MODELS as readonly string[]).includes(model)) return error("model_not_allowed", 400);
+
+  const upstream = await fetch(OPENROUTER_CHAT, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      response_format: { type: "json_schema", json_schema: { name: "reply", strict: true, schema } },
+      // Only providers that don't store or train on prompts (spec #1, story 80).
+      provider: { data_collection: "deny" },
+      usage: { include: true },
+    }),
+  });
+  if (!upstream.ok) {
+    logCall(access, job, model, null);
+    return error("model_unavailable", 502);
+  }
+  const reply = parseJson(await upstream.text());
+  const completion = (reply.ok ? reply.value : null) as { choices?: { message?: { content?: string } }[]; usage?: { cost?: number } } | null;
+  logCall(access, job, model, completion?.usage?.cost ?? null);
+  const content = parseJson(completion?.choices?.[0]?.message?.content ?? "");
+  if (!content.ok) return error("invalid_model_reply", 502);
+  return Response.json({ output: content.value } satisfies GenerateResponse);
+}
+
+/** CORS for the web app's origin only: every reply to it, including errors, carries the headers so the app can
+ * read why a request was refused. */
+function withCors(response: Response, request: Request, env: Env) {
+  if (request.headers.get("Origin") !== env.ALLOWED_ORIGIN) return response;
+  const headers = new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin", env.ALLOWED_ORIGIN);
+  headers.set("Vary", "Origin");
+  return new Response(response.body, { status: response.status, headers });
+}
+
+async function route(request: Request, env: Env): Promise<Response> {
+  const { pathname } = new URL(request.url);
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: { "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST", "Access-Control-Max-Age": "86400" },
+    });
+  }
+  if (request.method === "GET" && pathname === "/health") return Response.json({ ok: true });
+
+  if (pathname.startsWith("/v1/")) {
+    // Fail closed if a secret is missing (e.g. a deploy before `wrangler secret put`), rather than checking tokens
+    // against an empty key.
+    if (!env.ACCESS_TOKEN_SECRET || !env.OPENROUTER_API_KEY) return error("worker_not_configured", 500);
+    const auth = await authenticate(request, env);
+    if (auth instanceof Response) return auth;
+    if (request.method === "GET" && pathname === "/v1/access") return Response.json({ label: auth.label, expiresAt: auth.expiresAt.toISOString() } satisfies AccessResponse);
+    if (request.method === "POST" && pathname === "/v1/generate") return generate(request, env, auth);
+  }
+  return new Response("Not found", { status: 404 });
+}
+
 export default {
-  fetch(request) {
-    const { pathname } = new URL(request.url);
-    if (request.method === "GET" && pathname === "/health") return Response.json({ ok: true });
-    return new Response("Not found", { status: 404 });
+  async fetch(request, env) {
+    let response: Response;
+    try {
+      response = await route(request, env);
+    } catch (e) {
+      // Last resort. Log only the error's type: its message could quote a request or reply.
+      console.error(JSON.stringify({ error: "internal_error", type: e instanceof Error ? e.name : typeof e }));
+      response = error("internal_error", 500);
+    }
+    return withCors(response, request, env);
   },
 } satisfies ExportedHandler<Env>;

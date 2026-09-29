@@ -15,11 +15,15 @@
     "composite": true,
     "emitDeclarationOnly": true,
     "tsBuildInfoFile": "../node_modules/.tmp/worker-tsconfig.json.tsbuildinfo",
-    "outDir": "../node_modules/.tmp/worker-tsconfig.json"
+    "outDir": "../node_modules/.tmp/worker-tsconfig.json",
+    "rootDir": ".."
   },
   "include": [
     "src",
     "test",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "../src/model-gateway/workerGateway.ts",
+    "../src/model-gateway/ModelGateway.ts",
+    "../shared"
   ]
 }
