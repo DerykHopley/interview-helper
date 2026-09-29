@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { everythingStored } from "../test/browserStorage";
+import { corruptStoredRecord, everythingStored } from "../test/browserStorage";
 import { setUpWithoutToken, unlockWith } from "../test/candidate";
 import { renderApp } from "../test/renderApp";
 
@@ -65,7 +65,7 @@ describe("creating a Scenario by hand", () => {
     renderApp();
     await setUpWithoutToken();
 
-    await createScenario({ Title: "Half a story", Situation: "Something happened." });
+    await createScenario({ Title: "Half a Scenario", Situation: "Something happened." });
 
     expect(screen.getByRole("alert")).toHaveTextContent("Still missing: your role, the Task, the Action, the Result, at least one skill.");
     expect(screen.getByLabelText("Task *")).toHaveAccessibleDescription("Add the Task");
@@ -74,7 +74,7 @@ describe("creating a Scenario by hand", () => {
     await fillScenario({ "Your role": "Tech lead", Task: "t", Action: "a", Result: "r", Skills: "delivery" });
     await user.click(screen.getByRole("button", { name: "Save Scenario" }));
 
-    expect(screen.getByRole("article", { name: "Half a story" })).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "Half a Scenario" })).toBeInTheDocument();
   });
 
   it("doesn't require measurable results, but suggests adding one", async () => {
@@ -268,5 +268,86 @@ describe("the list", () => {
       expect.stringContaining(MENTORING.Title),
       expect.stringContaining(CHECKOUT.Title),
     ]);
+  });
+});
+
+describe("when things go wrong", () => {
+  it("saves once, however many times Save is clicked", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await setUpWithoutToken();
+    await user.click(await screen.findByRole("button", { name: "+ New Scenario" }));
+    await fillScenario(CHECKOUT);
+
+    await user.dblClick(screen.getByRole("button", { name: "Save Scenario" }));
+
+    await screen.findByRole("article", { name: CHECKOUT.Title });
+    expect(listed()).toHaveLength(1);
+  });
+
+  it("still shows the other Scenarios when one can't be read, and says so", async () => {
+    const { unmount } = renderApp();
+    const unlockKey = await setUpWithoutToken();
+    await createScenario(CHECKOUT);
+    await createScenario(MENTORING);
+    unmount();
+    await corruptStoredRecord((id) => id.startsWith("scenario:"));
+
+    renderApp();
+    await unlockWith(unlockKey);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("1 Scenario couldn't be read, so it isn't shown.");
+    expect(listed()).toHaveLength(1);
+  });
+
+  it("stores a skill typed twice only once", async () => {
+    renderApp();
+    await setUpWithoutToken();
+
+    await createScenario({ ...CHECKOUT, Skills: "Leadership, leadership, delivery" });
+
+    expect(within(screen.getByRole("article", { name: CHECKOUT.Title })).getAllByText(/leadership/i)).toHaveLength(1);
+  });
+});
+
+describe("filters that match nothing", () => {
+  it("says so when a search matches no Scenario", async () => {
+    renderApp();
+    await setUpWithoutToken();
+    await createScenario(CHECKOUT);
+
+    await userEvent.setup().type(screen.getByRole("searchbox", { name: "Search titles and skills" }), "zebra");
+
+    expect(screen.getByText("No Scenarios match. Try another search, or clear the skill filter.")).toBeInTheDocument();
+  });
+
+  it("keeps the skill filter visible, and clearable, while the overview is hidden", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await setUpWithoutToken();
+    await createScenario(CHECKOUT);
+    await createScenario(MENTORING);
+
+    await user.click(within(screen.getByRole("region", { name: "Skills your Scenarios cover" })).getByRole("button", { name: /mentoring/ }));
+    await user.click(screen.getByRole("button", { name: "Hide skills overview" }));
+    await user.click(screen.getByRole("button", { name: "Clear skill filter: mentoring" }));
+
+    expect(listed()).toHaveLength(2);
+  });
+
+  it("drops the skill filter once no Scenario has that skill", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderApp();
+    await setUpWithoutToken();
+    await createScenario(CHECKOUT);
+    await createScenario(MENTORING);
+
+    await user.click(within(screen.getByRole("region", { name: "Skills your Scenarios cover" })).getByRole("button", { name: /mentoring/ }));
+    await user.click(screen.getByRole("button", { name: /Mentored two juniors/ }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(listed()).toEqual([expect.stringContaining(CHECKOUT.Title)]);
+    expect(screen.queryByRole("button", { name: /Clear skill filter/ })).not.toBeInTheDocument();
   });
 });

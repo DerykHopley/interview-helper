@@ -23,8 +23,10 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
           </button>
         </div>
       </header>
-      <main className="dashboard" role="tabpanel" id="panel-scenario-bank" aria-labelledby="tab-scenario-bank">
-        <ScenarioBank vault={vault} />
+      <main className="dashboard">
+        <div role="tabpanel" id="panel-scenario-bank" aria-labelledby="tab-scenario-bank">
+          <ScenarioBank vault={vault} />
+        </div>
       </main>
     </>
   );

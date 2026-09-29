@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import type { UnlockedVault } from "../vault/vault";
-import { AccessTokenPanel, type Active } from "./AccessTokenPanel";
+import { AccessTokenPanel, type Active, type CheckResult } from "./AccessTokenPanel";
 import { keptAccessToken } from "./keptAccessToken";
 
 /** "6h left", or in days once it's two days or more. */
@@ -17,6 +17,7 @@ export function AccessChip({ vault }: { vault: UnlockedVault }) {
   const kept = useMemo(() => keptAccessToken(vault), [vault]);
   const [remembered, setRemembered] = useState<string | null | undefined>(undefined); // undefined while reading
   const [active, setActive] = useState<Active | null>(null);
+  const [lastCheck, setLastCheck] = useState<CheckResult | null>(null);
   const [open, setOpen] = useState(false);
 
   useCancellableEffect(
@@ -28,6 +29,14 @@ export function AccessChip({ vault }: { vault: UnlockedVault }) {
     [kept],
   );
 
+  /** What the chip says: a kept token is "checking…" until the Worker answers, and "not checked" if it can't. */
+  function status() {
+    if (active) return timeLeft(active.expiresAt);
+    if (remembered === undefined || (remembered && lastCheck === null)) return "checking…";
+    if (remembered && lastCheck === "unreachable") return "not checked";
+    return "none";
+  }
+
   return (
     <div className="access-chip">
       <button
@@ -37,7 +46,7 @@ export function AccessChip({ vault }: { vault: UnlockedVault }) {
         aria-controls="access-panel"
         onClick={() => setOpen((o) => !o)}
       >
-        Access · {active ? timeLeft(active.expiresAt) : "none"}
+        Access · {status()}
       </button>
       <div id="access-panel" className="card access-panel" hidden={!open}>
         <h2 className="card-title">Access Token</h2>
@@ -51,9 +60,13 @@ export function AccessChip({ vault }: { vault: UnlockedVault }) {
             }}
             onForget={() => {
               setActive(null);
+              setRemembered(null);
               void kept.forget();
             }}
-            onMessage={(message) => message && setOpen(true)}
+            onChecked={(result) => {
+              setLastCheck(result);
+              if (result !== "active") setOpen(true); // so the Candidate sees why
+            }}
           />
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useId, useState, type FormEvent } from "react";
 import type { Origin, Scenario } from "./scenarioFormat";
+import { uniqueSkills } from "./skills";
 
 type Name = "title" | "role" | "situation" | "task" | "action" | "result" | "skills" | "measurableResults" | "date" | "company";
 type Fields = Record<Name, string>;
@@ -39,13 +40,23 @@ export function ScenarioForm({ initial, onSave, onCancel }: { initial?: Scenario
   const [fields, setFields] = useState<Fields>(() => (initial ? toFields(initial) : EMPTY));
   const origin: Origin = initial?.origin ?? "hand-written"; // editing never changes where a Scenario came from
   const [tried, setTried] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
   const id = useId();
   const missing = (Object.keys(REQUIRED) as Name[]).filter((name) => (name === "skills" ? splitSkills(fields.skills).length === 0 : !fields[name].trim()));
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     setTried(true);
-    if (missing.length === 0) void onSave(toScenario(fields, origin));
+    if (missing.length > 0 || saving) return;
+    setSaving(true); // a second click mustn't save a second copy
+    setFailed(false);
+    try {
+      await onSave(toScenario(fields, origin));
+    } catch {
+      setFailed(true);
+      setSaving(false);
+    }
   }
 
   const field = (name: Name, label: string, multiline = false) => {
@@ -78,7 +89,7 @@ export function ScenarioForm({ initial, onSave, onCancel }: { initial?: Scenario
   };
 
   return (
-    <form className="form" onSubmit={submit} noValidate>
+    <form className="form" onSubmit={(e) => void submit(e)} noValidate>
       {field("title", "Title")}
       {field("role", "Your role")}
       {field("situation", "Situation", true)}
@@ -96,8 +107,13 @@ export function ScenarioForm({ initial, onSave, onCancel }: { initial?: Scenario
           Still missing: {missing.map((name) => REQUIRED[name]!.inSummary).join(", ")}.
         </p>
       )}
+      {failed && (
+        <p role="alert" className="error">
+          Couldn't save the Scenario. Try again; if it keeps failing, this browser may be out of storage space.
+        </p>
+      )}
       <div className="actions">
-        <button type="submit" className="button-primary">
+        <button type="submit" className="button-primary" disabled={saving}>
           Save Scenario
         </button>
         <button type="button" className="button-link" onClick={onCancel}>
@@ -108,7 +124,7 @@ export function ScenarioForm({ initial, onSave, onCancel }: { initial?: Scenario
   );
 }
 
-const splitSkills = (text: string) => text.split(",").map((s) => s.trim()).filter(Boolean);
+const splitSkills = (text: string) => uniqueSkills(text.split(","));
 const splitLines = (text: string) => text.split("\n").map((s) => s.trim()).filter(Boolean);
 
 function toFields(s: Scenario): Fields {

@@ -39,3 +39,28 @@ function asText(value: unknown): string {
   if (value && typeof value === "object") return Object.values(value).map(asText).join("\n");
   return String(value);
 }
+
+/** Flips a byte in the first stored record whose id matches, as corrupted or tampered browser storage would. */
+export async function corruptStoredRecord(matches: (id: string) => boolean) {
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open("interview-helper");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("IndexedDB request failed"));
+  });
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction("records", "readwrite");
+    const request = tx.objectStore("records").openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      if (!matches(cursor.key as string)) return cursor.continue(); // the app's ids are strings
+      const record = cursor.value as { iv: Uint8Array; data: ArrayBuffer };
+      const data = new Uint8Array(record.data.slice(0));
+      data[0] ^= 0xff;
+      cursor.update({ ...record, data: data.buffer });
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error("IndexedDB transaction failed"));
+  });
+  db.close();
+}

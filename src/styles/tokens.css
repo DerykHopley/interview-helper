@@ -13,12 +13,30 @@
   --faint: #ffffff0a;
   --faint-line: #ffffff14;
 
+  /* Panels on the table */
+  --panel-dark: #111827;
+  --panel-raised: #ffffff14;
+
   /* Meaning */
   --accent: #fcd34d;
   --accent-ink: #111827;
   --focus: #b45309;
   --ok: #16a34a;
   --ok-soft: #86efac;
+  --ok-tint: #16a34a33;
+  --warn-tint: #f59e0b33;
+  --accent-tint: #fcd34d14;
+
+  /* Skill tags and origins, on the table and on a card */
+  --skill-on-table-bg: #16a34a26;
+  --skill-on-card-bg: #dcfce7;
+  --skill-on-card: #166534;
+  --origin-hand-bg: #ffffff1f;
+  --origin-hand-on-card-bg: #e5e7eb;
+  --origin-cowritten-bg: #6366f133;
+  --origin-cowritten: #c7d2fe;
+  --origin-cowritten-on-card-bg: #e0e7ff;
+  --origin-cowritten-on-card: #3730a3;
   --note-bg: #f3efe3;
   --warn-bg: #fef3c7;
   --warn-line: #f59e0b66;

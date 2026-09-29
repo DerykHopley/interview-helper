@@ -8,10 +8,19 @@ export type SavedScenario = Scenario & { id: string };
 
 export function scenarioBank(vault: UnlockedVault) {
   return {
-    /** In title order. */
-    async list(): Promise<SavedScenario[]> {
+    /** The Scenarios in title order, and how many stored ones couldn't be read (damaged, or not a valid Scenario). */
+    async list(): Promise<{ scenarios: SavedScenario[]; unreadable: number }> {
       const records = await vault.list<string>(PREFIX);
-      return records.map(({ id, value }) => ({ ...parseScenario(value), id })).sort((a, b) => a.title.localeCompare(b.title));
+      const scenarios: SavedScenario[] = [];
+      for (const record of records) {
+        try {
+          if (record.readable) scenarios.push({ ...parseScenario(record.value), id: record.id });
+        } catch {
+          // counted below
+        }
+      }
+      scenarios.sort((a, b) => a.title.localeCompare(b.title));
+      return { scenarios, unreadable: records.length - scenarios.length };
     },
     /** Saves a new Scenario, or replaces the one with this id. Returns its id. */
     async save(scenario: Scenario, id: string = `${PREFIX}${crypto.randomUUID()}`) {
@@ -21,5 +30,3 @@ export function scenarioBank(vault: UnlockedVault) {
     delete: (id: string) => vault.delete(id),
   };
 }
-
-export type ScenarioBankStore = ReturnType<typeof scenarioBank>;

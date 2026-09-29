@@ -3,49 +3,60 @@ import { useCancellableEffect } from "../hooks";
 import type { UnlockedVault } from "../vault/vault";
 import { scenarioBank, type SavedScenario } from "./scenarioBank";
 import { ScenarioForm } from "./ScenarioForm";
-import { ScenarioReader, SkillTags, OriginBadge } from "./ScenarioReader";
-import { SkillsOverview, skillCounts } from "./SkillsOverview";
+import { OriginBadge, ScenarioReader, SkillTags } from "./ScenarioReader";
 import type { Scenario } from "./scenarioFormat";
+import { hasSkill, skillCounts } from "./skills";
+import { SkillsOverview } from "./SkillsOverview";
 
 type Pane = { mode: "read" | "edit"; id: string } | { mode: "new" } | { mode: "none" };
+type Loaded = { scenarios: SavedScenario[]; unreadable: number };
 
-/** The Candidate's Scenarios: a list on the left, the selected one in full on the right (C4 design). */
+/** The Candidate's Scenarios (C4 design): a skills overview on top, then a list on the left and the selected
+ * Scenario in full on the right. On a phone the list and the Scenario are two screens. */
 export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
   const bank = useMemo(() => scenarioBank(vault), [vault]);
-  const [scenarios, setScenarios] = useState<SavedScenario[] | null>(null);
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [pane, setPane] = useState<Pane>({ mode: "none" });
   const [query, setQuery] = useState("");
-  const [skill, setSkill] = useState<string | null>(null);
+  const [skillFilter, setSkillFilter] = useState<string | null>(null); // a skillKey
   const [overviewShown, setOverviewShown] = useState(true);
 
   useCancellableEffect(
     (isCurrent) => {
-      void bank.list().then((list) => {
-        if (isCurrent()) setScenarios(list);
+      void bank.list().then((result) => {
+        if (isCurrent()) setLoaded(result);
       });
     },
     [bank],
   );
 
+  /** Reloads the list after a change, dropping a skill filter that no Scenario matches any more. */
+  async function reload() {
+    const result = await bank.list();
+    setLoaded(result);
+    setSkillFilter((key) => (key && result.scenarios.some((s) => hasSkill(s.skills, key)) ? key : null));
+  }
+
   async function save(scenario: Scenario, existingId?: string) {
     const id = await bank.save(scenario, existingId);
-    setScenarios(await bank.list());
+    await reload();
     setPane({ mode: "read", id });
   }
 
   async function remove(scenario: SavedScenario) {
     if (!confirm(`Delete "${scenario.title}"? This can't be undone.`)) return;
     await bank.delete(scenario.id);
-    setScenarios(await bank.list());
+    await reload();
     setPane({ mode: "none" });
   }
 
-  if (!scenarios) return null;
-  const q = query.trim().toLowerCase();
-  const shown = scenarios.filter(
-    (s) => (!skill || s.skills.some((t) => t.toLowerCase() === skill)) && (!q || [s.title, ...s.skills].some((t) => t.toLowerCase().includes(q))),
-  );
+  if (!loaded) return null;
+  const { scenarios, unreadable } = loaded;
+  const search = query.trim().toLowerCase();
+  const matchesSearch = (scenario: SavedScenario) => [scenario.title, ...scenario.skills].some((text) => text.toLowerCase().includes(search));
+  const shown = scenarios.filter((scenario) => (!skillFilter || hasSkill(scenario.skills, skillFilter)) && (!search || matchesSearch(scenario)));
   const selected = pane.mode === "read" || pane.mode === "edit" ? scenarios.find((s) => s.id === pane.id) : undefined;
+  const filterName = skillCounts(scenarios).find((c) => c.key === skillFilter)?.skill;
 
   return (
     <div className={`bank${pane.mode === "none" ? "" : " has-pane"}`}>
@@ -53,12 +64,12 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
         {overviewShown ? (
           <>
             <div className="bank-overview-head">
-              <h3 className="section-label">Skills overview</h3>
+              <h2 className="label-caps">Skills overview</h2>
               <button type="button" className="button-link" aria-label="Hide skills overview" onClick={() => setOverviewShown(false)}>
                 Hide ▴
               </button>
             </div>
-            <SkillsOverview scenarios={scenarios} filter={skill} onFilter={setSkill} />
+            <SkillsOverview scenarios={scenarios} filter={skillFilter} onFilter={setSkillFilter} />
           </>
         ) : (
           <button type="button" className="overview-folded" onClick={() => setOverviewShown(true)}>
@@ -73,6 +84,11 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
             + New Scenario
           </button>
         </div>
+        {unreadable > 0 && (
+          <p role="alert" className="notice-warn">
+            {unreadable === 1 ? "1 Scenario" : `${unreadable} Scenarios`} couldn't be read, so {unreadable === 1 ? "it isn't" : "they aren't"} shown.
+          </p>
+        )}
         <input
           type="search"
           className="field bank-search"
@@ -81,17 +97,30 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        {skillFilter && filterName && (
+          <p className="bank-filter">
+            Skill: <strong>{filterName}</strong>{" "}
+            <button type="button" className="button-link" aria-label={`Clear skill filter: ${filterName}`} onClick={() => setSkillFilter(null)}>
+              ✕ Clear
+            </button>
+          </p>
+        )}
         <ul className="bank-list" aria-label="Scenarios">
-          {shown.map((s) => (
-            <li key={s.id}>
-              <button type="button" className={`bank-item${s.id === selected?.id ? " is-selected" : ""}`} onClick={() => setPane({ mode: "read", id: s.id })}>
-                <span className="bank-item-title">{s.title}</span>
-                <SkillTags skills={s.skills} />
-                <OriginBadge origin={s.origin} />
+          {shown.map((scenario) => (
+            <li key={scenario.id}>
+              <button
+                type="button"
+                className={`bank-item${scenario.id === selected?.id ? " is-selected" : ""}`}
+                onClick={() => setPane({ mode: "read", id: scenario.id })}
+              >
+                <span className="bank-item-title">{scenario.title}</span>
+                <SkillTags skills={scenario.skills} />
+                <OriginBadge origin={scenario.origin} />
               </button>
             </li>
           ))}
         </ul>
+        {scenarios.length > 0 && shown.length === 0 && <p className="bank-hint">No Scenarios match. Try another search, or clear the skill filter.</p>}
       </div>
       <div className="bank-pane">
         {pane.mode !== "none" && (
@@ -101,7 +130,7 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
         )}
         {pane.mode === "none" && scenarios.length > 0 && <p className="bank-hint">Choose a Scenario to read it in full.</p>}
         {pane.mode === "none" && scenarios.length === 0 && (
-          <p className="bank-hint">No Scenarios yet. Add your first with “+ New Scenario”: a real story from your own career.</p>
+          <p className="bank-hint">No Scenarios yet. Add your first with “+ New Scenario”, from your own career.</p>
         )}
         {pane.mode === "new" && (
           <>
