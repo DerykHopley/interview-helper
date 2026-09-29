@@ -29,3 +29,8 @@ export async function unlockWith(unlockKey: string) {
   await user().type(await screen.findByLabelText("Unlock Key"), unlockKey);
   await user().click(screen.getByRole("button", { name: "Unlock" }));
 }
+
+/** Opens one of the dashboard's tabs (Interviews, Scenario Bank). */
+export async function openTab(name: string) {
+  await user().click(await screen.findByRole("tab", { name }));
+}

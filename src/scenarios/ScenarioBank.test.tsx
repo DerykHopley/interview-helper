@@ -2,8 +2,19 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { corruptStoredRecord, everythingStored } from "../test/browserStorage";
-import { setUpWithoutToken, unlockWith } from "../test/candidate";
+import { openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
 import { renderApp } from "../test/renderApp";
+
+/** Sets up, or unlocks, and opens the Scenario Bank tab (the dashboard opens on Interviews). */
+async function setUpAndOpenBank() {
+  const unlockKey = await setUpWithoutToken();
+  await openTab("Scenario Bank");
+  return unlockKey;
+}
+async function unlockAndOpenBank(unlockKey: string) {
+  await unlockWith(unlockKey);
+  await openTab("Scenario Bank");
+}
 
 const CHECKOUT = {
   Title: "Rescued the failing checkout migration",
@@ -50,7 +61,7 @@ const settled = () =>
 describe("creating a Scenario by hand", () => {
   it("lists it with its title and skills, and shows it in full with its origin", async () => {
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
 
     await createScenario(CHECKOUT);
 
@@ -68,7 +79,7 @@ describe("creating a Scenario by hand", () => {
   it("says which required parts are missing, and saves nothing until they're there", async () => {
     const user = userEvent.setup();
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
 
     await createScenario({ Title: "Half a Scenario", Situation: "Something happened." });
 
@@ -84,7 +95,7 @@ describe("creating a Scenario by hand", () => {
 
   it("doesn't require measurable results, but suggests adding one", async () => {
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await userEvent.setup().click(await screen.findByRole("button", { name: "+ New Scenario" }));
 
     expect(screen.getByLabelText("Measurable results")).toHaveAccessibleDescription(/If you can, add a number or what changed/);
@@ -107,12 +118,12 @@ describe("keeping Scenarios", () => {
       Date: "2023",
     };
     const { unmount } = renderApp();
-    const unlockKey = await setUpWithoutToken();
+    const unlockKey = await setUpAndOpenBank();
     await createScenario(awkward);
     unmount();
 
     renderApp();
-    await unlockWith(unlockKey);
+    await unlockAndOpenBank(unlockKey);
     await userEvent.setup().click(await screen.findByRole("button", { name: /Said "no": to the CTO/ }));
 
     const reader = screen.getByRole("article", { name: 'Said "no": to the CTO' });
@@ -134,7 +145,7 @@ describe("editing and deleting", () => {
   it("edits a Scenario in place, keeping its origin, and keeps the change after a reload", async () => {
     const user = userEvent.setup();
     const { unmount } = renderApp();
-    const unlockKey = await setUpWithoutToken();
+    const unlockKey = await setUpAndOpenBank();
     await createScenario(CHECKOUT);
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
@@ -147,7 +158,7 @@ describe("editing and deleting", () => {
     unmount();
 
     renderApp();
-    await unlockWith(unlockKey);
+    await unlockAndOpenBank(unlockKey);
     await user.click(await screen.findByRole("button", { name: /Rescued the failing checkout migration/ }));
     const reader = screen.getByRole("article", { name: CHECKOUT.Title });
     expect(reader).toHaveTextContent("It shipped only three weeks late.");
@@ -157,7 +168,7 @@ describe("editing and deleting", () => {
   it("discards changes on Cancel", async () => {
     const user = userEvent.setup();
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
@@ -171,7 +182,7 @@ describe("editing and deleting", () => {
     const user = userEvent.setup();
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const { unmount } = renderApp();
-    const unlockKey = await setUpWithoutToken();
+    const unlockKey = await setUpAndOpenBank();
     await createScenario(CHECKOUT);
 
     await user.click(screen.getByRole("button", { name: "Delete" }));
@@ -182,7 +193,7 @@ describe("editing and deleting", () => {
     unmount();
 
     renderApp();
-    await unlockWith(unlockKey);
+    await unlockAndOpenBank(unlockKey);
     await screen.findByRole("button", { name: "+ New Scenario" });
     expect(within(screen.getByRole("list", { name: "Scenarios" })).queryAllByRole("listitem")).toHaveLength(0);
   });
@@ -190,7 +201,7 @@ describe("editing and deleting", () => {
   it("keeps the Scenario when the Candidate cancels the delete", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(false);
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
 
     await userEvent.setup().click(screen.getByRole("button", { name: "Delete" }));
@@ -203,7 +214,7 @@ describe("finding Scenarios", () => {
   it("searches titles and skills", async () => {
     const user = userEvent.setup();
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
     await createScenario(MENTORING);
 
@@ -221,7 +232,7 @@ describe("the skills overview", () => {
 
   it("counts the skills the Scenarios cover, most first, ignoring capitals", async () => {
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
     await createScenario({ ...MENTORING, Skills: "mentoring, Technical Leadership" });
 
@@ -233,7 +244,7 @@ describe("the skills overview", () => {
   it("filters the list by a skill, and clicking it again shows everything", async () => {
     const user = userEvent.setup();
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
     await createScenario(MENTORING);
 
@@ -248,7 +259,7 @@ describe("the skills overview", () => {
   it("folds into one line with Hide, and comes back with Show", async () => {
     const user = userEvent.setup();
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
 
     await user.click(screen.getByRole("button", { name: "Hide skills overview" }));
@@ -263,7 +274,7 @@ describe("the skills overview", () => {
 describe("the list", () => {
   it("is in title order", async () => {
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
     await createScenario(MENTORING);
     await createScenario({ ...CHECKOUT, Title: "Built the feature flag system" });
@@ -280,7 +291,7 @@ describe("when things go wrong", () => {
   it("saves once, however many times Save is clicked", async () => {
     const user = userEvent.setup();
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await user.click(await screen.findByRole("button", { name: "+ New Scenario" }));
     await fillScenario(CHECKOUT);
 
@@ -292,14 +303,14 @@ describe("when things go wrong", () => {
 
   it("still shows the other Scenarios when one can't be read, and says so", async () => {
     const { unmount } = renderApp();
-    const unlockKey = await setUpWithoutToken();
+    const unlockKey = await setUpAndOpenBank();
     await createScenario(CHECKOUT);
     await createScenario(MENTORING);
     unmount();
     await corruptStoredRecord((id) => id.startsWith("scenario:"));
 
     renderApp();
-    await unlockWith(unlockKey);
+    await unlockAndOpenBank(unlockKey);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("1 Scenario couldn't be read, so it isn't shown.");
     expect(listed()).toHaveLength(1);
@@ -307,7 +318,7 @@ describe("when things go wrong", () => {
 
   it("stores a skill typed twice only once", async () => {
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
 
     await createScenario({ ...CHECKOUT, Skills: "Leadership, leadership, delivery" });
 
@@ -318,7 +329,7 @@ describe("when things go wrong", () => {
 describe("filters that match nothing", () => {
   it("says so when a search matches no Scenario", async () => {
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
 
     await userEvent.setup().type(screen.getByRole("searchbox", { name: "Search titles and skills" }), "zebra");
@@ -329,7 +340,7 @@ describe("filters that match nothing", () => {
   it("keeps the skill filter visible, and clearable, while the overview is hidden", async () => {
     const user = userEvent.setup();
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
     await createScenario(MENTORING);
 
@@ -344,7 +355,7 @@ describe("filters that match nothing", () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValue(true);
     renderApp();
-    await setUpWithoutToken();
+    await setUpAndOpenBank();
     await createScenario(CHECKOUT);
     await createScenario(MENTORING);
 

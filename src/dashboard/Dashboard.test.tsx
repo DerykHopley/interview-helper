@@ -13,10 +13,13 @@ const gateway = (expiresAt = inHours(6)) =>
   createFakeModelGateway({ accessTokens: { [TOKEN]: { ok: true, label: "cohort1", expiresAt } } });
 
 describe("the dashboard", () => {
-  it("has the Scenario Bank tab, and Lock", async () => {
+  it("opens on the Interviews tab, switches to the Scenario Bank, and has Lock", async () => {
     renderApp();
     await setUpWithoutToken();
 
+    expect(screen.getByRole("tab", { name: "Interviews", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: "Interviews" })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Scenario Bank" }));
     expect(screen.getByRole("tab", { name: "Scenario Bank", selected: true })).toBeInTheDocument();
     expect(screen.getByRole("tabpanel", { name: "Scenario Bank" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lock" })).toBeInTheDocument();
