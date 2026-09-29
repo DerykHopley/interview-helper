@@ -1,5 +1,8 @@
 import type { AccessStatus, DecisionAnswer, ModelGateway, ModelJob } from "../model-gateway/ModelGateway";
 
+/** Makes a reply from the request, e.g. to answer about the Scenarios it sent. */
+export type ReplyFor = (request: { job: ModelJob; system: string; user: string }) => unknown;
+/** Per job, the replies in order: each a scripted value, or a ReplyFor function. */
 type Script = Partial<Record<ModelJob, unknown[]>>;
 type DecisionScript = Partial<Record<ModelJob, Record<string, DecisionAnswer>[]>>;
 
@@ -26,7 +29,7 @@ export function createFakeModelGateway({
   /** How the Worker would answer for each token; any other token is invalid. */
   accessTokens?: Record<string, AccessStatus>;
 } = {}): FakeModelGateway {
-  const queues = structuredClone(generate);
+  const queues = Object.fromEntries(Object.entries(generate).map(([job, replies]) => [job, [...replies]])) as Script;
   const decisions = structuredClone(decide);
   let getAccessToken = (): string | null => null;
   return {
@@ -35,7 +38,8 @@ export function createFakeModelGateway({
     },
     accessTokenToSend: () => getAccessToken(),
     generate(request) {
-      const next = queues[request.job]?.shift();
+      const scripted = queues[request.job]?.shift();
+      const next: unknown = typeof scripted === "function" ? (scripted as ReplyFor)(request) : scripted;
       if (next === undefined) return Promise.reject(new Error(`No scripted reply for job "${request.job}"`));
       return Promise.resolve(request.schema.parse(next));
     },

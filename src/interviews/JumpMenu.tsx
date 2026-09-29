@@ -1,8 +1,8 @@
 import { PopupMenu } from "../PopupMenu";
 import type { Question } from "./interview";
 
-/** S3's ☰ Questions menu in the header: every Question by number, the current one marked; choosing one jumps to it.
- * Status dots (✓ kept, ! Gap) join with #10 and #11. */
+/** S3's ☰ Questions menu in the header: every Question by number with its status, the current one marked; choosing
+ * one jumps to it. */
 export function JumpMenu({ questions, current, onJump }: { questions: Question[]; current: number; onJump: (index: number) => void }) {
   if (questions.length === 0) return null;
   return (
@@ -15,11 +15,24 @@ export function JumpMenu({ questions, current, onJump }: { questions: Question[]
         current: i === current,
         label: (
           <>
-            <span className="jump-number">{i + 1}</span> {question.text}
+            <span className="jump-number">{i + 1}</span>
+            <StatusDot question={question} /> {question.text}
           </>
         ),
         onSelect: () => onJump(i),
       }))}
     />
+  );
+}
+
+/** ! for a Gap, a circle once matched, a dashed circle before; #11 adds ✓ for a kept Match. */
+function StatusDot({ question }: { question: Question }) {
+  const status = question.matching?.gap ? "gap" : question.matching ? "matched" : "unmatched";
+  const label = { gap: "Gap", matched: "matched", unmatched: "not matched yet" }[status];
+  return (
+    <span className={`jump-dot is-${status}`} aria-hidden="false">
+      <span aria-hidden="true">{status === "gap" ? "!" : ""}</span>
+      <span className="visually-hidden">({label})</span>
+    </span>
   );
 }

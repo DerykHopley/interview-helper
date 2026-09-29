@@ -15,6 +15,8 @@ export const WORKER_ERRORS = [
   "unknown_job",
   "model_not_allowed",
   "model_unavailable",
+  "settings_not_allowed",
+  "reply_cut_off",
   "invalid_model_reply",
   "internal_error",
 ] as const;
@@ -28,10 +30,12 @@ export const ACCESS_REFUSAL_ERROR = { invalid: "invalid_token", expired: "expire
 /** GET /v1/access → 200 */
 export type AccessResponse = { label: string; expiresAt: string };
 
-/** POST /v1/generate body. `schema` is the reply's JSON Schema; `model` may pick another allowed model. */
+/** POST /v1/generate body. `schema` is the reply's JSON Schema; `model` may pick another allowed model, and
+ * `maxTokens` a lower cap than the job's own. */
 export const GenerateRequest = z.object({
   job: z.string(),
   model: z.string().optional(),
+  maxTokens: z.number().int().positive().optional(),
   system: z.string(),
   user: z.string(),
   schema: z.record(z.string(), z.unknown()),

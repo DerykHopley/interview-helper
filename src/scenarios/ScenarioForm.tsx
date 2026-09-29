@@ -36,8 +36,16 @@ const HINT: Partial<Record<Name, string>> = {
 
 /** Creating or editing a Scenario by hand (spec #1, stories 28–31). It says which required parts are missing
  * rather than saving an incomplete Scenario. */
-export function ScenarioForm({ initial, onSave, onCancel }: { initial?: Scenario; onSave: (scenario: Scenario) => Promise<void>; onCancel: () => void }) {
-  const [fields, setFields] = useState<Fields>(() => (initial ? toFields(initial) : EMPTY));
+type Props = {
+  initial?: Scenario;
+  /** For a new Scenario: a skill to start with, e.g. from a Gap. */
+  skill?: string;
+  onSave: (scenario: Scenario) => Promise<void>;
+  onCancel: () => void;
+};
+
+export function ScenarioForm({ initial, skill = "", onSave, onCancel }: Props) {
+  const [fields, setFields] = useState<Fields>(() => (initial ? toFields(initial) : { ...EMPTY, skills: skill }));
   const origin: Origin = initial?.origin ?? "hand-written"; // editing never changes where a Scenario came from
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);

@@ -197,7 +197,48 @@ textarea.field { resize: vertical; font-family: inherit; }
 .card-menu-button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--ink-muted); font-size: 20px; cursor: pointer; }
 .card-menu-button:hover { background: var(--note-bg); }
 
+/* ---------- Matches (S3) ---------- */
+.deck-question { display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; }
+.deck-question > .question-card { align-self: stretch; }
+.button-deal { padding: 10px 26px; border: 2px solid var(--accent); border-radius: var(--radius-pill); background: none; color: var(--accent); font-weight: 700; cursor: pointer; }
+.matches { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.matches-status { margin: 0; font-size: 14px; color: var(--on-table-muted); }
+.match-fan { display: flex; justify-content: center; align-items: flex-start; margin: 0; padding: 8px 0 0; list-style: none; }
+.match-card { display: flex; flex-direction: column; gap: 6px; width: 220px; min-height: 200px; margin: 0 -10px; padding: 16px; border: 2px solid #4b5563; border-radius: 14px; background: var(--panel-dark); color: var(--on-table); box-shadow: 0 14px 30px var(--shadow-color); }
+.match-card:nth-child(1) { order: 2; z-index: 2; transform: translateY(-6px); border-color: var(--accent); }
+.match-card:nth-child(2) { order: 1; transform: rotate(-4deg); }
+.match-card:nth-child(3) { order: 3; transform: rotate(4deg); }
+.match-rank { color: var(--accent); }
+.match-title { margin: 0; font-weight: 700; }
+.match-card .origin.is-demo { align-self: flex-start; }
+.match-reason { margin: 0; font-size: 14px; color: #d1d5db; overflow-wrap: anywhere; }
+.match-card.is-placeholder { display: block; background: linear-gradient(90deg, var(--panel-dark), #1f2937, var(--panel-dark)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; border-color: #374151; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .match-card.is-placeholder { animation: none; } }
+.gap-card { align-items: flex-start; max-width: 460px; padding: 18px 20px; border: 2px dashed var(--gap); border-radius: var(--radius-card); background: var(--panel-dark); }
+.gap-label { color: var(--gap); }
+.gap-title { margin: 0; font-family: var(--font-display); font-size: 20px; }
+.gap-suggestion { margin: 0; color: #d1d5db; }
+.jump-dot { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 6px; vertical-align: -3px; border-radius: 50%; font-size: 12px; font-weight: 800; }
+.jump-dot.is-unmatched { border: 1.5px dashed var(--ink-muted); }
+.jump-dot.is-matched { border: 1.5px solid var(--ink-muted); }
+.jump-dot.is-gap { background: var(--gap); color: var(--accent-ink); }
+.gap-count { color: var(--gap); }
+td.has-gaps { color: var(--gap); font-weight: 700; }
+.side-card-text { margin: 0; color: var(--on-table-muted); font-size: 14px; }
+.gap-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gap-chip { padding: 2px 10px; border-radius: var(--radius-pill); font-size: 13px; background: var(--gap-tint); color: var(--gap); }
+.gap-chip.is-button { border: 1px solid var(--gap); cursor: pointer; font-weight: 700; }
+.skills-overview { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.skills-overview > :only-child { grid-column: 1 / -1; }
+.uncovered-panel { border-color: #7c2d12; }
+.uncovered-title { color: var(--gap); }
+
 @media (max-width: 760px) {
+  .skills-overview { grid-template-columns: 1fr; }
+  .match-fan { flex-direction: column; align-items: stretch; gap: 10px; }
+  .match-card { width: auto; min-height: 0; margin: 0; transform: none !important; }
+  .match-card:nth-child(1) { order: 0; }
   .home-grid { grid-template-columns: 1fr; }
   .interviews, .interviews tbody, .interviews tr, .interviews th, .interviews td { display: block; }
   .interviews thead { display: none; }
@@ -205,7 +246,7 @@ textarea.field { resize: vertical; font-family: inherit; }
   .interviews th, .interviews td { padding: 2px 0; border: 0; }
   .interviews td:nth-child(2)::after { content: " Questions"; color: var(--on-table-muted); }
   .deck { grid-template-columns: 1fr 1fr; grid-template-areas: "card card" "back next"; gap: 10px; padding: 12px 0; }
-  .deck > .question-card { grid-area: card; }
+  .deck > .question-card, .deck > .deck-question { grid-area: card; }
   .deck-arrow { height: 44px; font-size: 24px; }
   .deck-arrow.is-previous { grid-area: back; }
   .deck-arrow.is-next { grid-area: next; }

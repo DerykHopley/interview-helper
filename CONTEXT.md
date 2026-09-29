@@ -52,8 +52,12 @@ _Avoid_: Response, reply, attempt
 Short points on an Answer, checked against the Scenario picked for that Question: missing parts, a missing measurable result, claims not in the Scenario, and whether it addresses the Question's skill. It never suggests facts the Candidate didn't supply.
 _Avoid_: Critique, score, review
 
+**Match reason**:
+One sentence shown with a Match, saying which part of the Scenario answers the Question, using only facts written in that Scenario. Written by a cheap text model separately from scoring, so every Matcher's Matches get one.
+_Avoid_: Explanation, justification, rationale
+
 **Gap**:
-A Question for which no Scenario is a good enough Match, which suggests a Scenario the Candidate has not yet written.
+A Question for which no Scenario is a good enough Match (the best score is below the Matcher's threshold), which suggests a Scenario the Candidate has not yet written. The app shows that suggestion as one sentence describing the kind of story, never an achievement.
 _Avoid_: Miss, no-match
 
 ### Evaluation

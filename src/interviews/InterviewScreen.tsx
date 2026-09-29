@@ -1,8 +1,13 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { useLatest } from "../hooks";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCancellableEffect, useLatest } from "../hooks";
+import { MatchesPanel, type MatchProblem } from "../matching/MatchesPanel";
+import { useMatching } from "../matching/useMatching";
+import { ModelGatewayError } from "../model-gateway/ModelGateway";
+import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
+import type { UnlockedVault } from "../vault/vault";
 import { PopupMenu } from "../PopupMenu";
 import { countOf } from "../text";
-import type { Interview, Question } from "./interview";
+import type { Interview, Matching, Question } from "./interview";
 import type { SavedInterview } from "./interviewStore";
 
 type Props = {
@@ -12,7 +17,21 @@ type Props = {
   /** Which card is showing: a Question's index, or the number of Questions for the end card. */
   position: number;
   onMove: (position: number) => void;
+  vault: UnlockedVault;
+  /** Opens the Access Token panel, e.g. when matching needs a new token. */
+  onNeedToken: () => void;
+  onOpenScenarioBank: () => void;
+  /** Starts a new Scenario tagged with this skill (a Gap's "Write a Scenario for this"). #13 makes it co-writing. */
+  onWriteScenario: (skill: string | undefined) => void;
 };
+
+/** How a failed matching call reads to the Candidate. */
+function problemOf(e: unknown): MatchProblem {
+  if (!(e instanceof ModelGatewayError)) return "failed";
+  if (e.code === "expired_token") return "expired-token";
+  if (e.code === "missing_token" || e.code === "invalid_token") return "no-token";
+  return e.code === "worker_unreachable" ? "unreachable" : "failed";
+}
 
 const SWIPE_PX = 50;
 
@@ -28,8 +47,68 @@ const isTyping = (target: EventTarget | null) =>
 
 /** The S3 Interview screen: one Question at a time on a deck, ending in a card for adding your own. Matches (#10),
  * asking for more (#9) and the answer bar (#31) join it later. */
-export function InterviewScreen({ interview, onChange, position, onMove }: Props) {
+export function InterviewScreen({ interview, onChange, position, onMove, vault, onNeedToken, onOpenScenarioBank, onWriteScenario }: Props) {
   const { questions } = interview;
+  const find = useMatching(vault);
+  const bank = useMemo(() => scenarioBank(vault), [vault]);
+  const [scenarios, setScenarios] = useState<SavedScenario[] | null>(null); // null until read
+  const [dealt, setDealt] = useState<Set<string>>(new Set());
+  const [finding, setFinding] = useState<Set<string>>(new Set());
+  const [problems, setProblems] = useState<Map<string, MatchProblem>>(new Map());
+  const latest = useLatest(interview);
+  const readScenarios = () => bank.list().then(({ scenarios }) => setScenarios(scenarios));
+
+  useCancellableEffect(
+    (isCurrent) => {
+      bank.list().then(
+        ({ scenarios }) => isCurrent() && setScenarios(scenarios),
+        () => {},
+      );
+    },
+    [bank],
+  );
+
+  const toggle = <T,>(set: Set<T>, value: T, on: boolean) => {
+    const next = new Set(set);
+    if (on) next.add(value);
+    else next.delete(value);
+    return next;
+  };
+
+  /** Finds the Question's Matches (again, for a re-run), and saves them on it. */
+  async function match(question: Question) {
+    setDealt((d) => toggle(d, question.id, true));
+    setFinding((f) => toggle(f, question.id, true));
+    setProblems((p) => new Map([...p].filter(([id]) => id !== question.id)));
+    try {
+      const matching = await find(question);
+      if (!matching) {
+        setProblems((p) => new Map(p).set(question.id, "no-scenarios"));
+        return;
+      }
+      await saveMatching(question.id, matching);
+      await readScenarios().catch(() => {});
+    } catch (e) {
+      setProblems((p) => new Map(p).set(question.id, problemOf(e)));
+    } finally {
+      setFinding((f) => toggle(f, question.id, false));
+    }
+  }
+
+  async function saveMatching(questionId: string, matching: Matching) {
+    const current = latest.current; // the Interview may have changed while the model was answering
+    await save(
+      { ...current, questions: current.questions.map((q) => (q.id === questionId ? { ...q, matching } : q)) },
+      "Couldn't save the Matches. Try again.",
+    );
+  }
+
+  /** Deals a Question's Matches: saved ones show at once; otherwise they're found now (the first time). */
+  function deal(question: Question) {
+    if (dealt.has(question.id)) return setDealt((d) => toggle(d, question.id, false));
+    if (question.matching) return setDealt((d) => toggle(d, question.id, true));
+    void match(question);
+  }
   const at = Math.min(position, questions.length);
   const go = (to: number) => onMove(Math.max(0, Math.min(to, questions.length)));
   const latestGo = useLatest((by: number) => go(at + by));
@@ -95,7 +174,33 @@ export function InterviewScreen({ interview, onChange, position, onMove }: Props
         ‹
       </button>
       {at < questions.length ? (
-        <QuestionCard question={questions[at]} n={at + 1} of={questions.length} onDelete={() => void remove(questions[at])} />
+        <div className="deck-question">
+          <QuestionCard
+            question={questions[at]}
+            n={at + 1}
+            of={questions.length}
+            onDelete={() => void remove(questions[at])}
+            onRematch={() => void match(questions[at])}
+          />
+          {!finding.has(questions[at].id) && (
+            <button type="button" className="button-deal" onClick={() => deal(questions[at])}>
+              {dealt.has(questions[at].id) ? "Hide my Matches" : questions[at].matching ? "Deal my Matches" : "Find my Matches"}
+            </button>
+          )}
+          {dealt.has(questions[at].id) && (
+            <MatchesPanel
+              finding={finding.has(questions[at].id)}
+              problem={problems.get(questions[at].id) ?? null}
+              matching={questions[at].matching}
+              skill={questions[at].skill}
+              scenarios={scenarios}
+              onRetry={() => void match(questions[at])}
+              onNeedToken={onNeedToken}
+              onOpenScenarioBank={onOpenScenarioBank}
+              onWriteScenario={() => onWriteScenario(questions[at].skill)}
+            />
+          )}
+        </div>
       ) : (
         <EndCard count={questions.length} onAdd={add} />
       )}
@@ -106,10 +211,10 @@ export function InterviewScreen({ interview, onChange, position, onMove }: Props
   );
 }
 
-function QuestionCard({ question, n, of, onDelete }: { question: Question; n: number; of: number; onDelete: () => void }) {
+function QuestionCard({ question, n, of, onDelete, onRematch }: { question: Question; n: number; of: number; onDelete: () => void; onRematch: () => void }) {
   return (
     <article className="question-card" aria-label={`Question ${n} of ${of}`}>
-      <CardMenu onDelete={onDelete} />
+      <CardMenu onDelete={onDelete} onRematch={onRematch} />
       <p className="label-caps question-skill">
         {question.skill ?? "No skill given"}
         {question.origin === "typed" && <span className="question-origin"> · typed by you</span>}
@@ -169,14 +274,17 @@ function EndCard({ count, onAdd }: { count: number; onAdd: (question: Question) 
   );
 }
 
-/** The ⋯ menu on a Question card. #10 adds "Re-run matching". */
-function CardMenu({ onDelete }: { onDelete: () => void }) {
+/** The ⋯ menu on a Question card. */
+function CardMenu({ onDelete, onRematch }: { onDelete: () => void; onRematch: () => void }) {
   return (
     <PopupMenu
       label="This Question"
       className="card-menu"
       trigger={{ text: "⋯", ariaLabel: "More for this Question", className: "card-menu-button" }}
-      items={[{ key: "delete", label: "Delete this Question", onSelect: onDelete }]}
+      items={[
+        { key: "rematch", label: "Re-run matching", onSelect: onRematch },
+        { key: "delete", label: "Delete this Question", onSelect: onDelete },
+      ]}
     />
   );
 }

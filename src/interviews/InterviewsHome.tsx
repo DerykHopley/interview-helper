@@ -3,6 +3,7 @@ import { useCancellableEffect } from "../hooks";
 import type { Interview } from "./interview";
 import type { InterviewStore, SavedInterview } from "./interviewStore";
 import { countOf, unreadableNotice } from "../text";
+import { gapCount } from "./gaps";
 import { NewInterview } from "./NewInterview";
 
 /** The Interviews tab, the dashboard's home (D2): the Candidate's Interviews, and creating one. */
@@ -71,6 +72,7 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
           <tr>
             <th scope="col">Role</th>
             <th scope="col">Questions</th>
+            <th scope="col">Gaps</th>
             <th scope="col">
               <span className="visually-hidden">Actions</span>
             </th>
@@ -84,6 +86,7 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
                 {interview.company && <span className="interview-company">{interview.company}</span>}
               </th>
               <td>{interview.questions.length}</td>
+              <td className={gapCount(interview) > 0 ? "has-gaps" : undefined}>{gapCount(interview) > 0 ? countOf(gapCount(interview), "Gap") : "—"}</td>
               <td>
                 <div className="actions">
                   <button type="button" className="button-secondary" onClick={() => onOpen(interview.id)}>

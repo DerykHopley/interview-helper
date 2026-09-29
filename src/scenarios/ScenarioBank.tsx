@@ -14,14 +14,24 @@ type Loaded = { scenarios: SavedScenario[]; unreadable: number };
 
 /** The Candidate's Scenarios (C4 design): a skills overview on top, then a list on the left and the selected
  * Scenario in full on the right. On a phone the list and the Scenario are two screens. */
-export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
+type Props = {
+  vault: UnlockedVault;
+  /** Skills the Interviews' Gaps asked for, for "Not covered yet". */
+  gapSkills?: string[];
+  /** A skill to start a new Scenario with (from a Gap), or null. The bank mounts afresh each time its tab opens,
+   * so this is read once, as it opens. */
+  startNew?: string | null;
+};
+
+export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) {
   const bank = useMemo(() => scenarioBank(vault), [vault]);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [pane, setPane] = useState<Pane>({ mode: "none" });
+  const [pane, setPane] = useState<Pane>(startNew !== null ? { mode: "new" } : { mode: "none" });
   const [query, setQuery] = useState("");
   const [skillFilter, setSkillFilter] = useState<string | null>(null); // a skillKey
   const [overviewShown, setOverviewShown] = useState(true);
   const [failure, setFailure] = useState<string | null>(null);
+  const [newSkill, setNewSkill] = useState(startNew ?? ""); // arriving from a Gap: its skill
 
   useCancellableEffect(
     (isCurrent) => {
@@ -76,7 +86,16 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
                 Hide ▴
               </button>
             </div>
-            <SkillsOverview scenarios={scenarios} filter={skillFilter} onFilter={setSkillFilter} />
+            <SkillsOverview
+              scenarios={scenarios}
+              gapSkills={gapSkills}
+              filter={skillFilter}
+              onFilter={setSkillFilter}
+              onWrite={(skill) => {
+                setNewSkill(skill);
+                setPane({ mode: "new" });
+              }}
+            />
           </>
         ) : (
           <button type="button" className="overview-folded" onClick={() => setOverviewShown(true)}>
@@ -87,7 +106,14 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
       <div className="bank-list-column">
         <div className="bank-head">
           <h2 className="page-title">Scenario Bank</h2>
-          <button type="button" className="button-primary" onClick={() => setPane({ mode: "new" })}>
+          <button
+            type="button"
+            className="button-primary"
+            onClick={() => {
+              setNewSkill("");
+              setPane({ mode: "new" });
+            }}
+          >
             + New Scenario
           </button>
         </div>
@@ -148,7 +174,7 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
           <>
             <h3 className="pane-title">New Scenario</h3>
             <div className="card">
-              <ScenarioForm onSave={save} onCancel={() => setPane({ mode: "none" })} />
+              <ScenarioForm key={newSkill} skill={newSkill} onSave={save} onCancel={() => setPane({ mode: "none" })} />
             </div>
           </>
         )}

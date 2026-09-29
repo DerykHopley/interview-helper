@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { corruptStoredRecord, everythingStored } from "../test/browserStorage";
-import { openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
+import { createScenario, fillScenario, openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
 import { renderApp } from "../test/renderApp";
 
 /** Sets up, or unlocks, and opens the Scenario Bank tab (the dashboard opens on Interviews). */
@@ -35,28 +35,6 @@ const MENTORING = {
 
 /** The Scenarios listed, by their text (title, skills and origin). */
 const listed = () => within(screen.getByRole("list", { name: "Scenarios" })).queryAllByRole("button").map((b) => b.textContent);
-
-/** Fills in the Scenario form, field by field, as labelled. */
-async function fillScenario(fields: Record<string, string>) {
-  const user = userEvent.setup();
-  for (const [label, value] of Object.entries(fields)) {
-    const field = screen.getByLabelText(new RegExp(`^${label}( \\*)?$`));
-    await user.clear(field);
-    if (value) await user.type(field, value);
-  }
-}
-
-async function createScenario(fields: Record<string, string>) {
-  const user = userEvent.setup();
-  await user.click(await screen.findByRole("button", { name: "+ New Scenario" }));
-  await fillScenario(fields);
-  await user.click(screen.getByRole("button", { name: "Save Scenario" }));
-  await settled();
-}
-
-/** Waits for a save to finish: the form has closed, or it's showing what's missing. */
-const settled = () =>
-  waitFor(() => expect(!screen.queryByRole("button", { name: "Save Scenario" }) || screen.queryByText(/^Still missing/)).toBeTruthy());
 
 describe("creating a Scenario by hand", () => {
   it("lists it with its title and skills, and shows it in full with its origin", async () => {
