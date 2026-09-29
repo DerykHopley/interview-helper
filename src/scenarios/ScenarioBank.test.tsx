@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { corruptStoredRecord, everythingStored } from "../test/browserStorage";
@@ -40,7 +40,12 @@ async function createScenario(fields: Record<string, string>) {
   await user.click(await screen.findByRole("button", { name: "+ New Scenario" }));
   await fillScenario(fields);
   await user.click(screen.getByRole("button", { name: "Save Scenario" }));
+  await settled();
 }
+
+/** Waits for a save to finish: the form has closed, or it's showing what's missing. */
+const settled = () =>
+  waitFor(() => expect(!screen.queryByRole("button", { name: "Save Scenario" }) || screen.queryByText(/^Still missing/)).toBeTruthy());
 
 describe("creating a Scenario by hand", () => {
   it("lists it with its title and skills, and shows it in full with its origin", async () => {
@@ -74,7 +79,7 @@ describe("creating a Scenario by hand", () => {
     await fillScenario({ "Your role": "Tech lead", Task: "t", Action: "a", Result: "r", Skills: "delivery" });
     await user.click(screen.getByRole("button", { name: "Save Scenario" }));
 
-    expect(screen.getByRole("article", { name: "Half a Scenario" })).toBeInTheDocument();
+    expect(await screen.findByRole("article", { name: "Half a Scenario" })).toBeInTheDocument();
   });
 
   it("doesn't require measurable results, but suggests adding one", async () => {
@@ -87,7 +92,7 @@ describe("creating a Scenario by hand", () => {
     await fillScenario({ ...CHECKOUT, "Measurable results": "" });
     await userEvent.setup().click(screen.getByRole("button", { name: "Save Scenario" }));
 
-    expect(screen.getByRole("article", { name: CHECKOUT.Title })).not.toHaveTextContent("Measurable results");
+    expect(await screen.findByRole("article", { name: CHECKOUT.Title })).not.toHaveTextContent("Measurable results");
   });
 });
 
@@ -137,7 +142,7 @@ describe("editing and deleting", () => {
     await fillScenario({ Result: "It shipped only three weeks late." });
     await user.click(screen.getByRole("button", { name: "Save Scenario" }));
 
-    expect(screen.getByRole("article", { name: CHECKOUT.Title })).toHaveTextContent("It shipped only three weeks late.");
+    expect(await screen.findByRole("article", { name: CHECKOUT.Title })).toHaveTextContent("It shipped only three weeks late.");
     expect(within(screen.getByRole("list", { name: "Scenarios" })).getAllByRole("listitem")).toHaveLength(1);
     unmount();
 
@@ -172,7 +177,7 @@ describe("editing and deleting", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(confirm).toHaveBeenCalledWith(`Delete "${CHECKOUT.Title}"? This can't be undone.`);
-    expect(within(screen.getByRole("list", { name: "Scenarios" })).queryAllByRole("listitem")).toHaveLength(0);
+    await waitFor(() => expect(within(screen.getByRole("list", { name: "Scenarios" })).queryAllByRole("listitem")).toHaveLength(0));
     expect(screen.queryByRole("article")).not.toBeInTheDocument();
     unmount();
 
@@ -347,7 +352,7 @@ describe("filters that match nothing", () => {
     await user.click(screen.getByRole("button", { name: /Mentored two juniors/ }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
-    expect(listed()).toEqual([expect.stringContaining(CHECKOUT.Title)]);
+    await waitFor(() => expect(listed()).toEqual([expect.stringContaining(CHECKOUT.Title)]));
     expect(screen.queryByRole("button", { name: /Clear skill filter/ })).not.toBeInTheDocument();
   });
 });

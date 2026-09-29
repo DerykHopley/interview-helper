@@ -4,6 +4,10 @@ import type { UnlockedVault } from "../vault/vault";
 import { AccessTokenPanel, type Active, type CheckResult } from "./AccessTokenPanel";
 import { keptAccessToken } from "./keptAccessToken";
 
+/** Keeping or forgetting the token fails only if the Vault has gone (locked, or the page closed) meanwhile. Then
+ * there's nothing to update: the token is simply asked for again after the next unlock. */
+const ignoreClosedVault = () => {};
+
 /** "6h left", or in days once it's two days or more. */
 function timeLeft(expiresAt: Date, now = Date.now()) {
   const hours = Math.floor((expiresAt.getTime() - now) / 3_600_000);
@@ -22,9 +26,10 @@ export function AccessChip({ vault }: { vault: UnlockedVault }) {
 
   useCancellableEffect(
     (isCurrent) => {
-      void kept.recall().then((token) => {
-        if (isCurrent()) setRemembered(token);
-      });
+      kept.recall().then(
+        (token) => isCurrent() && setRemembered(token),
+        () => isCurrent() && setRemembered(null), // unreadable: ask for a token again
+      );
     },
     [kept],
   );
@@ -56,12 +61,12 @@ export function AccessChip({ vault }: { vault: UnlockedVault }) {
             remembered={remembered ?? undefined}
             onActive={(token, status) => {
               setActive(status);
-              void kept.keep(token);
+              if (token !== remembered) void kept.keep(token).catch(ignoreClosedVault); // a confirmed kept token is already stored
             }}
             onForget={() => {
               setActive(null);
               setRemembered(null);
-              void kept.forget();
+              void kept.forget().catch(ignoreClosedVault);
             }}
             onChecked={(result) => {
               setLastCheck(result);

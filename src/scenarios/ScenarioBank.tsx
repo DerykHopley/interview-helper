@@ -20,12 +20,14 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
   const [query, setQuery] = useState("");
   const [skillFilter, setSkillFilter] = useState<string | null>(null); // a skillKey
   const [overviewShown, setOverviewShown] = useState(true);
+  const [failure, setFailure] = useState<string | null>(null);
 
   useCancellableEffect(
     (isCurrent) => {
-      void bank.list().then((result) => {
-        if (isCurrent()) setLoaded(result);
-      });
+      bank.list().then(
+        (result) => isCurrent() && setLoaded(result),
+        () => isCurrent() && setFailure("Couldn't open your Scenarios. Lock the app and unlock it again."),
+      );
     },
     [bank],
   );
@@ -45,12 +47,16 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
 
   async function remove(scenario: SavedScenario) {
     if (!confirm(`Delete "${scenario.title}"? This can't be undone.`)) return;
-    await bank.delete(scenario.id);
-    await reload();
-    setPane({ mode: "none" });
+    try {
+      await bank.delete(scenario.id);
+      await reload();
+      setPane({ mode: "none" });
+    } catch {
+      setFailure(`Couldn't delete "${scenario.title}". Try again.`); // only if the Vault is locked or storage fails
+    }
   }
 
-  if (!loaded) return null;
+  if (!loaded) return failure ? <p role="alert" className="notice-blocking">{failure}</p> : null;
   const { scenarios, unreadable } = loaded;
   const search = query.trim().toLowerCase();
   const matchesSearch = (scenario: SavedScenario) => [scenario.title, ...scenario.skills].some((text) => text.toLowerCase().includes(search));
@@ -84,6 +90,11 @@ export function ScenarioBank({ vault }: { vault: UnlockedVault }) {
             + New Scenario
           </button>
         </div>
+        {failure && (
+          <p role="alert" className="notice-warn">
+            {failure}
+          </p>
+        )}
         {unreadable > 0 && (
           <p role="alert" className="notice-warn">
             {unreadable === 1 ? "1 Scenario" : `${unreadable} Scenarios`} couldn't be read, so {unreadable === 1 ? "it isn't" : "they aren't"} shown.
