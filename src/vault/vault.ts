@@ -18,6 +18,8 @@ export type UnlockedVault = {
   get<T>(id: string): Promise<T | undefined>;
   put(id: string, value: unknown): Promise<void>;
   delete(id: string): Promise<void>;
+  /** Every record whose id starts with `prefix`, decrypted, in id order. */
+  list<T>(prefix: string): Promise<{ id: string; value: T }[]>;
 };
 
 export type Vault = {
@@ -67,6 +69,10 @@ function unlocked(db: Database, cryptoKey: CryptoKey): UnlockedVault {
   };
   // Each record's id is bound in as additional data, so a record copied under another id won't decrypt.
   const aad = (id: string) => new TextEncoder().encode(id);
+  const open = async <T,>(key: CryptoKey, id: string, sealed: Sealed) => {
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: sealed.iv, additionalData: aad(id) }, key, sealed.data);
+    return JSON.parse(new TextDecoder().decode(plain)) as T;
+  };
   return {
     lock() {
       key = null;
@@ -75,9 +81,12 @@ function unlocked(db: Database, cryptoKey: CryptoKey): UnlockedVault {
     async get<T>(id: string) {
       const key = keyOrRefuse();
       const sealed = await db.get<Sealed>("records", id);
-      if (!sealed) return undefined;
-      const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: sealed.iv, additionalData: aad(id) }, key, sealed.data);
-      return JSON.parse(new TextDecoder().decode(plain)) as T;
+      return sealed ? open<T>(key, id, sealed) : undefined;
+    },
+    async list<T>(prefix: string) {
+      const key = keyOrRefuse();
+      const entries = await db.entries<Sealed>("records", prefix);
+      return Promise.all(entries.map(async ({ id, value }) => ({ id, value: await open<T>(key, id, value) })));
     },
     async put(id, value) {
       const key = keyOrRefuse();

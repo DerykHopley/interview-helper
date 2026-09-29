@@ -8,6 +8,8 @@ export type Database = {
   get<T>(store: Store, id: string): Promise<T | undefined>;
   put(store: Store, id: string, value: unknown): Promise<void>;
   delete(store: Store, id: string): Promise<void>;
+  /** Every entry whose id starts with `prefix`, in id order. */
+  entries<T>(store: Store, prefix: string): Promise<{ id: string; value: T }[]>;
   /** Deletes everything in every store, in one transaction. */
   clear(): Promise<void>;
   close(): void;
@@ -39,6 +41,14 @@ function wrap(db: IDBDatabase): Database {
     get: <T,>(store: Store, id: string) => run<T | undefined>(store, "readonly", (tx) => tx.objectStore(store).get(id)),
     put: (store, id, value) => run(store, "readwrite", (tx) => void tx.objectStore(store).put(value, id)),
     delete: (store, id) => run(store, "readwrite", (tx) => void tx.objectStore(store).delete(id)),
+    async entries<T>(store: Store, prefix: string) {
+      const range = IDBKeyRange.bound(prefix, `${prefix}\uffff`);
+      const [ids, values] = await Promise.all([
+        run<string[]>(store, "readonly", (tx) => tx.objectStore(store).getAllKeys(range) as IDBRequest<string[]>), // ids are strings
+        run<T[]>(store, "readonly", (tx) => tx.objectStore(store).getAll(range)),
+      ]);
+      return ids.map((id, i) => ({ id, value: values[i] }));
+    },
     clear: () => run(STORES, "readwrite", (tx) => STORES.forEach((store) => tx.objectStore(store).clear())),
     close: () => db.close(),
   };

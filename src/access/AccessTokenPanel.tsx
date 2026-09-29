@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import { useCancellableEffect, useLatest } from "../hooks";
 import { useModelGateway } from "../model-gateway/context";
 import { ModelGatewayError, type AccessStatus } from "../model-gateway/ModelGateway";
@@ -38,16 +38,26 @@ type Props = {
   onActive: (token: string, active: Active) => void;
   /** The token should no longer be kept: the Candidate replaced it, or the Worker now refuses it. */
   onForget?: () => void;
+  /** Told whenever the panel shows a message (not recognised, expired, unreachable), or clears it. */
+  onMessage?: (message: string | null) => void;
   /** Offers "I don't have one yet" (setup only). */
   onSkip?: () => void;
 };
 
 /** Entering and checking an Access Token (A2 checklist step 1, and inside the app). It keeps nothing itself: where
  * the token is kept is up to the caller. */
-export function AccessTokenPanel({ remembered, onActive, onForget, onSkip }: Props) {
+export function AccessTokenPanel({ remembered, onActive, onForget, onMessage, onSkip }: Props) {
   const gateway = useModelGateway();
   const [active, setActive] = useState<Active | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setShownMessage] = useState<string | null>(null);
+  const reportMessage = useLatest(onMessage);
+  const setMessage = useCallback(
+    (m: string | null) => {
+      setShownMessage(m);
+      reportMessage.current?.(m);
+    },
+    [reportMessage],
+  );
   const [value, setValue] = useState("");
   const [checking, setChecking] = useState(false);
 
@@ -64,7 +74,7 @@ export function AccessTokenPanel({ remembered, onActive, onForget, onSkip }: Pro
       setActive(outcome.active);
       setMessage(outcome.message);
     });
-  }, [gateway, remembered, callbacks]);
+  }, [gateway, remembered, callbacks, setMessage]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
