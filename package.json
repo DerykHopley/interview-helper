@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "types:worker": "wrangler types worker/worker-configuration.d.ts --config worker/wrangler.jsonc --env-file worker/dev.vars.example",
-    "token": "tsx scripts/mint-access-token.ts"
+    "token": "tsx scripts/mint-access-token.ts",
+    "eval": "tsx eval/matcher-report.ts"
   },
   "dependencies": {
     "react": "^19.3.0",

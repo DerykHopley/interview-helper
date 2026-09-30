@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isWorkerError, type AccessResponse, type GenerateRequest, type GenerateResponse } from "../../shared/workerProtocol";
-import { ModelGatewayError, type AccessStatus, type ModelGateway } from "./ModelGateway";
+import { ModelGatewayError, type AccessStatus, type ModelGateway, type ModelJob } from "./ModelGateway";
 
 type Options = {
   /** Where the Worker runs, e.g. http://localhost:8787 in local dev. */
@@ -8,7 +8,12 @@ type Options = {
   /** The Candidate's current Access Token, if any. */
   getAccessToken: () => string | null;
   fetch?: typeof globalThis.fetch;
+  /** Told about every model call the Worker answered: which model ran and what it cost. The Matcher Report (#14)
+   * totals it, and the Developer panel (#17) can show it. */
+  onCall?: (call: ModelCall) => void;
 };
+
+export type ModelCall = { job: ModelJob; model: string; cost: number | null };
 
 /** The reply schema as the JSON Schema OpenRouter's strict structured outputs expect: no `$schema` key. */
 function toStrictJsonSchema(schema: z.ZodType) {
@@ -18,7 +23,7 @@ function toStrictJsonSchema(schema: z.ZodType) {
 }
 
 /** The real Model Gateway: reaches models through the Worker, which checks the Access Token and calls OpenRouter. */
-export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThis.fetch.bind(globalThis) }: Options): ModelGateway {
+export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThis.fetch.bind(globalThis), onCall }: Options): ModelGateway {
   const call = async (path: string, init: RequestInit, token = getAccessToken()) => {
     const headers = new Headers(init.headers);
     if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -34,13 +39,14 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
   };
 
   return {
-    async generate({ job, system, user, schema }) {
-      const body: GenerateRequest = { job, system, user, schema: toStrictJsonSchema(schema) };
-      const { output } = (await call("/v1/generate", {
+    async generate({ job, model: requested, system, user, schema }) {
+      const body: GenerateRequest = { job, ...(requested && { model: requested }), system, user, schema: toStrictJsonSchema(schema) };
+      const { output, model, cost } = (await call("/v1/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })) as GenerateResponse;
+      onCall?.({ job, model, cost }); // before the schema check: a reply that fails it was still paid for
       const parsed = schema.safeParse(output);
       if (!parsed.success) throw new ModelGatewayError("invalid_model_reply");
       return parsed.data;

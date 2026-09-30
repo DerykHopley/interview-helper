@@ -42,6 +42,37 @@ describe("the app's Model Gateway, talking to the Worker", () => {
     });
   });
 
+  it("tells an onCall listener which model ran and what each call cost, even when the reply fails its schema", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":["Q"]}', 0.0021));
+    const calls: unknown[] = [];
+    const token = await mint(inHours(2));
+    const gateway = createWorkerGateway({
+      baseUrl: "http://worker.test",
+      getAccessToken: () => token,
+      fetch: (input, init) => exports.default.fetch(input, init),
+      onCall: (call) => calls.push(call),
+    });
+
+    await gateway.generate({ job: "matching", system: "s", user: "u", schema: Questions });
+    await expect(gateway.generate({ job: "matching", system: "s", user: "u", schema: z.object({ other: z.string() }) })).rejects.toMatchObject({
+      code: "invalid_model_reply",
+    });
+
+    expect(calls).toEqual([
+      { job: "matching", model: "openai/gpt-5-mini", cost: 0.0021 },
+      { job: "matching", model: "openai/gpt-5-mini", cost: 0.0021 },
+    ]);
+  });
+
+  it("asks the Worker for the model a request names", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
+    const gateway = gatewayWith(await mint(inHours(2)));
+
+    await gateway.generate({ job: "matching", model: "openai/gpt-5-nano", system: "s", user: "u", schema: Questions });
+
+    expect(openRouter.requests[0].json()).toMatchObject({ model: "openai/gpt-5-nano" });
+  });
+
   it("rejects a reply that doesn't match the schema", async () => {
     openRouter = fakeOpenRouter(() => completion('{"questions":"not a list"}'));
     const gateway = gatewayWith(await mint(inHours(2)));

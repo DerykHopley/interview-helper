@@ -6,6 +6,8 @@ export type { ModelJob } from "../../shared/workerProtocol";
 
 export type StructuredRequest<Schema extends z.ZodType> = {
   job: ModelJob;
+  /** A model other than the job's default in the Worker; it must be on the Worker's allowed list. */
+  model?: string;
   system: string;
   /** Untrusted text (Job Specs, Scenarios, typed Questions) goes here, delimited as data. */
   user: string;

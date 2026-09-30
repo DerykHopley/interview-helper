@@ -46,5 +46,6 @@ export const GenerateRequest = z.object({
 });
 export type GenerateRequest = z.infer<typeof GenerateRequest>;
 
-/** POST /v1/generate → 200 */
-export type GenerateResponse = { output: unknown };
+/** POST /v1/generate → 200. `model` is the one that ran and `cost` what OpenRouter charged in USD (null if it
+ * didn't say), for the Matcher Report and the Developer panel. */
+export type GenerateResponse = { output: unknown; model: string; cost: number | null };

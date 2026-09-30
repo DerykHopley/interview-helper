@@ -7,7 +7,7 @@ import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
 import { findMatches, scenariosFingerprint } from "./findMatches";
 import type { MatchProblem, Staleness } from "./MatchesPanel";
-import { MATCHERS, MATCHING_CONFIG } from "./matchingConfig";
+import { gapThresholdFor, MATCHERS, MATCHING_CONFIG } from "./matchingConfig";
 
 /** Where one Question's Matches are on screen: dealt or not, being found, or why they couldn't be. */
 type QuestionState = { dealt: boolean; finding: boolean; problem: MatchProblem | null };
@@ -27,8 +27,9 @@ function problemOf(e: unknown): MatchProblem {
 export function useQuestionMatches(vault: UnlockedVault, update: (change: (current: Interview) => Interview) => Promise<void>) {
   const gateway = useModelGateway();
   const bank = useMemo(() => scenarioBank(vault), [vault]);
-  const { gapThreshold, create } = MATCHERS[MATCHING_CONFIG.matcher];
-  const matcher = useMemo(() => create(gateway, MATCHING_CONFIG.promptVariant), [create, gateway]);
+  const { create } = MATCHERS[MATCHING_CONFIG.matcher];
+  const matcher = useMemo(() => create(gateway, MATCHING_CONFIG), [create, gateway]);
+  const gapThreshold = gapThresholdFor(matcher.name);
   const [scenarios, setScenarios] = useState<SavedScenario[] | null>(null); // null until read
   const [states, setStates] = useState<Map<string, QuestionState>>(new Map());
 

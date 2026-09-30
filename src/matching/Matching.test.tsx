@@ -5,6 +5,7 @@ import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { createScenario, openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
 import { createFakeModelGateway, type ReplyFor } from "../test/fakeModelGateway";
 import { renderApp } from "../test/renderApp";
+import gapThresholds from "./gapThresholds.json";
 import { PROMPT_VARIANTS } from "./promptVariants";
 
 const CHECKOUT = {
@@ -59,9 +60,14 @@ async function interviewWithScenarios(scenarios: Record<string, string>[], skill
 describe("dealing Matches", () => {
   it("finds up to three Matches when dealt, best first, each with its score and reason", async () => {
     const user = userEvent.setup();
+    // The scores are held back until the placeholders have been checked, so a fast reply can't race past them.
+    let release: (() => void) | undefined;
     const gateway = createFakeModelGateway({
       generate: {
-        matching: [scores({ [CHECKOUT.Title]: 92, [MENTORING.Title]: 61, [CONFLICT.Title]: 55 })],
+        matching: [
+          (request: Parameters<ReplyFor>[0]) =>
+            new Promise((r) => (release = () => r(scores({ [CHECKOUT.Title]: 92, [MENTORING.Title]: 61, [CONFLICT.Title]: 55 })(request)))),
+        ],
         "match-reasons": [
           reasons({
             [CHECKOUT.Title]: "You cut scope to a staged rollout and shipped three weeks late, not three months.",
@@ -76,7 +82,9 @@ describe("dealing Matches", () => {
 
     await user.click(screen.getByRole("button", { name: "Find my Matches" }));
 
-    expect(screen.getByText("Finding your Matches…")).toBeInTheDocument();
+    expect(await screen.findByText("Finding your Matches…")).toBeInTheDocument();
+    await waitFor(() => expect(release).toBeDefined()); // the scoring call starts only after the Scenarios are read
+    await act(() => Promise.resolve(release!()));
     const matches = await screen.findByRole("list", { name: "Matches" });
     const cards = within(matches).getAllByRole("listitem");
     expect(cards.map((card) => card.textContent)).toEqual([
@@ -84,6 +92,23 @@ describe("dealing Matches", () => {
       expect.stringMatching(/#2 · 61%.*Mentored two juniors/),
       expect.stringMatching(/#3 · 55%.*Disagreed with the CTO/),
     ]);
+  });
+});
+
+describe("the matching model", () => {
+  it("scores with the model the app is configured to ship, not the Worker's default", async () => {
+    const gateway = createFakeModelGateway({ generate: GOOD });
+    const generate = vi.spyOn(gateway, "generate");
+    renderApp({ gateway });
+    await interviewWithScenarios([CHECKOUT]);
+
+    await find();
+    await screen.findByRole("list", { name: "Matches" });
+
+    // MATCHING_CONFIG.model; the Match reasons job keeps the Worker's default.
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ job: "matching", model: "openai/gpt-5-mini" }));
+    const reasonsCall = generate.mock.calls.find(([request]) => request.job === "match-reasons");
+    expect(reasonsCall?.[0].model).toBeUndefined();
   });
 });
 
@@ -104,6 +129,28 @@ describe("Gaps", () => {
     expect(gap).toHaveTextContent("Gap · delivery under pressure");
     expect(gap).toHaveTextContent("A time you kept a critical deadline by changing the plan, not the date.");
     expect(screen.queryByRole("list", { name: "Matches" })).not.toBeInTheDocument();
+  });
+
+  it("uses the Gap threshold the Matcher Report recorded: just below it is a Gap, at it are Matches", async () => {
+    const user = userEvent.setup();
+    // The recorded threshold of the shipped Matcher (MATCHING_CONFIG), as eval/matcher-report.ts wrote it.
+    const threshold = gapThresholds["LLM (Rubric, zero-shot) · openai/gpt-5-mini"].gapThreshold;
+    const [below, at] = [Math.ceil(threshold) - 1, Math.ceil(threshold)]; // the LLM Matcher scores whole numbers
+    const gateway = createFakeModelGateway({
+      generate: {
+        matching: [scores({ [CHECKOUT.Title]: below }), scores({ [CHECKOUT.Title]: at })],
+        "match-reasons": [{ suggestion: "A story." }, reasons({ [CHECKOUT.Title]: "A reason." })],
+      },
+    });
+    renderApp({ gateway });
+    await interviewWithScenarios([CHECKOUT]);
+
+    await find();
+    expect(await screen.findByRole("region", { name: "No Scenario fits this Question yet" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "More for this Question" }));
+    await user.click(screen.getByRole("menuitem", { name: "Re-run matching" }));
+    expect(await screen.findByRole("list", { name: "Matches" })).toHaveTextContent(`Best fit · ${at}%`);
   });
 
   it("says \"no skill given\" for a Gap on a typed Question without a skill", async () => {
@@ -395,10 +442,12 @@ describe("review fixes", () => {
     await screen.findByRole("list", { name: "Matches" });
     await user.click(screen.getByRole("button", { name: "← Interviews" }));
 
-    // Stands in for switching MATCHING_CONFIG to another Prompt Variant: the Matcher reopened with it has a new name.
+    // Stands in for switching MATCHING_CONFIG to another Prompt Variant, with its own recorded threshold: the Matcher
+    // reopened with it has a new name.
     const variant = PROMPT_VARIANTS["rubric-zero-shot"] as { name: string };
     const shipped = variant.name;
     variant.name = "Another variant";
+    (gapThresholds as Record<string, unknown>)["LLM (Another variant) · openai/gpt-5-mini"] = { gapThreshold: 50, report: null };
     try {
       await user.click(await screen.findByRole("button", { name: "Practise" }));
       await user.click(await screen.findByRole("button", { name: "Deal my Matches" }));
@@ -407,6 +456,7 @@ describe("review fixes", () => {
       expect(screen.getByRole("button", { name: "Re-run matching" })).toBeInTheDocument();
     } finally {
       variant.name = shipped;
+      delete (gapThresholds as Record<string, unknown>)["LLM (Another variant) · openai/gpt-5-mini"];
     }
   });
 
