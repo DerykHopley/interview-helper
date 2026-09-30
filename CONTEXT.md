@@ -74,6 +74,10 @@ _Avoid_: Prompt version, template
 A fixed collection of Scenarios and Questions, each Question labelled with the Scenarios that should match it (or labelled as a Gap), used to score Matchers.
 _Avoid_: Test data, golden set, benchmark
 
+**Adversarial case**:
+An Evaluation Set Question run again with hidden instructions injected into the Question or into one Scenario, to see whether a Matcher obeys them. Each has a goal (make the Scenario it's hidden in the top Match, or turn a Gap into a Match), and it is affected if the attacked run reaches that goal when the clean run didn't.
+_Avoid_: Jailbreak test, attack case, injection test
+
 **Matcher Report**:
 The side-by-side result of running several Matchers, and Prompt Variants, over the same Evaluation Set.
 _Avoid_: Eval results, comparison, scorecard

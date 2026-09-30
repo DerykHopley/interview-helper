@@ -86,13 +86,14 @@ async function generate(request: Request, env: Env, access: Access) {
   } | null;
   const finish = completion?.choices?.[0]?.finish_reason;
   // A reply that ends in an error carries OpenRouter's error on the choice.
-  logCall(access, job, model, completion?.usage?.cost ?? null, finish === "error" ? upstreamError(upstream.status, completion?.choices?.[0]?.error) : undefined);
+  const cost = completion?.usage?.cost ?? null;
+  logCall(access, job, model, cost, finish === "error" ? upstreamError(upstream.status, completion?.choices?.[0]?.error) : undefined);
   // Ran out of tokens (reasoning counts too): the reply is empty or partial, so say so rather than fail to parse it.
   if (finish === "length") return error("reply_cut_off", 502);
   if (finish === "error") return error("model_unavailable", 502);
   const content = parseJson(completion?.choices?.[0]?.message?.content ?? "");
   if (!content.ok) return error("invalid_model_reply", 502);
-  return Response.json({ output: content.value } satisfies GenerateResponse);
+  return Response.json({ output: content.value, model, cost } satisfies GenerateResponse);
 }
 
 /** CORS for the web app's origin only: every reply to it, including errors, carries the headers so the app can
