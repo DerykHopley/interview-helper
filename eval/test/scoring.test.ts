@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LabelledQuestion } from "../src/evaluationSet";
-import { chooseGapThreshold, scoreRuns, type MatcherRun, type QuestionRun } from "../src/scoring";
+import { chooseGapThreshold, rankScores, scoreRuns, type MatcherRun, type QuestionRun } from "../src/scoring";
 
 /** A Question labelled with a best Scenario and any acceptable ones. */
 const labelled = (id: string, best: string, acceptable: string[] = []): LabelledQuestion => ({ id, text: `Question ${id}`, label: { best, acceptable } });
@@ -205,5 +205,67 @@ describe("repeated runs", () => {
       [1, "resisted"],
       [2, "affected"],
     ]);
+  });
+});
+
+describe("the margin between Gaps and real Matches", () => {
+  it("is the weakest real Match's best score minus the strongest Gap's, over every run", () => {
+    const questions = [labelled("m1", "A"), labelled("m2", "A"), gap("g1")];
+    const score = scoreRuns(
+      [oneRun([scored("m1", { A: 95 }), scored("m2", { A: 80 }), scored("g1", { A: 30 })]), oneRun([scored("m1", { A: 90 }), scored("m2", { A: 85 }), scored("g1", { A: 45 })])],
+      questions,
+    );
+
+    expect(score.margin).toBe(35); // 80 − 45
+  });
+
+  it("goes negative when a Gap outscores a real Match, and is null without both", () => {
+    expect(scoreRuns([oneRun([scored("m1", { A: 50 }), scored("g1", { A: 70 })])], [labelled("m1", "A"), gap("g1")]).margin).toBe(-20);
+    expect(scoreRuns([oneRun([scored("m1", { A: 50 })])], [labelled("m1", "A")]).margin).toBeNull();
+  });
+});
+
+describe("ranking setups", () => {
+  const scoreWith = (name: string, top1: number, falseAlarms: number, margin: number | null, cost: number, affected = 0) => ({
+    ...scoreRuns([oneRun([])], []),
+    name,
+    top1: { correct: top1, of: 10 },
+    gaps: { flagged: 4, gapQuestions: 4, falseAlarms, matchQuestions: 10 },
+    margin,
+    costPerQuestion: cost,
+    adversarial: Array.from({ length: 6 }, (_, i) => ({
+      caseId: "x",
+      questionId: "q",
+      run: i + 1,
+      goal: "match" as const,
+      clean: "failed" as const,
+      attacked: "failed" as const,
+      result: i < affected ? ("affected" as const) : ("resisted" as const),
+      score: { of: "best", clean: null, attacked: null },
+    })),
+  });
+
+  it("ranks fewer attacks affected above a wider margin, but below accuracy and Gap mistakes", () => {
+    const ranked = rankScores(
+      [scoreWith("wide, steered twice", 10, 0, 35, 0.001, 2), scoreWith("narrow, never steered", 10, 0, 25, 0.001), scoreWith("steered never, but a false alarm", 10, 1, 40, 0.001)].map(
+        (score) => ({ score }),
+      ),
+    );
+
+    expect(ranked.map((r) => r.score.name)).toEqual(["narrow, never steered", "wide, steered twice", "steered never, but a false alarm"]);
+  });
+
+  it("puts the most accurate first, then fewer Gap mistakes, then the wider margin, then the cheaper", () => {
+    const ranked = rankScores(
+      [
+      scoreWith("cheap but wrong", 8, 0, 40, 0.0001),
+      scoreWith("false alarm", 10, 1, 40, 0.001),
+      scoreWith("narrow", 10, 0, 10, 0.001),
+      scoreWith("wide, dear", 10, 0, 40, 0.003),
+      scoreWith("wide, cheap", 10, 0, 40, 0.001),
+      ].map((score) => ({ score })),
+    );
+
+    expect(ranked.map((r) => r.score.name)).toEqual(["wide, cheap", "wide, dear", "narrow", "false alarm", "cheap but wrong"]);
   });
 });

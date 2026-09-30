@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-import type { AccessRefusal, ModelJob, WorkerError } from "../../shared/workerProtocol";
+import type { AccessRefusal, ModelJob, ReasoningEffort, WorkerError } from "../../shared/workerProtocol";
 
 export type { ModelJob } from "../../shared/workerProtocol";
 
@@ -8,6 +8,8 @@ export type StructuredRequest<Schema extends z.ZodType> = {
   job: ModelJob;
   /** A model other than the job's default in the Worker; it must be on the Worker's allowed list. */
   model?: string;
+  /** A reasoning effort other than the job's default in the Worker. */
+  reasoningEffort?: ReasoningEffort;
   system: string;
   /** Untrusted text (Job Specs, Scenarios, typed Questions) goes here, delimited as data. */
   user: string;

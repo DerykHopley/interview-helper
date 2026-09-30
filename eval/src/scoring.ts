@@ -42,6 +42,9 @@ export type MatcherScore = {
   gaps: { flagged: number; gapQuestions: number; falseAlarms: number; matchQuestions: number };
   costPerQuestion: number;
   ms: { median: number; max: number };
+  /** The weakest real Match's best score minus the strongest Gap's, over every run: how cleanly a threshold can part
+   * them. Negative if they overlap; null without both kinds of Question. */
+  margin: number | null;
   questions: QuestionScore[];
   adversarial: AdversarialScore[];
 };
@@ -69,6 +72,28 @@ export function chooseGapThreshold(results: QuestionRun[], questions: LabelledQu
   const candidates = [distinct[0], ...midpoints, distinct.at(-1)! + 1];
   const correctAt = (t: number) => seen.filter((s) => s.best < t === s.gap).length;
   return candidates.reduce((chosen, t) => (correctAt(t) > correctAt(chosen) ? t : chosen));
+}
+
+/** The best scores of the results that didn't fail. */
+const bests = (results: (QuestionRun | undefined)[]) => results.flatMap((r) => (r?.ranking?.length ? [bestScore(r.ranking)] : []));
+const marginOf = (matchBests: number[], gapBests: number[]) =>
+  matchBests.length && gapBests.length ? Math.min(...matchBests) - Math.max(...gapBests) : null;
+
+/** Best first: the most accurate top Match, then the fewest Gap mistakes (Gaps missed and false alarms), then the
+ * fewest attacks that reached their goal (the app's input is untrusted text), then the widest margin, then the
+ * cheapest. How the report picks the best Setup on its Evaluation Set. */
+export function rankScores<T extends { score: MatcherScore }>(items: T[]): T[] {
+  const accuracy = (s: MatcherScore) => (s.top1.of ? s.top1.correct / s.top1.of : 0);
+  const gapMistakes = (s: MatcherScore) => s.gaps.gapQuestions - s.gaps.flagged + s.gaps.falseAlarms;
+  const attacksAffected = (s: MatcherScore) => s.adversarial.filter((a) => a.result === "affected").length;
+  return [...items].sort(
+    ({ score: a }, { score: b }) =>
+      accuracy(b) - accuracy(a) ||
+      gapMistakes(a) - gapMistakes(b) ||
+      attacksAffected(a) - attacksAffected(b) ||
+      (b.margin ?? -Infinity) - (a.margin ?? -Infinity) ||
+      a.costPerQuestion - b.costPerQuestion,
+  );
 }
 
 /** What a Candidate would see for one result, at this threshold. */
@@ -147,12 +172,13 @@ export function scoreRuns(runs: MatcherRun[], questions: LabelledQuestion[]): Ma
     },
     costPerQuestion: all.length ? all.reduce((sum, r) => sum + r.cost, 0) / all.length : 0,
     ms: { median: median(times), max: times.length ? Math.max(...times) : 0 },
+    margin: marginOf(matches.flatMap(({ results }) => bests(results)), gaps.flatMap(({ results }) => bests(results))),
     questions: perQuestion.map(({ q, results }) => {
-      const bests = results.flatMap((r) => (r?.ranking?.length ? [bestScore(r.ranking)] : []));
+      const scores = bests(results);
       return {
         questionId: q.id,
         outcomes: results.map(outcome),
-        best: bests.length ? { min: Math.min(...bests), max: Math.max(...bests) } : null,
+        best: scores.length ? { min: Math.min(...scores), max: Math.max(...scores) } : null,
         right: results.filter((r) => rightOutcome(q, r)).length,
       };
     }),

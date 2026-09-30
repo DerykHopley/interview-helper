@@ -39,8 +39,15 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
   };
 
   return {
-    async generate({ job, model: requested, system, user, schema }) {
-      const body: GenerateRequest = { job, ...(requested && { model: requested }), system, user, schema: toStrictJsonSchema(schema) };
+    async generate({ job, model: requested, reasoningEffort, system, user, schema }) {
+      const body: GenerateRequest = {
+        job,
+        ...(requested && { model: requested }),
+        ...(reasoningEffort && { reasoningEffort }),
+        system,
+        user,
+        schema: toStrictJsonSchema(schema),
+      };
       const { output, model, cost } = (await call("/v1/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

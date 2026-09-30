@@ -1,8 +1,10 @@
 // The Matcher Report (spec #1): a dated Markdown file comparing Matchers on one Evaluation Set.
 import { isGap, type EvaluationSet, type LabelledQuestion } from "./evaluationSet";
-import type { MatcherScore, Outcome } from "./scoring";
+import { rankScores, type MatcherScore, type Outcome } from "./scoring";
 
 export type ReportResult = { score: MatcherScore; models: string[] };
+/** A section of Setups (by Matcher name) side by side, best first. */
+export type ReportSection = { title: string; intro: string; names: string[] };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const ratio = ({ correct, of }: { correct: number; of: number }) => `${correct}/${of} (${of ? Math.round((correct / of) * 100) : 0}%)`;
@@ -28,19 +30,44 @@ function questionRows(score: MatcherScore, set: EvaluationSet) {
 
 const RESULT_TEXT = { resisted: "✅ resisted", changed: "⚠️ changed (noise)", affected: "❌ affected", failed: "failed" } as const;
 
-/** `shipped` names the Matcher the app ships, whose threshold the harness records for the app. */
+/** Each Setup's metrics as a table: the summary's, and each section's. */
+function metricsTable(results: ReportResult[]) {
+  return table(
+    ["Matcher", "Model", "Top-1", "Top-3", "Gap threshold", "Gaps flagged", "False alarms", "Margin", "Attacks resisted", "Cost / Question", "Median time", "Slowest", "Failed"],
+    results.map(({ score, models }) => [
+      score.name,
+      models.join(", ") || "none",
+      ratio(score.top1),
+      ratio(score.top3),
+      score.gapThreshold,
+      `${score.gaps.flagged}/${score.gaps.gapQuestions}`,
+      `${score.gaps.falseAlarms}/${score.gaps.matchQuestions}`,
+      score.margin ?? "–",
+      `${score.adversarial.filter((a) => a.result === "resisted" || a.result === "changed").length}/${score.adversarial.filter((a) => a.result !== "failed").length}`,
+      dollars(score.costPerQuestion),
+      seconds(score.ms.median),
+      seconds(score.ms.max),
+      score.failed.length,
+    ]),
+  );
+}
+
+/** `shipped` names the Matcher the app ships. With `sections`, the summary is the shipped Setup's alone, each section
+ * puts its Setups side by side, and the other Setups' details are folded away. */
 export function renderReport({
   date,
   setName,
   set,
   shipped,
   results,
+  sections = [],
 }: {
   date: string;
   setName: string;
   set: EvaluationSet;
   shipped: string;
   results: ReportResult[];
+  sections?: ReportSection[];
 }): string {
   const gaps = set.questions.filter((q) => isGap(q.label)).length;
   const runs = Math.max(...results.map((r) => r.score.runs), 1);
@@ -56,34 +83,46 @@ export function renderReport({
     "",
     "## Summary",
     "",
-    table(
-      ["Matcher", "Model", "Top-1", "Top-3", "Gap threshold", "Gaps flagged", "False alarms", "Attacks resisted", "Cost / Question", "Median time", "Slowest", "Failed"],
-      results.map(({ score, models }) => [
-        score.name,
-        models.join(", ") || "none",
-        ratio(score.top1),
-        ratio(score.top3),
-        score.gapThreshold,
-        `${score.gaps.flagged}/${score.gaps.gapQuestions}`,
-        `${score.gaps.falseAlarms}/${score.gaps.matchQuestions}`,
-        `${score.adversarial.filter((a) => a.result === "resisted" || a.result === "changed").length}/${score.adversarial.filter((a) => a.result !== "failed").length}`,
-        dollars(score.costPerQuestion),
-        seconds(score.ms.median),
-        seconds(score.ms.max),
-        score.failed.length,
-      ]),
-    ),
+    metricsTable(sections.length ? results.filter((r) => r.score.name === shipped) : results),
     "",
     "- **Top-1:** the top-ranked Scenario is the best or an acceptable one. **Top-3:** a correct Scenario is in the first three. Both count non-Gap Questions only, and use the ranking alone.",
     "- Every count is out of Questions × runs. Models don't score the same way twice, so each Question's **best score** is shown as a range across runs.",
     "- **Gap threshold:** a Question is a Gap if even its best score is below it. It's the cut-off that sorts the most results correctly into Gap or not, over every run together, chosen on this same Evaluation Set, so Gap detection here is optimistic.",
+    "- **Margin:** the weakest real Match's best score minus the strongest Gap's, over every run: how cleanly a threshold can part them. Below zero, they overlap.",
     "- **Gaps flagged** and **false alarms** (real Matches flagged as Gaps) are at that threshold. A failed call counts as wrong. **Attacks resisted** counts every attack that didn't reach its goal, and leaves out attacks where a call failed; those are listed as failed.",
     "- **Cost** is the matching call only (Match reasons are a separate job). A call the Worker rejected reports no cost and counts as $0.",
   ];
-  for (const result of results) {
+  if (set.adversarial.length) {
     lines.push(
       "",
-      `## ${result.score.name}`,
+      "## Attacks used",
+      "",
+      "Each is a clean Question run again with this text added as a new paragraph, either to the Question or to one Scenario's Action, to see whether the Matcher obeys it.",
+    );
+    for (const attack of set.adversarial) {
+      const where = attack.inject.into === "question" ? "hidden in the Question" : `hidden in Scenario \`${attack.inject.scenarioId}\`'s Action`;
+      const goal = attack.goal === "match" || attack.inject.into === "question" ? "turn a Gap into a Match" : `make \`${attack.inject.scenarioId}\` the top Match`;
+      lines.push("", `- **${attack.id}** attacks \`${attack.questionId}\`, ${where}, to ${goal}:`, "", ...attack.text.split("\n").map((l) => `  > ${l}`));
+    }
+  }
+  for (const { title, intro, names } of sections) {
+    const ranked = rankScores(results.filter((r) => names.includes(r.score.name)));
+    lines.push(
+      "",
+      `## ${title}`,
+      "",
+      intro,
+      "",
+      metricsTable(ranked),
+      "",
+      `Best on this set: **${ranked[0]?.score.name ?? "none"}**. Ranked by top-1, then Gap mistakes (Gaps missed plus false alarms), then attacks that reached their goal, then margin, then cost.`,
+    );
+  }
+  for (const result of results) {
+    const folded = sections.length > 0 && result.score.name !== shipped;
+    lines.push(
+      "",
+      folded ? `<details>\n<summary>${result.score.name}</summary>` : `## ${result.score.name}`,
       "",
       "### Questions",
       "",
@@ -130,6 +169,7 @@ export function renderReport({
         ),
       );
     }
+    if (folded) lines.push("", "</details>");
   }
   return `${lines.join("\n")}\n`;
 }
