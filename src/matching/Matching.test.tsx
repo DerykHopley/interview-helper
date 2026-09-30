@@ -5,6 +5,7 @@ import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { createScenario, openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
 import { createFakeModelGateway, type ReplyFor } from "../test/fakeModelGateway";
 import { renderApp } from "../test/renderApp";
+import { PROMPT_VARIANTS } from "./promptVariants";
 
 const CHECKOUT = {
   Title: "Rescued the failing checkout migration",
@@ -384,6 +385,29 @@ describe("review fixes", () => {
 
     expect(await screen.findByText(/Your Scenarios have changed since these Matches were found/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Re-run matching" })).toBeInTheDocument();
+  });
+
+  it("says when the Prompt Variant has changed since the Matches were found, and offers a re-run", async () => {
+    const user = userEvent.setup();
+    renderApp({ gateway: createFakeModelGateway({ generate: GOOD }) });
+    await interviewWithScenarios([CHECKOUT]);
+    await find();
+    await screen.findByRole("list", { name: "Matches" });
+    await user.click(screen.getByRole("button", { name: "← Interviews" }));
+
+    // Stands in for switching MATCHING_CONFIG to another Prompt Variant: the Matcher reopened with it has a new name.
+    const variant = PROMPT_VARIANTS["rubric-zero-shot"] as { name: string };
+    const shipped = variant.name;
+    variant.name = "Another variant";
+    try {
+      await user.click(await screen.findByRole("button", { name: "Practise" }));
+      await user.click(await screen.findByRole("button", { name: "Deal my Matches" }));
+
+      expect(await screen.findByText(/Matching has changed since these Matches were found/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Re-run matching" })).toBeInTheDocument();
+    } finally {
+      variant.name = shipped;
+    }
   });
 
   it("counts a skill's Gaps together on the dashboard, ignoring capitals", async () => {

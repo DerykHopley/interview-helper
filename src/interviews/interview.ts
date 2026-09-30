@@ -13,6 +13,10 @@ export const matchResultSchema = z.object({
   matchedAt: z.string(),
   /** Of the Scenarios matched against, so the screen can tell when they've changed since. */
   scenariosFingerprint: z.string(),
+  /** The Matcher and Prompt Variant that found them (the Matcher's name), so the screen can tell when either has
+   * changed since. Empty on results saved before this was recorded, which then read as out of date. The Worker's model
+   * isn't known to the app, so a model change isn't caught. */
+  matchedWith: z.string().default(""),
 });
 export type MatchResult = z.infer<typeof matchResultSchema>;
 

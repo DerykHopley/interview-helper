@@ -35,7 +35,7 @@ export async function findMatches(
 ): Promise<MatchResult> {
   const texts = scenarios.map(asScenarioText);
   const ranked = (await matcher.rank(question, texts)).sort((a, b) => b.score - a.score);
-  const found = { matchedAt: new Date().toISOString(), scenariosFingerprint: scenariosFingerprint(scenarios) };
+  const found = { matchedAt: new Date().toISOString(), scenariosFingerprint: scenariosFingerprint(scenarios), matchedWith: matcher.name };
   if (!ranked.length || ranked[0].score < settings.gapThreshold) {
     return { gap: true, matches: [], suggestion: await gapSuggestion(gateway, question), ...found };
   }

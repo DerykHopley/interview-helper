@@ -6,7 +6,7 @@ import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
 import { findMatches, scenariosFingerprint } from "./findMatches";
-import type { MatchProblem } from "./MatchesPanel";
+import type { MatchProblem, Staleness } from "./MatchesPanel";
 import { MATCHERS, MATCHING_CONFIG } from "./matchingConfig";
 
 /** Where one Question's Matches are on screen: dealt or not, being found, or why they couldn't be. */
@@ -80,8 +80,12 @@ export function useQuestionMatches(vault: UnlockedVault, update: (change: (curre
       if (question.matchResult) return set(question.id, { dealt: true });
       void match(question);
     },
-    /** Whether the Scenarios have changed since this Question's Matches were found. */
-    isStale: (question: Question) =>
-      !!question.matchResult && scenarios !== null && question.matchResult.scenariosFingerprint !== scenariosFingerprint(scenarios),
+    /** What has changed since this Question's Matches were found, if anything: the Scenarios, or how they're matched. */
+    staleness(question: Question): Staleness | null {
+      const found = question.matchResult;
+      if (!found || scenarios === null) return null;
+      if (found.scenariosFingerprint !== scenariosFingerprint(scenarios)) return "scenarios";
+      return found.matchedWith !== matcher.name ? "matcher" : null;
+    },
   };
 }

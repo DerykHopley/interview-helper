@@ -5,12 +5,21 @@ import type { SavedScenario } from "../scenarios/scenarioBank";
 /** Why Matches couldn't be found or kept just now. */
 export type MatchProblem = "no-token" | "expired-token" | "no-scenarios" | "unreachable" | "cut-off" | "failed" | "not-saved";
 
+/** What has changed since a Question's Matches were found: the Candidate's Scenarios, or the app's Matcher or
+ * Prompt Variant. */
+export type Staleness = "scenarios" | "matcher";
+
+const STALE_TEXT: Record<Staleness, string> = {
+  scenarios: "Your Scenarios have changed since these Matches were found.",
+  matcher: "Matching has changed since these Matches were found.",
+};
+
 type Props = {
   finding: boolean;
   problem: MatchProblem | null;
   matchResult: MatchResult | undefined;
-  /** The Scenarios have changed since these Matches were found. */
-  stale: boolean;
+  /** What has changed since these Matches were found, if anything. */
+  stale: Staleness | null;
   skill: string | undefined;
   /** The Candidate's Scenarios, to show each Match's title and demo label; null until they've been read. */
   scenarios: SavedScenario[] | null;
@@ -39,7 +48,7 @@ export function MatchesPanel({ finding, problem, matchResult, stale, skill, scen
   const act: Record<Action, () => void> = { retry: onRetry, token: onNeedToken, "scenario-bank": onOpenScenarioBank };
   const staleNote = stale && (
     <p className="matches-status">
-      Your Scenarios have changed since these Matches were found.{" "}
+      {STALE_TEXT[stale]}{" "}
       <button type="button" className="button-link" onClick={onRetry}>
         Re-run matching
       </button>

@@ -233,7 +233,7 @@ function DealtMatches({ question, matches, onNeedToken, onOpenScenarioBank, onWr
           finding={finding}
           problem={problem}
           matchResult={question.matchResult}
-          stale={matches.isStale(question)}
+          stale={matches.staleness(question)}
           skill={question.skill}
           scenarios={matches.scenarios}
           onRetry={() => matches.match(question)}
