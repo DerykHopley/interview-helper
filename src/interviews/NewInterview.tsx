@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { useLatest } from "../hooks";
 import { useModelGateway } from "../model-gateway/context";
 import type { Interview } from "./interview";
@@ -71,6 +71,17 @@ export function NewInterview({ accessActive, onTokenExpired, onCreate, onCancel 
     }
   }
 
+  // A click on the dimmed area closes the drawer, but only if the press started there too: a text selection dragged
+  // out of a field ends with a click on the backdrop. Once something's been typed, it asks first.
+  const pressedOutside = useRef(false);
+  function onBackdropClick(e: MouseEvent) {
+    const outside = e.target === e.currentTarget && pressedOutside.current;
+    pressedOutside.current = false;
+    if (!outside) return;
+    const typed = Object.values(fields).some((value) => value.trim());
+    if (!typed || confirm("Discard this Interview? What you've typed or pasted will be lost.")) onCancel();
+  }
+
   function onKeyDown(e: KeyboardEvent) {
     if (e.key === "Escape") return onCancel();
     if (e.key !== "Tab") return;
@@ -141,7 +152,11 @@ export function NewInterview({ accessActive, onTokenExpired, onCreate, onCancel 
   };
 
   return (
-    <div className="drawer-backdrop">
+    <div
+      className="drawer-backdrop"
+      onPointerDown={(e) => (pressedOutside.current = e.target === e.currentTarget)}
+      onClick={onBackdropClick}
+    >
       <div className="drawer" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} ref={dialog} onKeyDown={onKeyDown}>
         <form className="form" onSubmit={(e) => void submit(e)} noValidate>
           <h2 id={`${id}-title`} className="pane-title">

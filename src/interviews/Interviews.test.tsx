@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { corruptStoredRecord, everythingStored } from "../test/browserStorage";
@@ -356,6 +356,55 @@ describe("review fixes", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(opener).toHaveFocus();
+  });
+
+  describe("clicking outside the drawer", () => {
+    /** The dimmed area around the drawer. */
+    const outside = () => screen.getByRole("dialog", { name: "New Interview" }).parentElement!;
+
+    it("closes an empty drawer, and returns focus", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await setUpWithoutToken();
+      const opener = await screen.findByRole("button", { name: "+ New Interview" });
+      await user.click(opener);
+
+      await user.click(outside());
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(opener).toHaveFocus();
+    });
+
+    it("asks before discarding what's been typed, and keeps it if the Candidate says no", async () => {
+      const user = userEvent.setup();
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+      renderApp();
+      await setUpWithoutToken();
+      await user.click(await screen.findByRole("button", { name: "+ New Interview" }));
+      await user.type(screen.getByLabelText("Job Spec *"), "A Staff Engineer for our platform team.");
+
+      await user.click(outside());
+
+      expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/^Discard this Interview\?/));
+      expect(screen.getByLabelText("Job Spec *")).toHaveValue("A Staff Engineer for our platform team.");
+
+      confirm.mockReturnValue(true);
+      await user.click(outside());
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("stays open when a press starts in the drawer and ends outside, e.g. selecting text", async () => {
+      const user = userEvent.setup();
+      renderApp();
+      await setUpWithoutToken();
+      await user.click(await screen.findByRole("button", { name: "+ New Interview" }));
+
+      // What a browser does when a drag-select ends outside: the click lands on the drawer's surroundings.
+      fireEvent.pointerDown(screen.getByLabelText("Job Spec *"));
+      fireEvent.click(outside());
+
+      expect(screen.getByRole("dialog", { name: "New Interview" })).toBeInTheDocument();
+    });
   });
 
   it("lands on the Question before, when the last one is deleted", async () => {
