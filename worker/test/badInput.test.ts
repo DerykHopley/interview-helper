@@ -71,7 +71,32 @@ describe("bad input and bad replies", () => {
     const logs = await captureLogs(() => generate({ job: "question-generation", system: "s", user: "u", schema: QUESTIONS_SCHEMA }));
 
     expect(logs.split("\n").map((line) => JSON.parse(line) as unknown)).toEqual([
-      { label: "cohort1", job: "question-generation", model: "openai/gpt-5-mini", cost: null },
+      { label: "cohort1", job: "question-generation", model: "openai/gpt-5-mini", cost: null, upstream: { status: 503 } },
+    ]);
+  });
+
+  it("records OpenRouter's code and message for a failed call, but not the error's metadata", async () => {
+    openRouter.restore();
+    openRouter = fakeOpenRouter(() =>
+      Response.json({ error: { code: 403, message: "Your input was flagged", metadata: { flagged_input: "SECRET-JOB-SPEC-TEXT" } } }, { status: 403 }),
+    );
+    const logs = await captureLogs(() => generate({ job: "matching", system: "s", user: "SECRET-JOB-SPEC-TEXT", schema: QUESTIONS_SCHEMA }));
+
+    expect(logs.split("\n").map((line) => JSON.parse(line) as unknown)).toEqual([
+      { label: "cohort1", job: "matching", model: "openai/gpt-5-mini", cost: null, upstream: { status: 403, code: 403, message: "Your input was flagged" } },
+    ]);
+    expect(logs).not.toContain("SECRET-JOB-SPEC-TEXT");
+  });
+
+  it("records the error a reply ends in", async () => {
+    openRouter.restore();
+    openRouter = fakeOpenRouter(() =>
+      Response.json({ id: "gen-1", choices: [{ finish_reason: "error", error: { code: 502, message: "Provider returned error" }, message: { role: "assistant", content: "" } }] }),
+    );
+    const logs = await captureLogs(() => generate({ job: "matching", system: "s", user: "u", schema: QUESTIONS_SCHEMA }));
+
+    expect(logs.split("\n").map((line) => JSON.parse(line) as unknown)).toEqual([
+      { label: "cohort1", job: "matching", model: "openai/gpt-5-mini", cost: null, upstream: { status: 200, code: 502, message: "Provider returned error" } },
     ]);
   });
 });

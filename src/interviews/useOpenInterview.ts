@@ -6,7 +6,14 @@ import type { InterviewStore, SavedInterview } from "./interviewStore";
 export type OpenInterview =
   | { status: "loading" }
   | { status: "missing" } // deleted, or its record can't be read
-  | { status: "ready"; interview: SavedInterview; position: number; move: (position: number) => void; save: (interview: Interview) => Promise<void> };
+  | {
+      status: "ready";
+      interview: SavedInterview;
+      position: number;
+      move: (position: number) => void;
+      /** Changes the Interview: `change` gets the latest saved version, so overlapping changes don't overwrite each other. */
+      update: (change: (current: Interview) => Interview) => Promise<void>;
+    };
 
 /** The Interview the Candidate has open, if any: read from the Vault, where its deck is, and saving changes. A save
  * that finishes after the Candidate has left (or opened another) is kept in the Vault but not shown. */
@@ -35,10 +42,10 @@ export function useOpenInterview(store: InterviewStore, id: string | null): Open
     interview,
     position,
     move: setPosition,
-    async save(next) {
-      await store.save(next, id);
-      // Only update the Interview this save was for, in case the Candidate has since opened another.
-      setLoaded((shown) => (shown?.id === id ? { id, interview: { ...next, id } } : shown));
+    async update(change) {
+      const saved = await store.update(id, change);
+      // Only update the Interview this change was for, in case the Candidate has since opened another.
+      setLoaded((shown) => (shown?.id === id ? { id, interview: saved } : shown));
     },
   };
 }

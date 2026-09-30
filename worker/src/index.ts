@@ -28,19 +28,34 @@ function parseJson(text: string): { ok: true; value: unknown } | { ok: false } {
   }
 }
 
-/** The only thing the Worker ever logs: never request or response bodies, never the token (spec #1, story 78–79). */
-const logCall = (access: Access, job: string, model: string, cost: number | null) =>
-  console.log(JSON.stringify({ label: access.label, job, model, cost }));
+type UpstreamError = { status: number; code?: unknown; message?: string };
+
+/** The only thing the Worker ever logs: never request or response bodies, never the token (spec #1, story 78–79).
+ * A failed call adds OpenRouter's status, error code and message, so a model_unavailable can be told apart. */
+const logCall = (access: Access, job: string, model: string, cost: number | null, upstream?: UpstreamError) =>
+  console.log(JSON.stringify({ label: access.label, job, model, cost, ...(upstream && { upstream }) }));
+
+/** OpenRouter's code and message from an error object ({ code, message }). Its metadata is left out, since a
+ * moderation error quotes the flagged input there, and the message is capped in case one ever quotes it too. */
+function upstreamError(status: number, value: unknown): UpstreamError {
+  const found = (value ?? {}) as { code?: unknown; message?: unknown };
+  const code = typeof found.code === "string" || typeof found.code === "number" ? found.code : undefined;
+  const message = typeof found.message === "string" ? found.message.slice(0, 200) : undefined;
+  return { status, code, message };
+}
 
 async function generate(request: Request, env: Env, access: Access) {
   const body = parseJson(await request.text());
   const parsed = body.ok ? GenerateRequest.safeParse(body.value) : null;
   if (!parsed?.success) return error("bad_request", 400);
-  const { job, model: requested, system, user, schema } = parsed.data;
+  const { job, model: requested, maxTokens, reasoningEffort, system, user, schema } = parsed.data;
   if (!Object.hasOwn(env.JOB_MODELS, job)) return error("unknown_job", 400);
   // The job's default model, or one the request picks (the Developer panel), if it's on the allowed list.
   const model = requested ?? env.JOB_MODELS[job as Job];
   if (!(env.ALLOWED_MODELS as readonly string[]).includes(model)) return error("model_not_allowed", 400);
+  // The job's limits bound every call's cost; a request may only lower the cap.
+  const settings = env.JOB_SETTINGS[job as Job];
+  if (maxTokens !== undefined && maxTokens > settings.max_tokens) return error("settings_not_allowed", 400);
 
   const upstream = await fetch(OPENROUTER_CHAT, {
     method: "POST",
@@ -55,15 +70,26 @@ async function generate(request: Request, env: Env, access: Access) {
       // Only providers that don't store or train on prompts (spec #1, story 80).
       provider: { data_collection: "deny" },
       usage: { include: true },
+      max_tokens: maxTokens ?? settings.max_tokens,
+      reasoning: { effort: reasoningEffort ?? settings.reasoning_effort },
     }),
   });
   if (!upstream.ok) {
-    logCall(access, job, model, null);
+    const failed = parseJson(await upstream.text());
+    logCall(access, job, model, null, upstreamError(upstream.status, failed.ok ? (failed.value as { error?: unknown } | null)?.error : null));
     return error("model_unavailable", 502);
   }
   const reply = parseJson(await upstream.text());
-  const completion = (reply.ok ? reply.value : null) as { choices?: { message?: { content?: string } }[]; usage?: { cost?: number } } | null;
-  logCall(access, job, model, completion?.usage?.cost ?? null);
+  const completion = (reply.ok ? reply.value : null) as {
+    choices?: { finish_reason?: string; message?: { content?: string }; error?: unknown }[];
+    usage?: { cost?: number };
+  } | null;
+  const finish = completion?.choices?.[0]?.finish_reason;
+  // A reply that ends in an error carries OpenRouter's error on the choice.
+  logCall(access, job, model, completion?.usage?.cost ?? null, finish === "error" ? upstreamError(upstream.status, completion?.choices?.[0]?.error) : undefined);
+  // Ran out of tokens (reasoning counts too): the reply is empty or partial, so say so rather than fail to parse it.
+  if (finish === "length") return error("reply_cut_off", 502);
+  if (finish === "error") return error("model_unavailable", 502);
   const content = parseJson(completion?.choices?.[0]?.message?.content ?? "");
   if (!content.ok) return error("invalid_model_reply", 502);
   return Response.json({ output: content.value } satisfies GenerateResponse);

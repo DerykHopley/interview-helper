@@ -17,12 +17,18 @@ function timeLeft(expiresAt: Date, now = Date.now()) {
 
 /** The dashboard's Access chip (D2 design): the kept Access Token's status, opening a panel to check or replace it.
  * The panel stays mounted while closed, so the token is recalled and checked again as soon as the app unlocks. */
-export function AccessChip({ vault }: { vault: UnlockedVault }) {
+export function AccessChip({ vault, openRequests = 0 }: { vault: UnlockedVault; /** Each increase opens the panel. */ openRequests?: number }) {
   const kept = useMemo(() => keptAccessToken(vault), [vault]);
   const [remembered, setRemembered] = useState<string | null | undefined>(undefined); // undefined while reading
   const [active, setActive] = useState<Active | null>(null);
   const [lastCheck, setLastCheck] = useState<CheckResult | null>(null);
   const [open, setOpen] = useState(false);
+  // A new request to open (e.g. "Enter a new token") opens the panel; adjusting state while rendering, React's way.
+  const [seenRequests, setSeenRequests] = useState(openRequests);
+  if (openRequests !== seenRequests) {
+    setSeenRequests(openRequests);
+    setOpen(true);
+  }
 
   useCancellableEffect(
     (isCurrent) => {

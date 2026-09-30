@@ -27,6 +27,8 @@
   --ok-soft: #86efac;
   --ok-tint: #16a34a33;
   --warn-tint: #f59e0b33;
+  --gap: #fb923c; /* Gaps: the dashed card, chips and counts */
+  --gap-tint: #fb923c26;
   --accent-tint: #fcd34d14;
 
   /* Skill tags and origins, on the table and on a card */

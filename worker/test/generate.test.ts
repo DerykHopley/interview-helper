@@ -26,7 +26,63 @@ describe("structured generation", () => {
       response_format: { type: "json_schema", json_schema: { name: "reply", strict: true, schema: QUESTIONS_SCHEMA } },
       provider: { data_collection: "deny" },
       usage: { include: true },
+      // The job's limits (JOB_SETTINGS): a cap on reply length, reasoning included, and a low reasoning effort.
+      max_tokens: 4000,
+      reasoning: { effort: "low" },
     });
+  });
+
+  it("uses each job's own limits", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"scores":[]}'));
+
+    await generate({ job: "matching", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(openRouter.requests[0].json()).toMatchObject({ max_tokens: 6000, reasoning: { effort: "low" } });
+  });
+
+  it("lets a request ask for fewer tokens than the job's cap, but never more", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
+
+    const fewer = await generate({ job: "question-generation", maxTokens: 1000, system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+    const more = await generate({ job: "question-generation", maxTokens: 50_000, system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(fewer.status).toBe(200);
+    expect(openRouter.requests[0].json()).toMatchObject({ max_tokens: 1000 });
+    expect(more.status).toBe(400);
+    expect(await more.json()).toEqual({ error: "settings_not_allowed" });
+    expect(openRouter.requests).toHaveLength(1);
+  });
+
+  it("lets a request pick a reasoning effort from the allowed list, and refuses any other", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
+
+    const medium = await generate({ job: "question-generation", reasoningEffort: "medium", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+    const extreme = await generate({ job: "question-generation", reasoningEffort: "extreme", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(medium.status).toBe(200);
+    expect(openRouter.requests[0].json()).toMatchObject({ reasoning: { effort: "medium" } });
+    expect(extreme.status).toBe(400);
+    expect(openRouter.requests).toHaveLength(1);
+  });
+
+  it("says the model is unavailable when its reply ends in an error", async () => {
+    openRouter = fakeOpenRouter(() => Response.json({ id: "gen-1", choices: [{ finish_reason: "error", message: { role: "assistant", content: "" } }] }));
+
+    const response = await generate({ job: "matching", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "model_unavailable" });
+  });
+
+  it("says a reply was cut off by the token limit, rather than passing on an empty one", async () => {
+    openRouter = fakeOpenRouter(() =>
+      Response.json({ id: "gen-1", choices: [{ finish_reason: "length", message: { role: "assistant", content: "" } }], usage: { cost: 0.002 } }),
+    );
+
+    const response = await generate({ job: "matching", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "reply_cut_off" });
   });
 
   it("uses a model the request picks, if it's on the allowed list", async () => {

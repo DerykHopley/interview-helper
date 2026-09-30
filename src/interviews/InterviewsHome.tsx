@@ -3,6 +3,7 @@ import { useCancellableEffect } from "../hooks";
 import type { Interview } from "./interview";
 import type { InterviewStore, SavedInterview } from "./interviewStore";
 import { countOf, unreadableNotice } from "../text";
+import { gapCount } from "./gaps";
 import { NewInterview } from "./NewInterview";
 
 /** The Interviews tab, the dashboard's home (D2): the Candidate's Interviews, and creating one. */
@@ -71,31 +72,36 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
           <tr>
             <th scope="col">Role</th>
             <th scope="col">Questions</th>
+            <th scope="col">Gaps</th>
             <th scope="col">
               <span className="visually-hidden">Actions</span>
             </th>
           </tr>
         </thead>
         <tbody>
-          {interviews.map((interview) => (
-            <tr key={interview.id}>
-              <th scope="row">
-                <span className="interview-role">{interview.role}</span>
-                {interview.company && <span className="interview-company">{interview.company}</span>}
-              </th>
-              <td>{interview.questions.length}</td>
-              <td>
-                <div className="actions">
-                  <button type="button" className="button-secondary" onClick={() => onOpen(interview.id)}>
-                    Practise
-                  </button>
-                  <button type="button" className="button-link" aria-label={`Delete ${interview.role}`} onClick={() => void remove(interview)}>
-                    Delete
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+          {interviews.map((interview) => {
+            const gaps = gapCount(interview);
+            return (
+              <tr key={interview.id}>
+                <th scope="row">
+                  <span className="interview-role">{interview.role}</span>
+                  {interview.company && <span className="interview-company">{interview.company}</span>}
+                </th>
+                <td>{interview.questions.length}</td>
+                <td className={gaps > 0 ? "has-gaps" : undefined}>{gaps > 0 ? countOf(gaps, "Gap") : "—"}</td>
+                <td>
+                  <div className="actions">
+                    <button type="button" className="button-secondary" onClick={() => onOpen(interview.id)}>
+                      Practise
+                    </button>
+                    <button type="button" className="button-link" aria-label={`Delete ${interview.role}`} onClick={() => void remove(interview)}>
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       )}
