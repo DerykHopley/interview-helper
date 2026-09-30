@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import type { Interview } from "./interview";
 import type { InterviewStore, SavedInterview } from "./interviewStore";
@@ -33,6 +33,9 @@ export function useOpenInterview(store: InterviewStore, id: string | null): Open
     [store, id],
   );
 
+  // A change saved elsewhere (Questions written in the background) shows at once.
+  useEffect(() => store.onChange((saved) => setLoaded((shown) => (shown?.id === saved.id ? { id: saved.id, interview: saved } : shown))), [store]);
+
   if (!id) return null;
   if (!loaded || loaded.id !== id) return { status: "loading" };
   const { interview } = loaded;
@@ -43,9 +46,7 @@ export function useOpenInterview(store: InterviewStore, id: string | null): Open
     position,
     move: setPosition,
     async update(change) {
-      const saved = await store.update(id, change);
-      // Only update the Interview this change was for, in case the Candidate has since opened another.
-      setLoaded((shown) => (shown?.id === id ? { id, interview: saved } : shown));
+      await store.update(id, change); // shown through onChange, only if it's still the one open
     },
   };
 }

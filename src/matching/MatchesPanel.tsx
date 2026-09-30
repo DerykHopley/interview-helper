@@ -1,9 +1,10 @@
+import { SHARED_PROBLEM_TEXT, type CallProblem } from "../model-gateway/callProblems";
 import { NO_SKILL } from "../interviews/gaps";
 import type { MatchResult } from "../interviews/interview";
 import type { SavedScenario } from "../scenarios/scenarioBank";
 
 /** Why Matches couldn't be found or kept just now. */
-export type MatchProblem = "no-token" | "expired-token" | "no-scenarios" | "unreachable" | "cut-off" | "failed" | "not-saved";
+export type MatchProblem = CallProblem | "no-scenarios" | "not-saved";
 
 /** What has changed since a Question's Matches were found: the Candidate's Scenarios, or the app's Matcher or
  * Prompt Variant. */
@@ -37,8 +38,8 @@ const PROBLEMS: Record<MatchProblem, { text: string; action: Action }> = {
   "no-token": { text: "Matches can't be found without an Access Token.", action: "token" },
   "expired-token": { text: "Matches can't be found — your Access Token has expired.", action: "token" },
   "no-scenarios": { text: "You have no Scenarios to match yet.", action: "scenario-bank" },
-  unreachable: { text: "Couldn't reach the app's server. Check your connection and try again.", action: "retry" },
-  "cut-off": { text: "The model ran out of room before it finished. Try again; if it keeps happening, tell the app owner.", action: "retry" },
+  unreachable: { text: SHARED_PROBLEM_TEXT.unreachable, action: "retry" },
+  "cut-off": { text: SHARED_PROBLEM_TEXT["cut-off"], action: "retry" },
   failed: { text: "Finding Matches didn't work this time.", action: "retry" },
   "not-saved": { text: "Couldn't save the Matches. Try again.", action: "retry" },
 };

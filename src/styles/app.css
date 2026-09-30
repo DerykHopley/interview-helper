@@ -193,6 +193,10 @@ textarea.field { resize: vertical; font-family: inherit; }
 .question-text { margin: auto 0; font-family: var(--font-display); font-size: 30px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .end-card-title { margin: 0; font-family: var(--font-display); font-size: 28px; }
 .end-card .form { margin-top: 8px; }
+.end-card .actions { align-items: center; }
+.placeholder-line { display: block; height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--line), #ece6d6, var(--line)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+.placeholder-line.is-short { width: 60%; }
+@media (prefers-reduced-motion: reduce) { .placeholder-line { animation: none; } }
 .card-menu { position: absolute; top: 12px; right: 12px; }
 .card-menu-button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--ink-muted); font-size: 20px; cursor: pointer; }
 .card-menu-button:hover { background: var(--note-bg); }

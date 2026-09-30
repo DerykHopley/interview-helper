@@ -49,7 +49,7 @@ async function interviewWithScenarios(scenarios: Record<string, string>[], skill
   await user.click(await screen.findByRole("button", { name: "+ New Interview" }));
   await user.type(screen.getByLabelText("Role *"), "Senior Product Engineer");
   await user.type(screen.getByLabelText("Job Spec *"), "Lead our warehouse tools team.");
-  await user.click(screen.getByRole("button", { name: "Create Interview" }));
+  await user.click(screen.getByRole("button", { name: "Create without Questions" }));
   await user.type(await screen.findByLabelText("Your Question"), QUESTION);
   if (skill) await user.type(screen.getByLabelText("Skill it tests (optional)"), skill);
   await user.click(screen.getByRole("button", { name: "Add Question" }));

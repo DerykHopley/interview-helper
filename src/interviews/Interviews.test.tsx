@@ -12,15 +12,15 @@ const NORTHWIND = {
   "Job Spec": "We're hiring a Senior Product Engineer to lead our warehouse tools team.",
 };
 
-/** Fills in the New Interview drawer and creates it. */
-async function createInterview(fields: Record<string, string>) {
+/** Fills in the New Interview drawer and creates it: without Questions, unless an Access Token is active. */
+async function createInterview(fields: Record<string, string>, button = "Create without Questions") {
   const user = userEvent.setup();
   await user.click(await screen.findByRole("button", { name: "+ New Interview" }));
   const drawer = screen.getByRole("dialog", { name: "New Interview" });
   for (const [label, value] of Object.entries(fields)) {
     if (value) await user.type(within(drawer).getByLabelText(new RegExp(`^${label}( \\*)?$`)), value);
   }
-  await user.click(within(drawer).getByRole("button", { name: "Create Interview" }));
+  await user.click(within(drawer).getByRole("button", { name: button }));
 }
 
 const DISAGREED = "Tell me about a time you disagreed with your manager.";
@@ -69,7 +69,7 @@ describe("creating an Interview", () => {
     await user.type(within(drawer).getByLabelText("Role *"), "Staff Engineer");
     await user.type(within(drawer).getByLabelText("Job Spec *"), "A Staff Engineer for our platform team.");
     await user.clear(within(drawer).getByLabelText("Company"));
-    await user.click(within(drawer).getByRole("button", { name: "Create Interview" }));
+    await user.click(within(drawer).getByRole("button", { name: "Create without Questions" }));
 
     expect(await screen.findByRole("heading", { level: 1, name: "Staff Engineer" })).toBeInTheDocument();
   });
@@ -347,11 +347,11 @@ describe("review fixes", () => {
     const opener = await screen.findByRole("button", { name: "+ New Interview" });
 
     await user.click(opener);
-    expect(screen.getByLabelText("Role *")).toHaveFocus();
+    expect(screen.getByLabelText("Job Spec *")).toHaveFocus(); // the design puts the Job Spec first
     await user.tab({ shift: true });
     expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
     await user.tab();
-    expect(screen.getByLabelText("Role *")).toHaveFocus();
+    expect(screen.getByLabelText("Job Spec *")).toHaveFocus(); // the design puts the Job Spec first
 
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -410,7 +410,11 @@ describe("review fixes", () => {
   it("keeps the Access chip, rather than checking the token again, when opening an Interview and going back", async () => {
     const user = userEvent.setup();
     const TOKEN = "IH-COHORT1-1Z3K9QT-7M2XD9PQRW4TK6BA";
-    const gateway = createFakeModelGateway({ accessTokens: { [TOKEN]: { ok: true, label: "cohort1", expiresAt: new Date(Date.now() + 6 * 3_600_000) } } });
+    const gateway = createFakeModelGateway({
+      accessTokens: { [TOKEN]: { ok: true, label: "cohort1", expiresAt: new Date(Date.now() + 6 * 3_600_000) } },
+      // The role and company are typed, so only the Questions are asked for.
+      generate: { "question-generation": [{ questions: Array.from({ length: 8 }, (_, i) => ({ text: `Q${i}`, skill: "s" })) }] },
+    });
     const checkAccess = vi.spyOn(gateway, "checkAccess");
     renderApp({ gateway });
     await enterAccessToken(TOKEN);
@@ -418,8 +422,9 @@ describe("review fixes", () => {
     await screen.findByRole("button", { name: /Access · \dh left/ });
     const checksSoFar = checkAccess.mock.calls.length;
 
-    await createInterview(NORTHWIND);
+    await createInterview(NORTHWIND, "Create and generate ~8 Questions");
     await screen.findByRole("heading", { level: 1, name: /Senior Product Engineer/ });
+    await screen.findByText("8 Questions");
     await user.click(screen.getByRole("button", { name: "← Interviews" }));
     await screen.findByRole("row", { name: /Senior Product Engineer/ });
 

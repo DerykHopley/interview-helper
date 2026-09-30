@@ -1,5 +1,9 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
+import { useLatest } from "../hooks";
+import { useModelGateway } from "../model-gateway/context";
 import type { Interview } from "./interview";
+import { callProblemOf } from "../model-gateway/callProblems";
+import { detectRoleAndCompany, FIRST_BATCH } from "./questionGenerator";
 import { SAMPLE_JOB_SPEC } from "./sampleJobSpec";
 
 type Name = "role" | "company" | "jobSpec";
@@ -9,21 +13,63 @@ const REQUIRED: Partial<Record<Name, { onField: string; inSummary: string }>> = 
   jobSpec: { onField: "Paste the Job Spec", inSummary: "the Job Spec" },
 };
 
-/** D2's New Interview drawer: the role, the company and the pasted Job Spec. #9 adds generating Questions, and
- * fills in the role and company from the Job Spec when it can. */
-export function NewInterview({ onCreate, onCancel }: { onCreate: (interview: Interview) => Promise<void>; onCancel: () => void }) {
+type Props = {
+  /** Whether an Access Token is active, so Questions can be written and the role and company found. */
+  accessActive: boolean;
+  /** A model call found the Access Token expired. */
+  onTokenExpired: () => void;
+  /** Creates the Interview; `generate` asks for its first Questions to be written. */
+  onCreate: (interview: Interview, generate: boolean) => Promise<void>;
+  onCancel: () => void;
+};
+
+/** D2's New Interview drawer: the pasted Job Spec, then the role and company, which a quick model call fills in from
+ * the Job Spec when they're empty (#9). With an Access Token, creating also writes the first Questions. */
+/** Finding the role and company: under way, or why it came back empty. */
+type Lookup = "finding" | "not-found" | "expired" | "failed";
+const LOOKUP_TEXT: Record<Lookup, string> = {
+  finding: "Finding the role and company…",
+  "not-found": "The Job Spec doesn't seem to name the role or company. Type them in.",
+  expired: "Your Access Token has expired, so the role and company can't be found. Type them in.",
+  failed: "Couldn't find the role and company this time. Type them in.",
+};
+
+export function NewInterview({ accessActive, onTokenExpired, onCreate, onCancel }: Props) {
   const id = useId();
+  const gateway = useModelGateway();
   const [fields, setFields] = useState<Record<Name, string>>({ role: "", company: "", jobSpec: "" });
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [lookup, setLookup] = useState<Lookup | null>(null);
   const missing = (Object.keys(REQUIRED) as Name[]).filter((name) => !fields[name].trim());
   const dialog = useRef<HTMLDivElement>(null);
+  const lastDetected = useRef("");
+  const latestFields = useLatest(fields);
 
   // A modal drawer: focus starts on the first field and stays inside until it closes.
   useEffect(() => {
-    dialog.current?.querySelector<HTMLElement>("input")?.focus();
+    dialog.current?.querySelector<HTMLElement>("input, textarea")?.focus();
   }, []);
+
+  /** Fills in the role and company from this Job Spec, if either is still empty; never over what's been typed, even
+   * while the reply is on its way. Once per Job Spec text. */
+  async function detect(jobSpec: string) {
+    const spec = jobSpec.trim();
+    const { role, company } = latestFields.current;
+    if (!accessActive || !spec || spec === lastDetected.current || (role.trim() && company.trim())) return;
+    lastDetected.current = spec;
+    setLookup("finding");
+    try {
+      const found = await detectRoleAndCompany(gateway, spec);
+      setFields((f) => ({ ...f, role: f.role.trim() ? f.role : (found.role ?? f.role), company: f.company.trim() ? f.company : (found.company ?? f.company) }));
+      setLookup(found.role || found.company ? null : "not-found");
+    } catch (e) {
+      const expired = callProblemOf(e) === "expired-token";
+      if (expired) onTokenExpired();
+      setLookup(expired ? "expired" : "failed");
+    }
+  }
 
   function onKeyDown(e: KeyboardEvent) {
     if (e.key === "Escape") return onCancel();
@@ -46,7 +92,7 @@ export function NewInterview({ onCreate, onCancel }: { onCreate: (interview: Int
     setSaving(true); // a second click mustn't create a second Interview
     setFailed(false);
     try {
-      await onCreate({ role: fields.role.trim(), company: fields.company.trim() || undefined, jobSpec: fields.jobSpec.trim(), questions: [] });
+      await onCreate({ role: fields.role.trim(), company: fields.company.trim() || undefined, jobSpec: fields.jobSpec.trim(), questions: [] }, accessActive);
     } catch {
       setFailed(true);
       setSaving(false);
@@ -55,6 +101,18 @@ export function NewInterview({ onCreate, onCancel }: { onCreate: (interview: Int
 
   const field = (name: Name, label: string, multiline = false, placeholder?: string) => {
     const Field = multiline ? "textarea" : "input";
+    // The Job Spec box looks for the role and company once the Candidate has pasted, or moves on. (Defined here, not
+    // passed in: the React Compiler's lint won't let a callback that reads refs be handed to a render-time helper.)
+    const events =
+      name === "jobSpec"
+        ? {
+            onPaste: (e: ClipboardEvent<HTMLElement>) => {
+              const box = e.currentTarget as HTMLTextAreaElement;
+              setTimeout(() => void detect(box.value)); // once the pasted text is in
+            },
+            onBlur: () => void detect(fields.jobSpec),
+          }
+        : {};
     const isMissing = tried && missing.includes(name);
     return (
       <div className="form-field">
@@ -71,6 +129,7 @@ export function NewInterview({ onCreate, onCancel }: { onCreate: (interview: Int
           aria-describedby={isMissing ? `${id}-${name}-missing` : undefined}
           value={fields[name]}
           onChange={(e) => setFields((f) => ({ ...f, [name]: e.target.value }))}
+          {...events}
         />
         {isMissing && (
           <span id={`${id}-${name}-missing`} className="error">
@@ -88,12 +147,29 @@ export function NewInterview({ onCreate, onCancel }: { onCreate: (interview: Int
           <h2 id={`${id}-title`} className="pane-title">
             New Interview
           </h2>
-          {field("role", "Role", false, "e.g. Senior Product Engineer")}
-          {field("company", "Company", false, "Optional")}
           {field("jobSpec", "Job Spec", true, "Paste the Job Spec here — all of it is fine.")}
-          <button type="button" className="button-link" onClick={() => setFields((f) => ({ ...f, jobSpec: SAMPLE_JOB_SPEC }))}>
+          <button
+            type="button"
+            className="button-link"
+            onClick={() => {
+              setFields((f) => ({ ...f, jobSpec: SAMPLE_JOB_SPEC }));
+              void detect(SAMPLE_JOB_SPEC);
+            }}
+          >
             Use a sample Job Spec
           </button>
+          {lookup && (
+            <p role="status" className="form-hint">
+              {LOOKUP_TEXT[lookup]}
+            </p>
+          )}
+          {field("role", "Role", false, "e.g. Senior Product Engineer")}
+          {field("company", "Company", false, "Optional")}
+          {!accessActive && (
+            <p className="notice-warn">
+              Questions can't be written without an active Access Token. You can still create the Interview and type your own Questions.
+            </p>
+          )}
           {tried && missing.length > 0 && (
             <p role="alert" className="error">
               Still missing: {missing.map((name) => REQUIRED[name]!.inSummary).join(", ")}.
@@ -106,7 +182,7 @@ export function NewInterview({ onCreate, onCancel }: { onCreate: (interview: Int
           )}
           <div className="actions">
             <button type="submit" className="button-primary" disabled={saving}>
-              Create Interview
+              {accessActive ? `Create and generate ~${FIRST_BATCH.ask} Questions` : "Create without Questions"}
             </button>
             <button type="button" className="button-link" onClick={onCancel}>
               Cancel
