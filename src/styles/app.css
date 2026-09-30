@@ -197,6 +197,8 @@ textarea.field { resize: vertical; font-family: inherit; }
 .placeholder-line { display: block; height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--line), #ece6d6, var(--line)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 .placeholder-line.is-short { width: 60%; }
 @media (prefers-reduced-motion: reduce) { .placeholder-line { animation: none; } }
+.field.is-finding { background: linear-gradient(90deg, #fff, #f3eee2, #fff); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .field.is-finding { animation: none; background: #f7f3ea; } }
 .card-menu { position: absolute; top: 12px; right: 12px; }
 .card-menu-button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--ink-muted); font-size: 20px; cursor: pointer; }
 .card-menu-button:hover { background: var(--note-bg); }

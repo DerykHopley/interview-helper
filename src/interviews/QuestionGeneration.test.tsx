@@ -62,6 +62,28 @@ describe("finding the role and company", () => {
     expect(within(drawer()).getByLabelText("Role *")).toHaveValue("Staff Engineer");
   });
 
+  it("shows the empty role and company as loading while they're found, and still lets the Candidate type", async () => {
+    const user = userEvent.setup();
+    const detecting = held(DETECTED);
+    renderApp({ gateway: createFakeModelGateway({ accessTokens: ACCESS, generate: { "question-generation": [detecting.replyFor] } }) });
+    await setUpWithToken();
+    await user.click(await screen.findByRole("button", { name: "+ New Interview" }));
+    await user.type(within(drawer()).getByLabelText("Company"), "Harbourline");
+    await user.click(within(drawer()).getByLabelText(/^Job Spec/));
+    await user.paste(JOB_SPEC);
+
+    const role = within(drawer()).getByLabelText("Role *");
+    await waitFor(() => expect(role).toHaveAttribute("aria-busy", "true"));
+    expect(role).toHaveAttribute("placeholder", "Finding…");
+    expect(role).toBeEnabled();
+    expect(within(drawer()).getByLabelText("Company")).not.toHaveAttribute("aria-busy"); // typed: it won't be filled
+
+    await waitFor(() => expect(detecting.control.release).toBeDefined());
+    await act(() => Promise.resolve(detecting.control.release!()));
+    await waitFor(() => expect(role).toHaveValue("Senior Product Engineer"));
+    expect(role).not.toHaveAttribute("aria-busy");
+  });
+
   it("cuts a very long role short rather than refusing it", async () => {
     const long = `Senior ${"Principal ".repeat(20)}Engineer`;
     renderApp({ gateway: createFakeModelGateway({ accessTokens: ACCESS, generate: { "question-generation": [{ role: long, company: null }] } }) });

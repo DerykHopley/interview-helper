@@ -125,6 +125,9 @@ export function NewInterview({ accessActive, onTokenExpired, onCreate, onCancel 
           }
         : {};
     const isMissing = tried && missing.includes(name);
+    // While the role and company are being found, an empty one shows as loading. It stays editable: whatever the
+    // Candidate types wins over the reply.
+    const finding = lookup === "finding" && name !== "jobSpec" && !fields[name].trim();
     return (
       <div className="form-field">
         <label htmlFor={`${id}-${name}`} className="form-label">
@@ -133,9 +136,10 @@ export function NewInterview({ accessActive, onTokenExpired, onCreate, onCancel 
         </label>
         <Field
           id={`${id}-${name}`}
-          className="field"
+          className={finding ? "field is-finding" : "field"}
           rows={multiline ? 8 : undefined}
-          placeholder={placeholder}
+          placeholder={finding ? "Finding…" : placeholder}
+          aria-busy={finding || undefined}
           aria-invalid={isMissing}
           aria-describedby={isMissing ? `${id}-${name}-missing` : undefined}
           value={fields[name]}
@@ -174,7 +178,8 @@ export function NewInterview({ accessActive, onTokenExpired, onCreate, onCancel 
             Use a sample Job Spec
           </button>
           {lookup && (
-            <p role="status" className="form-hint">
+            // While finding, the loading fields say so; this is for screen readers, and doesn't push the fields down.
+            <p role="status" className={lookup === "finding" ? "visually-hidden" : "form-hint"}>
               {LOOKUP_TEXT[lookup]}
             </p>
           )}
