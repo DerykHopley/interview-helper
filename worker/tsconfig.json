@@ -24,6 +24,10 @@
     "vitest.config.ts",
     "../src/model-gateway/workerGateway.ts",
     "../src/model-gateway/ModelGateway.ts",
+    "../src/matching/llmMatcher.ts",
+    "../src/matching/Matcher.ts",
+    "../src/matching/promptVariants.ts",
+    "../src/matching/shortIds.ts",
     "../shared"
   ]
 }

@@ -32,6 +32,7 @@ export type AccessResponse = { label: string; expiresAt: string };
 
 /** The reasoning efforts a request may pick (OpenRouter's, less the costliest). */
 export const REASONING_EFFORTS = ["none", "minimal", "low", "medium", "high"] as const;
+export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
 /** POST /v1/generate body. `schema` is the reply's JSON Schema; `model` may pick another allowed model, `maxTokens`
  * a lower cap than the job's own (the cap is a ceiling), and `reasoningEffort` another allowed effort. */

@@ -20,6 +20,9 @@ const CHECKOUT = {
 const MENTORING = { ...CHECKOUT, Title: "Mentored two juniors through their first on-call", Skills: "mentoring" };
 const CONFLICT = { ...CHECKOUT, Title: "Disagreed with the CTO on build vs buy", Skills: "influencing" };
 const QUESTION = "Tell me about a time you delivered under a tight deadline.";
+/** The shipped Setup's Matcher name (MATCHING_CONFIG), as gapThresholds.json records it, and one with another variant. */
+const SHIPPED = "LLM (Rubric, zero-shot) · openai/gpt-5-mini · low effort";
+const ANOTHER_VARIANT = "LLM (Another variant) · openai/gpt-5-mini · low effort";
 
 /** The Scenarios a matching or reasons request sent, as the model sees them (id and title at least). This reads the
  * shared prompt layout (promptVariants.ts `matchingMessage`), so a layout change updates it here too. */
@@ -96,7 +99,7 @@ describe("dealing Matches", () => {
 });
 
 describe("the matching model", () => {
-  it("scores with the model the app is configured to ship, not the Worker's default", async () => {
+  it("scores with the model and reasoning effort the app is configured to ship, not the Worker's defaults", async () => {
     const gateway = createFakeModelGateway({ generate: GOOD });
     const generate = vi.spyOn(gateway, "generate");
     renderApp({ gateway });
@@ -106,7 +109,7 @@ describe("the matching model", () => {
     await screen.findByRole("list", { name: "Matches" });
 
     // MATCHING_CONFIG.model; the Match reasons job keeps the Worker's default.
-    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ job: "matching", model: "openai/gpt-5-mini" }));
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ job: "matching", model: "openai/gpt-5-mini", reasoningEffort: "low" }));
     const reasonsCall = generate.mock.calls.find(([request]) => request.job === "match-reasons");
     expect(reasonsCall?.[0].model).toBeUndefined();
   });
@@ -134,7 +137,7 @@ describe("Gaps", () => {
   it("uses the Gap threshold the Matcher Report recorded: just below it is a Gap, at it are Matches", async () => {
     const user = userEvent.setup();
     // The recorded threshold of the shipped Matcher (MATCHING_CONFIG), as eval/matcher-report.ts wrote it.
-    const threshold = gapThresholds["LLM (Rubric, zero-shot) · openai/gpt-5-mini"].gapThreshold;
+    const threshold = gapThresholds[SHIPPED].gapThreshold;
     const [below, at] = [Math.ceil(threshold) - 1, Math.ceil(threshold)]; // the LLM Matcher scores whole numbers
     const gateway = createFakeModelGateway({
       generate: {
@@ -447,7 +450,7 @@ describe("review fixes", () => {
     const variant = PROMPT_VARIANTS["rubric-zero-shot"] as { name: string };
     const shipped = variant.name;
     variant.name = "Another variant";
-    (gapThresholds as Record<string, unknown>)["LLM (Another variant) · openai/gpt-5-mini"] = { gapThreshold: 50, report: null };
+    (gapThresholds as Record<string, unknown>)[ANOTHER_VARIANT] = { gapThreshold: 50, report: null };
     try {
       await user.click(await screen.findByRole("button", { name: "Practise" }));
       await user.click(await screen.findByRole("button", { name: "Deal my Matches" }));
@@ -456,7 +459,7 @@ describe("review fixes", () => {
       expect(screen.getByRole("button", { name: "Re-run matching" })).toBeInTheDocument();
     } finally {
       variant.name = shipped;
-      delete (gapThresholds as Record<string, unknown>)["LLM (Another variant) · openai/gpt-5-mini"];
+      delete (gapThresholds as Record<string, unknown>)[ANOTHER_VARIANT];
     }
   });
 

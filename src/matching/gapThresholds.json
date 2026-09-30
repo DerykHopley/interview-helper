@@ -1,6 +1,30 @@
 {
-  "LLM (Rubric, zero-shot) · openai/gpt-5-mini": {
+  "LLM (Rubric, zero-shot) · openai/gpt-5-mini · low effort": {
     "gapThreshold": 77.5,
-    "report": "eval/reports/2026-09-30-matcher-report.md"
+    "report": "eval/reports/2026-09-30-matcher-report-2.md"
+  },
+  "LLM (Zero-shot) · openai/gpt-5-mini · low effort": {
+    "gapThreshold": 77.5,
+    "report": "eval/reports/2026-09-30-matcher-report-2.md"
+  },
+  "LLM (Few-shot) · openai/gpt-5-mini · low effort": {
+    "gapThreshold": 80,
+    "report": "eval/reports/2026-09-30-matcher-report-2.md"
+  },
+  "LLM (Chain-of-thought) · openai/gpt-5-mini · low effort": {
+    "gapThreshold": 80,
+    "report": "eval/reports/2026-09-30-matcher-report-2.md"
+  },
+  "LLM (Persona, experienced interviewer) · openai/gpt-5-mini · low effort": {
+    "gapThreshold": 75,
+    "report": "eval/reports/2026-09-30-matcher-report-2.md"
+  },
+  "LLM (Rubric, zero-shot) · openai/gpt-5-mini · minimal effort": {
+    "gapThreshold": 85,
+    "report": "eval/reports/2026-09-30-matcher-report-2.md"
+  },
+  "LLM (Rubric, zero-shot) · openai/gpt-5-mini · medium effort": {
+    "gapThreshold": 80,
+    "report": "eval/reports/2026-09-30-matcher-report-2.md"
   }
 }

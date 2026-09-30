@@ -3,6 +3,8 @@
 import { env, exports } from "cloudflare:workers";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
+import { createLlmMatcher } from "../../src/matching/llmMatcher";
+import { PROMPT_VARIANTS } from "../../src/matching/promptVariants";
 import { createWorkerGateway } from "../../src/model-gateway/workerGateway";
 import { mintAccessToken } from "../src/accessToken";
 import { fakeOpenRouter } from "./fakeOpenRouter";
@@ -71,6 +73,27 @@ describe("the app's Model Gateway, talking to the Worker", () => {
     await gateway.generate({ job: "matching", model: "openai/gpt-5-nano", system: "s", user: "u", schema: Questions });
 
     expect(openRouter.requests[0].json()).toMatchObject({ model: "openai/gpt-5-nano" });
+  });
+
+  it("asks the Worker for the reasoning effort a request names", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
+    const gateway = gatewayWith(await mint(inHours(2)));
+
+    await gateway.generate({ job: "matching", reasoningEffort: "minimal", system: "s", user: "u", schema: Questions });
+
+    expect(openRouter.requests[0].json()).toMatchObject({ reasoning: { effort: "minimal" } });
+  });
+
+  it("sends the LLM Matcher's reply schema with notes first, so a Prompt Variant can reason before it scores", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"notes":"","scores":[{"id":"S1","score":80}]}'));
+    const gateway = gatewayWith(await mint(inHours(2)));
+    const scenario = { id: "a", title: "T", role: "R", skills: ["s"], situation: "S", task: "T", action: "A", result: "R", measurableResults: [] };
+
+    await createLlmMatcher(gateway, PROMPT_VARIANTS["chain-of-thought"], { model: "openai/gpt-5-mini", reasoningEffort: "low" }).rank({ text: "Q" }, [scenario]);
+
+    const sent = openRouter.requests[0].json() as { response_format: { json_schema: { schema: { properties: object; required: string[] } } } };
+    expect(Object.keys(sent.response_format.json_schema.schema.properties)).toEqual(["notes", "scores"]);
+    expect(sent.response_format.json_schema.schema.required).toEqual(["notes", "scores"]);
   });
 
   it("rejects a reply that doesn't match the schema", async () => {

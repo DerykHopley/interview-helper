@@ -70,6 +70,10 @@ _Avoid_: Strategy, engine, algorithm
 One version of the system prompt for an LLM job, written with a particular prompting technique (such as zero-shot, few-shot or chain-of-thought), so that techniques can be compared.
 _Avoid_: Prompt version, template
 
+**Setup**:
+One Matcher configured one particular way: for the LLM Matcher, its Prompt Variant, model and reasoning effort. Each Setup has its own measured Gap threshold, and the Matcher Report can put several side by side.
+_Avoid_: Config, configuration, combination
+
 **Evaluation Set**:
 A fixed collection of Scenarios and Questions, each Question labelled with the Scenarios that should match it (or labelled as a Gap), used to score Matchers.
 _Avoid_: Test data, golden set, benchmark
