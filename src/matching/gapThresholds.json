@@ -1,7 +1,7 @@
 {
   "LLM (Rubric, zero-shot) · openai/gpt-5-mini · low effort": {
     "gapThreshold": 77.5,
-    "report": "eval/reports/2026-09-30-matcher-report-2.md"
+    "report": "eval/reports/2026-09-30-matcher-report-3.md"
   },
   "LLM (Zero-shot) · openai/gpt-5-mini · low effort": {
     "gapThreshold": 77.5,
@@ -26,5 +26,37 @@
   "LLM (Rubric, zero-shot) · openai/gpt-5-mini · medium effort": {
     "gapThreshold": 80,
     "report": "eval/reports/2026-09-30-matcher-report-2.md"
+  },
+  "LLM (Rubric, zero-shot) · openai/gpt-5-nano · low effort": {
+    "gapThreshold": 66,
+    "report": "eval/reports/2026-09-30-matcher-report-3.md"
+  },
+  "LLM (Rubric, zero-shot) · openai/gpt-5.4 · low effort": {
+    "gapThreshold": 62,
+    "report": "eval/reports/2026-09-30-matcher-report-3.md"
+  },
+  "LLM (Rubric, zero-shot) · openai/gpt-4o-mini · low effort": {
+    "gapThreshold": 77.5,
+    "report": "eval/reports/2026-09-30-matcher-report-3.md"
+  },
+  "LLM (Rubric, zero-shot) · openai/gpt-6-luna · low effort": {
+    "gapThreshold": 66,
+    "report": "eval/reports/2026-09-30-matcher-report-3.md"
+  },
+  "LLM (Rubric, zero-shot) · google/gemini-3.8-flash · low effort": {
+    "gapThreshold": 50,
+    "report": "eval/reports/2026-09-30-matcher-report-3.md"
+  },
+  "LLM (Rubric, zero-shot) · google/gemma-4-31b-it · low effort": {
+    "gapThreshold": 57.5,
+    "report": "eval/reports/2026-09-30-matcher-report-3.md"
+  },
+  "LLM (Rubric, zero-shot) · anthropic/claude-haiku-4.5 · low effort": {
+    "gapThreshold": 61,
+    "report": "eval/reports/2026-09-30-matcher-report-3.md"
+  },
+  "LLM (Rubric, zero-shot) · minimax/minimax-m2.7 · low effort": {
+    "gapThreshold": 55,
+    "report": "eval/reports/2026-09-30-matcher-report-3.md"
   }
 }

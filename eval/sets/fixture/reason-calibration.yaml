@@ -1,0 +1,75 @@
+# Hand-written Match reasons with the verdicts they should get (#18). The Matcher Report runs the reason judge on
+# these every time and reports how many it got right, so a lenient judge shows up instead of passing for honest
+# reasons. grounded: every fact is in that Scenario. answers: it names the part of the Scenario that answers the
+# Question. Four have a planted invention on a strong Match; two are true but don't answer. (An item whose
+# "answers" could be argued either way was replaced: the judge flipped on it between runs.)
+reasons:
+  - id: rescue-true
+    question: off-the-rails
+    scenario: rescue
+    reason: You took over an overrun fixed-price build and agreed a smaller first release and a new contract with the client.
+    grounded: true
+    answers: true
+
+  - id: rescue-invented-saving
+    question: off-the-rails
+    scenario: rescue
+    reason: You rescued the overrun build and saved the client £200,000 by halving the team.
+    grounded: false # no saving or team cut in the Scenario
+    answers: true
+
+  - id: release-true
+    question: ship-faster
+    scenario: release-cadence
+    reason: You moved the team from about three releases a year to one every two weeks with a build pipeline and automated tests.
+    grounded: true
+    answers: true
+
+  - id: release-invented-award
+    question: ship-faster
+    scenario: release-cadence
+    reason: You got releases down to every two weeks and won the company's engineering award for it.
+    grounded: false # no award in the Scenario
+    answers: true
+
+  - id: audit-true
+    question: everyday-security
+    scenario: compliance-audit
+    reason: You made audit evidence a by-product of normal work, such as tickets and pipeline logs, instead of a scramble.
+    grounded: true
+    answers: true
+
+  - id: audit-wrong-scenario
+    question: everyday-security
+    scenario: shared-language
+    reason: You wrote a glossary with another developer so your design discussions stopped going round in circles.
+    grounded: true
+    answers: false # true of this Scenario, but nothing to do with security or compliance
+
+  - id: needs-true
+    question: real-need
+    scenario: requirements-discovery
+    reason: You sat with the people who asked for each feature to learn what they were trying to achieve before building it.
+    grounded: true
+    answers: true
+
+  - id: needs-invented-survey
+    question: real-need
+    scenario: requirements-discovery
+    reason: You ran a survey of 500 users that showed they needed a different feature from the one requested.
+    grounded: false # no survey in the Scenario
+    answers: true
+
+  - id: audit-invented-numbers
+    question: everyday-security
+    scenario: compliance-audit
+    reason: You made audit evidence a by-product of normal work, which cut audit preparation from nine months to two weeks.
+    grounded: false # the "two weeks" is invented; the Scenario only says preparing became routine
+    answers: true # the by-product of normal work is exactly what the Question asks about
+
+  - id: failure-vague
+    question: failure
+    scenario: adaptive-dashboards
+    reason: You worked on a feature for your analytics product.
+    grounded: true
+    answers: false # true, but says nothing about it not being worth it, or what was learned

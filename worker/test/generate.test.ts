@@ -41,6 +41,15 @@ describe("structured generation", () => {
     expect(openRouter.requests[0].json()).toMatchObject({ max_tokens: 6000, reasoning: { effort: "low" } });
   });
 
+  it("runs the Matcher Report's reason judge as its own job, with its own model and limits", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"verdicts":[]}'));
+
+    const response = await generate({ job: "reason-judging", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(200);
+    expect(openRouter.requests[0].json()).toMatchObject({ model: "google/gemini-3.8-flash", max_tokens: 3000, reasoning: { effort: "low" } });
+  });
+
   it("lets a request ask for fewer tokens than the job's cap, but never more", async () => {
     openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
 

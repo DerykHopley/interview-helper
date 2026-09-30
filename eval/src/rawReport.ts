@@ -3,6 +3,7 @@
 import { z } from "zod";
 import type { EvaluationSet } from "./evaluationSet";
 import type { ReportSection } from "./report";
+import type { CalibrationRun, ReasonsRun } from "./reasons";
 import type { MatcherRun } from "./scoring";
 
 export type RawReport = {
@@ -13,16 +14,40 @@ export type RawReport = {
   shipped: string;
   sections: ReportSection[];
   results: { name: string; models: string[]; runs: MatcherRun[] }[];
+  /** The reason judge's runs (#18), when the report judged reasons. */
+  reasons?: { judgeModel: string; runs: ReasonsRun[]; calibration: CalibrationRun };
 };
 
 const ranking = z.array(z.object({ scenarioId: z.string(), score: z.number() })).nullable();
 const questionRun = z.object({ questionId: z.string(), ranking, error: z.string().optional(), cost: z.number(), ms: z.number() });
+const verdict = { grounded: z.boolean(), answers: z.boolean(), note: z.string().nullable() };
+const reasons = z.object({
+  judgeModel: z.string(),
+  runs: z.array(
+    z.object({
+      model: z.string(),
+      checks: z.array(z.object({ questionId: z.string(), scenarioId: z.string(), rank: z.number(), reason: z.string(), form: z.array(z.string()), ...verdict })),
+      failed: z.array(z.object({ questionId: z.string(), stage: z.enum(["reasons", "judge"]), error: z.string(), reasons: z.number().default(3) })),
+      cost: z.number(),
+      judgeCost: z.number().optional(),
+      ms: z.array(z.number()),
+      questions: z.number(),
+    }),
+  ),
+  calibration: z.object({
+    judgeModel: z.string(),
+    cost: z.number(),
+    failed: z.array(z.object({ id: z.string(), error: z.string() })),
+    items: z.array(z.object({ id: z.string(), expected: z.object({ grounded: z.boolean(), answers: z.boolean() }), got: z.object(verdict).nullable() })),
+  }),
+});
 const schema = z.object({
   date: z.string(),
   setName: z.string(),
-  set: z.object({ scenarios: z.array(z.any()), questions: z.array(z.any()), adversarial: z.array(z.any()) }),
+  set: z.object({ scenarios: z.array(z.any()), questions: z.array(z.any()), adversarial: z.array(z.any()), calibration: z.array(z.any()).optional() }),
   shipped: z.string(),
   sections: z.array(z.object({ title: z.string(), intro: z.string(), names: z.array(z.string()) })),
+  reasons: reasons.optional(),
   results: z.array(
     z.object({
       name: z.string(),

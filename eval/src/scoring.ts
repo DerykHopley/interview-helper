@@ -49,9 +49,9 @@ export type MatcherScore = {
   adversarial: AdversarialScore[];
 };
 
-const sorted = (ranking: ScoredScenario[]) => [...ranking].sort((a, b) => b.score - a.score);
+export const sorted = (ranking: ScoredScenario[]) => [...ranking].sort((a, b) => b.score - a.score);
 const bestScore = (ranking: ScoredScenario[]) => Math.max(...ranking.map((r) => r.score));
-const median = (values: number[]) => {
+export const median = (values: number[]) => {
   const v = [...values].sort((a, b) => a - b);
   const mid = Math.floor(v.length / 2);
   return !v.length ? 0 : v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;

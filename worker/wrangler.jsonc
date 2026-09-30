@@ -18,7 +18,9 @@
       "question-generation": "openai/gpt-5-mini",
       "matching": "openai/gpt-5-mini",
       "match-reasons": "openai/gpt-5-mini",
-      "co-writing": "openai/gpt-5-mini"
+      "co-writing": "openai/gpt-5-mini",
+      // The Matcher Report's judge of Match reasons (#18): another company's model than the reasons writer's.
+      "reason-judging": "google/gemini-3.8-flash"
     },
     // Limits per job, always sent to OpenRouter (#10). For reasoning models max_tokens covers reasoning and the reply
     // together, and a reply that runs out is empty but still billed, so these are generous; a request may ask for
@@ -27,10 +29,23 @@
       "question-generation": { "max_tokens": 4000, "reasoning_effort": "low" },
       "matching": { "max_tokens": 6000, "reasoning_effort": "low" },
       "match-reasons": { "max_tokens": 2000, "reasoning_effort": "low" },
-      "co-writing": { "max_tokens": 4000, "reasoning_effort": "low" }
+      "co-writing": { "max_tokens": 4000, "reasoning_effort": "low" },
+      "reason-judging": { "max_tokens": 3000, "reasoning_effort": "low" }
     },
-    // The only models the Worker forwards to.
-    "ALLOWED_MODELS": ["openai/gpt-5-nano", "openai/gpt-5-mini", "openai/gpt-5"]
+    // The only models the Worker forwards to: the job defaults above, plus the ones the Matcher Report compares
+    // (COMPARED_MODELS in eval/src/reportPlan.ts, #18). A request may name any of them; nothing here changes which
+    // model a job uses by default.
+    "ALLOWED_MODELS": [
+      "openai/gpt-5-nano",
+      "openai/gpt-5-mini",
+      "openai/gpt-5.4",
+      "openai/gpt-4o-mini",
+      "openai/gpt-6-luna",
+      "google/gemini-3.8-flash",
+      "google/gemma-4-31b-it",
+      "anthropic/claude-haiku-4.5",
+      "minimax/minimax-m2.7"
+    ]
   }
   // Secrets (never in this file): OPENROUTER_API_KEY and ACCESS_TOKEN_SECRET.
   // Local dev: copy worker/dev.vars.example to worker/.dev.vars (gitignored) and fill them in. (Don't name the example
