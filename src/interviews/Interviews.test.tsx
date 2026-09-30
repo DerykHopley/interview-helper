@@ -103,6 +103,7 @@ describe("typing Questions", () => {
     expect(card).toHaveTextContent("conflict");
     expect(card).toHaveTextContent("typed by you");
     expect(screen.getByText("1 Question")).toBeInTheDocument();
+    expect(screen.queryByText(/new Questions? added/)).not.toBeInTheDocument(); // only written ones are announced
     unmount();
 
     renderApp();

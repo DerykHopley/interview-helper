@@ -82,6 +82,20 @@ export function InterviewScreen({
   const swipeFrom = useRef<number | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
+  // Written Questions arriving are announced until the Candidate moves on, adjusting state while rendering (React's
+  // way). If the end card was showing, the deck moves to the first new one (below), so that's where it's said.
+  const [seenCount, setSeenCount] = useState(questions.length);
+  const [announced, setAnnounced] = useState<{ count: number; at: number; atEnd: boolean } | null>(null);
+  if (questions.length !== seenCount) {
+    setSeenCount(questions.length);
+    const added = questions.slice(seenCount);
+    if (added.length > 0 && added.every((q) => q.origin === "generated")) {
+      const jumps = at === seenCount;
+      setAnnounced({ count: added.length, at: jumps ? seenCount : at, atEnd: !jumps });
+    }
+  }
+  if (announced && announced.at !== at) setAnnounced(null);
+
   // When Questions arrive while the end card is showing, show the first new one.
   const shownCount = useRef(questions.length);
   useEffect(() => {
@@ -125,7 +139,7 @@ export function InterviewScreen({
 
   return (
     <div
-      className="deck"
+      className={failure || announced || writing.problem ? "deck has-notices" : "deck"}
       role="group"
       aria-label="Question deck"
       // Swipes are for touch; a mouse drag selects text instead.
@@ -139,19 +153,19 @@ export function InterviewScreen({
         if (dx >= SWIPE_PX) go(at - 1);
       }}
     >
-      {failure && (
-        <p role="alert" className="notice-warn deck-failure">
-          {failure}
-        </p>
-      )}
-      {writing.problem && (
-        <div role="alert" className="notice-warn deck-failure">
-          <p>{WRITE_PROBLEMS[writing.problem].text}</p>
-          {WRITE_PROBLEMS[writing.problem].needsToken && (
-            <button type="button" className="button-secondary" onClick={onNeedToken}>
-              Enter a new token
-            </button>
+      {(failure || announced || writing.problem) && (
+        <div className="deck-notices">
+          {failure && (
+            <p role="alert" className="notice-warn">
+              {failure}
+            </p>
           )}
+          {announced && (
+            <p role="status" className="notice-info">
+              {countOf(announced.count, "new Question")} added{announced.atEnd ? " at the end of the deck" : ""}
+            </p>
+          )}
+          {writing.problem && <WriteProblemNotice problem={writing.problem} onNeedToken={onNeedToken} />}
         </div>
       )}
       <button type="button" className="deck-arrow is-previous" aria-label="Previous Question" disabled={at === 0} onClick={() => go(at - 1)}>
@@ -189,6 +203,9 @@ export function InterviewScreen({
 function QuestionCard({ question, n, of, onDelete, onRematch }: { question: Question; n: number; of: number; onDelete: () => void; onRematch: () => void }) {
   return (
     <article className="question-card" aria-label={`Question ${n} of ${of}`}>
+      <p className="question-position" aria-hidden="true">
+        {n}/{of}
+      </p>
       <CardMenu onDelete={onDelete} onRematch={onRematch} />
       <p className="label-caps question-skill">
         {question.skill ?? NO_SKILL}
@@ -196,6 +213,21 @@ function QuestionCard({ question, n, of, onDelete, onRematch }: { question: Ques
       </p>
       <p className="question-text">{question.text}</p>
     </article>
+  );
+}
+
+/** Why Questions couldn't be written, and the fix when it's a new Access Token (otherwise the end card's button). */
+function WriteProblemNotice({ problem, onNeedToken }: { problem: WriteProblem; onNeedToken: () => void }) {
+  const { text, needsToken } = WRITE_PROBLEMS[problem];
+  return (
+    <div role="alert" className="notice-warn">
+      <p>{text}</p>
+      {needsToken && (
+        <button type="button" className="button-secondary" onClick={onNeedToken}>
+          Enter a new token
+        </button>
+      )}
+    </div>
   );
 }
 

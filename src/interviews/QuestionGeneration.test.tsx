@@ -142,7 +142,9 @@ describe("writing Questions for a new Interview", () => {
     await act(() => Promise.resolve(writing.control.release!()));
 
     expect(await screen.findByText("8 Questions")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("8 new Questions added");
     const card = screen.getByRole("article", { name: "Question 1 of 8" });
+    expect(within(card).getByText("1/8")).toBeInTheDocument();
     expect(card).toHaveTextContent("skill 1");
     expect(card).toHaveTextContent("Tell me about a time you did thing 1.");
     expect(card).not.toHaveTextContent("typed by you");
@@ -315,6 +317,11 @@ describe("asking for more Questions", () => {
 
     await user.click(screen.getByRole("button", { name: "Ask for 4 more Questions" }));
     expect(await screen.findByText("12 Questions")).toBeInTheDocument();
+    // It says what happened, and shows the first new one, whose card gives its place in the deck.
+    expect(screen.getByRole("status")).toHaveTextContent("4 new Questions added");
+    expect(within(screen.getByRole("article", { name: "Question 9 of 12" })).getByText("9/12")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Next Question" }));
+    expect(screen.queryByText("4 new Questions added")).not.toBeInTheDocument();
     await toEndCard();
     await user.click(screen.getByRole("button", { name: "Ask for 4 more Questions" }));
 
@@ -322,6 +329,26 @@ describe("asking for more Questions", () => {
     const lastAsk = JSON.parse(generate.mock.calls[3][0].user) as { existingQuestions: string[] };
     expect(lastAsk.existingQuestions).toHaveLength(12);
     expect(lastAsk.existingQuestions).toContain("Tell me about a time you did thing 12.");
+  });
+
+  it("doesn't pull the Candidate back if they moved on while waiting, and says where the new ones went", async () => {
+    const user = userEvent.setup();
+    const more = held(questionsReply(4, 9));
+    renderApp({ gateway: createFakeModelGateway({ accessTokens: ACCESS, generate: { "question-generation": [DETECTED, questionsReply(8), more.replyFor] } }) });
+    await setUpWithToken();
+    await pasteJobSpec();
+    await waitFor(() => expect(within(drawer()).getByLabelText("Role *")).toHaveValue("Senior Product Engineer"));
+    await user.click(within(drawer()).getByRole("button", { name: "Create and generate ~8 Questions" }));
+    await screen.findByText("8 Questions");
+    await toEndCard();
+    await user.click(screen.getByRole("button", { name: "Ask for 4 more Questions" }));
+
+    await user.click(screen.getByRole("button", { name: "Previous Question" }));
+    await waitFor(() => expect(more.control.release).toBeDefined());
+    await act(() => Promise.resolve(more.control.release!()));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("4 new Questions added at the end of the deck");
+    expect(screen.getByRole("article", { name: "Question 8 of 12" })).toBeInTheDocument();
   });
 
   it("is off without an active Access Token", async () => {
