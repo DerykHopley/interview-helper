@@ -55,7 +55,7 @@ describe("the dashboard", () => {
     await unlockWith(unlockKey);
 
     expect(await screen.findByText("Your Access Token has expired. Ask for a new one.")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Access · none" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Access · expired" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("says the token is being checked, and when it couldn't be checked, rather than \"none\"", async () => {

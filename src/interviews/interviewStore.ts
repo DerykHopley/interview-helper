@@ -10,6 +10,9 @@ export function interviewStore(vault: UnlockedVault) {
   // Writes run one after another, and reads wait for them, so a list read just after leaving an Interview still
   // sees a save that was in flight.
   let writes: Promise<unknown> = Promise.resolve();
+  // Told about every change saved, so a screen showing an Interview sees one made elsewhere (e.g. Questions written
+  // while the Candidate was away).
+  const listeners = new Set<(saved: SavedInterview) => void>();
   const write = <T,>(run: () => Promise<T>) => {
     const done = writes.then(run, run);
     writes = done.catch(() => {});
@@ -47,10 +50,17 @@ export function interviewStore(vault: UnlockedVault) {
         if (!parsed.success) throw new Error("This Interview can't be read");
         const next = interviewSchema.parse(change(parsed.data));
         await vault.put(id, next);
-        return { ...next, id };
+        const saved = { ...next, id };
+        listeners.forEach((listener) => listener(saved));
+        return saved;
       });
     },
     delete: (id: string) => write(() => vault.delete(id)),
+    /** Calls `listener` with each changed Interview as it's saved. Returns how to stop. */
+    onChange(listener: (saved: SavedInterview) => void) {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
+    },
   };
 }
 

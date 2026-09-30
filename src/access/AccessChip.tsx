@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useCancellableEffect } from "../hooks";
+import { useEffect, useMemo, useState } from "react";
+import { useCancellableEffect, useLatest } from "../hooks";
 import type { UnlockedVault } from "../vault/vault";
 import { AccessTokenPanel, type Active, type CheckResult } from "./AccessTokenPanel";
 import { keptAccessToken } from "./keptAccessToken";
@@ -7,6 +7,9 @@ import { keptAccessToken } from "./keptAccessToken";
 /** Keeping or forgetting the token fails only if the Vault has gone (locked, or the page closed) meanwhile. Then
  * there's nothing to update: the token is simply asked for again after the next unlock. */
 const ignoreClosedVault = () => {};
+
+/** The longest a browser timer can wait: about 24.8 days. */
+const MAX_TIMER_MS = 2 ** 31 - 1;
 
 /** "6h left", or in days once it's two days or more. */
 function timeLeft(expiresAt: Date, now = Date.now()) {
@@ -17,12 +20,45 @@ function timeLeft(expiresAt: Date, now = Date.now()) {
 
 /** The dashboard's Access chip (D2 design): the kept Access Token's status, opening a panel to check or replace it.
  * The panel stays mounted while closed, so the token is recalled and checked again as soon as the app unlocks. */
-export function AccessChip({ vault, openRequests = 0 }: { vault: UnlockedVault; /** Each increase opens the panel. */ openRequests?: number }) {
+export function AccessChip({
+  vault,
+  openRequests = 0,
+  expiredReports = 0,
+  onActiveChange,
+}: {
+  vault: UnlockedVault;
+  /** Each increase opens the panel. */
+  openRequests?: number;
+  /** Each increase says a model call found the token expired, so it's no longer shown as active. */
+  expiredReports?: number;
+  /** Told whether an Access Token is active, e.g. so the app can offer to write Questions. */
+  onActiveChange?: (active: boolean) => void;
+}) {
   const kept = useMemo(() => keptAccessToken(vault), [vault]);
   const [remembered, setRemembered] = useState<string | null | undefined>(undefined); // undefined while reading
   const [active, setActive] = useState<Active | null>(null);
   const [lastCheck, setLastCheck] = useState<CheckResult | null>(null);
   const [open, setOpen] = useState(false);
+  const latestOnActiveChange = useLatest(onActiveChange);
+  useEffect(() => latestOnActiveChange.current?.(active !== null), [active, latestOnActiveChange]);
+  const expire = () => {
+    setActive(null);
+    setLastCheck("expired");
+  };
+  // A model call found the token expired: adjusting state while rendering, as for openRequests.
+  const [seenExpiredReports, setSeenExpiredReports] = useState(expiredReports);
+  if (expiredReports !== seenExpiredReports) {
+    setSeenExpiredReports(expiredReports);
+    expire();
+  }
+  // The token's time is up. (Tokens last at most 7 days; a timer can't wait longer than MAX_TIMER_MS, and one asked to
+  // would fire at once, so none is set then.)
+  useEffect(() => {
+    const left = active ? active.expiresAt.getTime() - Date.now() : null;
+    if (left === null || left > MAX_TIMER_MS) return;
+    const timer = setTimeout(expire, Math.max(0, left));
+    return () => clearTimeout(timer);
+  }, [active]);
   // A new request to open (e.g. "Enter a new token") opens the panel; adjusting state while rendering, React's way.
   const [seenRequests, setSeenRequests] = useState(openRequests);
   if (openRequests !== seenRequests) {
@@ -45,6 +81,7 @@ export function AccessChip({ vault, openRequests = 0 }: { vault: UnlockedVault; 
     if (active) return timeLeft(active.expiresAt);
     if (remembered === undefined || (remembered && lastCheck === null)) return "checking…";
     if (remembered && lastCheck === "unreachable") return "not checked";
+    if (lastCheck === "expired") return "expired";
     return "none";
   }
 

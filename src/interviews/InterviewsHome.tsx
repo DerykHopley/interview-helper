@@ -6,8 +6,19 @@ import { countOf, unreadableNotice } from "../text";
 import { gapCount } from "./gaps";
 import { NewInterview } from "./NewInterview";
 
+type Props = {
+  store: InterviewStore;
+  onOpen: (id: string) => void;
+  /** Whether an Access Token is active, so a new Interview's Questions can be written. */
+  accessActive: boolean;
+  /** A model call found the Access Token expired. */
+  onTokenExpired: () => void;
+  /** A new Interview was saved; `generate` asks for its first Questions. */
+  onCreated: (id: string, generate: boolean) => void;
+};
+
 /** The Interviews tab, the dashboard's home (D2): the Candidate's Interviews, and creating one. */
-export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpen: (id: string) => void }) {
+export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, onCreated }: Props) {
   const [interviews, setInterviews] = useState<SavedInterview[] | null>(null);
   const [unreadable, setUnreadable] = useState(0);
   const [creating, setCreating] = useState(false);
@@ -32,8 +43,8 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
     [store],
   );
 
-  async function create(interview: Interview) {
-    onOpen(await store.save(interview));
+  async function create(interview: Interview, generate: boolean) {
+    onCreated(await store.save(interview), generate);
   }
 
   async function remove(interview: SavedInterview) {
@@ -105,7 +116,7 @@ export function InterviewsHome({ store, onOpen }: { store: InterviewStore; onOpe
         </tbody>
       </table>
       )}
-      {creating && <NewInterview onCreate={create} onCancel={closeDrawer} />}
+      {creating && <NewInterview accessActive={accessActive} onTokenExpired={onTokenExpired} onCreate={create} onCancel={closeDrawer} />}
     </div>
   );
 }

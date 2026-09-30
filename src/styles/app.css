@@ -184,7 +184,7 @@ textarea.field { resize: vertical; font-family: inherit; }
 .menu-item[aria-current="true"] { background: var(--warn-bg); font-weight: 700; }
 .jump-number { display: inline-block; width: 1.6em; color: var(--ink-muted); }
 .deck { position: relative; display: grid; grid-template-columns: 56px minmax(0, 600px) 56px; justify-content: center; align-items: center; gap: 16px; padding: 24px 0; touch-action: pan-y; }
-.deck-failure { grid-column: 1 / -1; }
+.deck-notices { grid-column: 1 / -1; display: grid; gap: 8px; }
 .deck-arrow { height: 96px; border: 0; border-radius: var(--radius-card); background: var(--panel-raised); color: var(--on-table); font-size: 32px; cursor: pointer; }
 .deck-arrow:disabled { opacity: .3; cursor: default; }
 .question-card { position: relative; display: flex; flex-direction: column; gap: 12px; min-height: 360px; padding: 28px 32px; border-radius: 20px; background: var(--card); color: var(--ink); box-shadow: 0 14px 30px var(--shadow-color); }
@@ -193,7 +193,14 @@ textarea.field { resize: vertical; font-family: inherit; }
 .question-text { margin: auto 0; font-family: var(--font-display); font-size: 30px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .end-card-title { margin: 0; font-family: var(--font-display); font-size: 28px; }
 .end-card .form { margin-top: 8px; }
+.end-card .actions { align-items: center; }
+.placeholder-line { display: block; height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--line), #ece6d6, var(--line)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+.placeholder-line.is-short { width: 60%; }
+@media (prefers-reduced-motion: reduce) { .placeholder-line { animation: none; } }
+.field.is-finding { background: linear-gradient(90deg, #fff, #f3eee2, #fff); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .field.is-finding { animation: none; background: #f7f3ea; } }
 .card-menu { position: absolute; top: 12px; right: 12px; }
+.question-position { position: absolute; top: 20px; right: 56px; margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--focus); }
 .card-menu-button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--ink-muted); font-size: 20px; cursor: pointer; }
 .card-menu-button:hover { background: var(--note-bg); }
 
@@ -246,6 +253,8 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
   .interviews th, .interviews td { padding: 2px 0; border: 0; }
   .interviews td:nth-child(2)::after { content: " Questions"; color: var(--on-table-muted); }
   .deck { grid-template-columns: 1fr 1fr; grid-template-areas: "card card" "back next"; gap: 10px; padding: 12px 0; }
+  .deck.has-notices { grid-template-areas: "notices notices" "card card" "back next"; }
+  .deck-notices { grid-area: notices; }
   .deck > .question-card, .deck > .deck-question { grid-area: card; }
   .deck-arrow { height: 44px; font-size: 24px; }
   .deck-arrow.is-previous { grid-area: back; }

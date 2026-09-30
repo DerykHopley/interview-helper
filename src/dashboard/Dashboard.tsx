@@ -6,6 +6,8 @@ import { InterviewScreen } from "../interviews/InterviewScreen";
 import { InterviewsHome } from "../interviews/InterviewsHome";
 import { JumpMenu } from "../interviews/JumpMenu";
 import { useOpenInterview } from "../interviews/useOpenInterview";
+import { FIRST_BATCH } from "../interviews/questionGenerator";
+import { useQuestionWriting } from "../interviews/useQuestionWriting";
 import { ScenarioBank } from "../scenarios/ScenarioBank";
 import { countOf } from "../text";
 import { useAutoLock } from "../vault/useAutoLock";
@@ -38,6 +40,10 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
   const [accessRequests, setAccessRequests] = useState(0); // each one opens the Access Token panel
   const [newScenarioSkill, setNewScenarioSkill] = useState<string | null>(null); // a Gap's skill, for a new Scenario
   const [gaps, setGaps] = useState<SkillGaps>([]);
+  const [accessActive, setAccessActive] = useState(false);
+  const [expiredReports, setExpiredReports] = useState(0); // each one tells the Access chip the token has expired
+  const reportTokenExpired = () => setExpiredReports((n) => n + 1);
+  const writing = useQuestionWriting(interviews, reportTokenExpired);
 
   // Gaps by skill, for the Interviews tab's Gaps card and the Scenario Bank's "Not covered yet": read afresh from the
   // Interviews' saved Gaps each time a tab opens.
@@ -98,7 +104,7 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
         )}
         <div className="top-bar-end">
           {ready && <JumpMenu questions={ready.interview.questions} current={ready.position} onJump={ready.move} />}
-          <AccessChip vault={vault} openRequests={accessRequests} />
+          <AccessChip vault={vault} openRequests={accessRequests} expiredReports={expiredReports} onActiveChange={setAccessActive} />
           <button type="button" className="button-header" onClick={onLock}>
             Lock
           </button>
@@ -119,6 +125,10 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
             onMove={ready.move}
             vault={vault}
             onNeedToken={() => setAccessRequests((n) => n + 1)}
+            onTokenExpired={reportTokenExpired}
+            writing={writing.stateOf(ready.interview.id)}
+            accessActive={accessActive}
+            onWrite={(batch) => writing.write(ready.interview.id, batch)}
             onOpenScenarioBank={() => setView({ tab: "scenario-bank" })}
             onWriteScenario={(skill) => setView({ tab: "scenario-bank" }, skill ?? "")}
           />
@@ -127,7 +137,16 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
             {tab === "interviews" ? (
               <div className="home-grid">
-                <InterviewsHome store={interviews} onOpen={(interviewId) => setView({ interviewId })} />
+                <InterviewsHome
+                  store={interviews}
+                  onOpen={(interviewId) => setView({ interviewId })}
+                  accessActive={accessActive}
+                  onTokenExpired={reportTokenExpired}
+                  onCreated={(interviewId, generate) => {
+                    if (generate) writing.write(interviewId, FIRST_BATCH);
+                    setView({ interviewId });
+                  }}
+                />
                 <aside className="side-column" aria-label="Status">
                   <ScenarioBankCard vault={vault} onOpen={() => setView({ tab: "scenario-bank" })} />
                   <GapsCard gaps={gaps} />

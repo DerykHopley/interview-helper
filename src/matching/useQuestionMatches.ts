@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import type { Interview, MatchResult, Question } from "../interviews/interview";
 import { useModelGateway } from "../model-gateway/context";
-import { ModelGatewayError } from "../model-gateway/ModelGateway";
+import { callProblemOf } from "../model-gateway/callProblems";
 import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
 import { findMatches, scenariosFingerprint } from "./findMatches";
@@ -13,18 +13,14 @@ import { gapThresholdFor, MATCHERS, MATCHING_CONFIG } from "./matchingConfig";
 type QuestionState = { dealt: boolean; finding: boolean; problem: MatchProblem | null };
 const IDLE: QuestionState = { dealt: false, finding: false, problem: null };
 
-/** How a failed matching call reads to the Candidate. */
-function problemOf(e: unknown): MatchProblem {
-  if (!(e instanceof ModelGatewayError)) return "failed"; // including a reply that didn't cover every Scenario
-  if (e.code === "expired_token") return "expired-token";
-  if (e.code === "missing_token" || e.code === "invalid_token") return "no-token";
-  if (e.code === "reply_cut_off") return "cut-off";
-  return e.code === "worker_unreachable" ? "unreachable" : "failed";
-}
-
 /** Finding and dealing a deck's Matches with the shipped Matcher (config), against the Candidate's current
  * Scenarios. Results are saved on each Question through `update`, which applies to the latest saved Interview. */
-export function useQuestionMatches(vault: UnlockedVault, update: (change: (current: Interview) => Interview) => Promise<void>) {
+export function useQuestionMatches(
+  vault: UnlockedVault,
+  update: (change: (current: Interview) => Interview) => Promise<void>,
+  /** A call found the Access Token expired. */
+  onTokenExpired: () => void = () => {},
+) {
   const gateway = useModelGateway();
   const bank = useMemo(() => scenarioBank(vault), [vault]);
   const { create } = MATCHERS[MATCHING_CONFIG.matcher];
@@ -57,7 +53,9 @@ export function useQuestionMatches(vault: UnlockedVault, update: (change: (curre
       const result = await findMatches({ matcher, gateway, settings: { gapThreshold, shown: MATCHING_CONFIG.shown } }, question, current);
       await save(question.id, result);
     } catch (e) {
-      set(question.id, { problem: problemOf(e) });
+      const problem = callProblemOf(e); // including a reply that didn't cover every Scenario
+      if (problem === "expired-token") onTokenExpired();
+      set(question.id, { problem });
     } finally {
       set(question.id, { finding: false });
     }
