@@ -120,6 +120,8 @@ button, input { font: inherit; }
 .skill-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .skill-tag { padding: 1px 8px; border-radius: var(--radius-pill); font-size: 13px; background: var(--skill-on-table-bg); color: var(--ok-soft); }
 .card .skill-tag { background: var(--skill-on-card-bg); color: var(--skill-on-card); }
+.bank-picked { font-size: 12px; color: var(--ok-soft); }
+.reader-picked { margin: 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-muted); }
 .origin { padding: 1px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
 .origin.is-hand-written { background: var(--origin-hand-bg); color: var(--on-table); }
 .origin.is-co-written { background: var(--origin-cowritten-bg); color: var(--origin-cowritten); }
@@ -164,6 +166,9 @@ textarea.field { resize: vertical; font-family: inherit; }
 .interviews thead th { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--on-table-muted); }
 .interviews tbody tr:last-child > * { border-bottom: 0; }
 .interview-role { display: block; font-weight: 700; }
+.interviews td.picked { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.picked-bar { display: inline-block; width: 56px; height: 6px; margin-right: 8px; vertical-align: middle; border-radius: 3px; background: var(--faint-line); overflow: hidden; }
+.picked-bar > span { display: block; height: 100%; background: var(--ok); }
 .interview-company { display: block; font-size: 13px; font-weight: 400; color: var(--on-table-muted); }
 .side-column { display: flex; flex-direction: column; gap: 12px; }
 .side-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; border: 1px solid var(--faint-line); border-radius: var(--radius-card); background: var(--panel-dark); }
@@ -211,10 +216,21 @@ textarea.field { resize: vertical; font-family: inherit; }
 .matches { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
 .matches-status { margin: 0; font-size: 14px; color: var(--on-table-muted); }
 .match-fan { display: flex; justify-content: center; align-items: flex-start; margin: 0; padding: 8px 0 0; list-style: none; }
-.match-card { display: flex; flex-direction: column; gap: 6px; width: 220px; min-height: 200px; margin: 0 -10px; padding: 16px; border: 2px solid #4b5563; border-radius: 14px; background: var(--panel-dark); color: var(--on-table); box-shadow: 0 14px 30px var(--shadow-color); }
-.match-card:nth-child(1) { order: 2; z-index: 2; transform: translateY(-6px); border-color: var(--accent); }
-.match-card:nth-child(2) { order: 1; transform: rotate(-4deg); }
-.match-card:nth-child(3) { order: 3; transform: rotate(4deg); }
+/* The fan places its children (a Match card's item, or a placeholder card): the first in the middle, raised. That's
+   the picked Match, or the best if none is picked (#11). */
+.match-fan > * { margin: 0 -10px; }
+.match-fan > :nth-child(1) { order: 2; z-index: 2; transform: translateY(-6px); }
+.match-fan > :nth-child(2) { order: 1; transform: rotate(-4deg); }
+.match-fan > :nth-child(3) { order: 3; transform: rotate(4deg); }
+.match-card { display: flex; flex-direction: column; gap: 6px; width: 220px; min-height: 200px; padding: 16px; border: 2px solid #4b5563; border-radius: 14px; background: var(--panel-dark); color: var(--on-table); box-shadow: 0 14px 30px var(--shadow-color); font: inherit; text-align: left; cursor: pointer; }
+.match-fan > li:first-child > .match-card:not(.is-picked) { border-color: var(--accent); }
+.match-card.is-picked { border-color: var(--ok); background: var(--picked-card); }
+.match-card:hover:not(.is-picked) { border-color: var(--on-table-muted); }
+.match-used { font-size: 13px; font-weight: 700; color: var(--accent); }
+.match-pick { margin-top: auto; padding-top: 6px; font-size: 13px; color: var(--on-table-muted); }
+.match-card.is-picked .match-pick { color: var(--ok-soft); font-weight: 700; }
+.answer-using { margin: 0; font-size: 12px; color: var(--on-table-muted); }
+.answer-using strong { color: var(--on-table); }
 .match-rank { color: var(--accent); }
 .match-title { margin: 0; font-weight: 700; }
 .match-card .origin.is-demo { align-self: flex-start; }
@@ -230,6 +246,7 @@ textarea.field { resize: vertical; font-family: inherit; }
 .jump-dot.is-unmatched { border: 1.5px dashed var(--ink-muted); }
 .jump-dot.is-matched { border: 1.5px solid var(--ink-muted); }
 .jump-dot.is-gap { background: var(--gap); color: var(--accent-ink); }
+.jump-dot.is-picked { background: var(--ok); color: var(--on-table); }
 .gap-count { color: var(--gap); }
 td.has-gaps { color: var(--gap); font-weight: 700; }
 .side-card-text { margin: 0; color: var(--on-table-muted); font-size: 14px; }
@@ -244,8 +261,9 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
 @media (max-width: 760px) {
   .skills-overview { grid-template-columns: 1fr; }
   .match-fan { flex-direction: column; align-items: stretch; gap: 10px; }
-  .match-card { width: auto; min-height: 0; margin: 0; transform: none !important; }
-  .match-card:nth-child(1) { order: 0; }
+  .match-fan > * { margin: 0; transform: none !important; }
+  .match-fan > :nth-child(1) { order: 0; }
+  .match-card { width: 100%; min-height: 0; }
   .home-grid { grid-template-columns: 1fr; }
   .interviews, .interviews tbody, .interviews tr, .interviews th, .interviews td { display: block; }
   .interviews thead { display: none; }
@@ -253,6 +271,7 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
   .interviews th, .interviews td { padding: 2px 0; border: 0; }
   .interviews td:nth-child(2)::after { content: " Questions"; color: var(--on-table-muted); }
   .interviews td.last-practised::before { content: "Last practised "; color: var(--on-table-muted); }
+  .interviews td.picked::after { content: " picked"; color: var(--on-table-muted); }
   .deck { grid-template-columns: 1fr 1fr; grid-template-areas: "card card" "back next"; gap: 10px; padding: 12px 0; }
   .deck.has-notices { grid-template-areas: "notices notices" "card card" "back next"; }
   .deck-notices { grid-area: notices; }

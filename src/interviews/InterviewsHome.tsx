@@ -6,6 +6,7 @@ import { countOf, unreadableNotice } from "../text";
 import { gapCount } from "./gaps";
 import { NewInterview } from "./NewInterview";
 import { lastPractised, practisedLabel } from "./answers";
+import { pickedCount } from "./picks";
 
 type Props = {
   store: InterviewStore;
@@ -84,6 +85,7 @@ export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, on
           <tr>
             <th scope="col">Role</th>
             <th scope="col">Questions</th>
+            <th scope="col">Picked</th>
             <th scope="col">Gaps</th>
             <th scope="col">Last practised</th>
             <th scope="col">
@@ -101,6 +103,14 @@ export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, on
                   {interview.company && <span className="interview-company">{interview.company}</span>}
                 </th>
                 <td>{interview.questions.length}</td>
+                <td className="picked">
+                  <span className="picked-bar" aria-hidden="true">
+                    <span style={{ width: `${(100 * pickedCount(interview)) / Math.max(interview.questions.length, 1)}%` }} />
+                  </span>
+                  <span>
+                    {pickedCount(interview)}/{interview.questions.length}
+                  </span>
+                </td>
                 <td className={gaps > 0 ? "has-gaps" : undefined}>{gaps > 0 ? countOf(gaps, "Gap") : "—"}</td>
                 <td className="last-practised">{practisedLabel(lastPractised(interview))}</td>
                 <td>

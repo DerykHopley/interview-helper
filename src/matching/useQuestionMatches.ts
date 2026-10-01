@@ -7,11 +7,13 @@ import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
 import { scenariosFingerprint } from "./findMatches";
 import type { MatchProblem, Staleness } from "./MatchesPanel";
+import { withMatchResult } from "../interviews/picks";
 import { findShippedMatches, shippedMatcher } from "./shippedMatching";
 
 /** Where one Question's Matches are on screen: dealt or not, being found, or why they couldn't be. */
-type QuestionState = { dealt: boolean; finding: boolean; problem: MatchProblem | null };
-const IDLE: QuestionState = { dealt: false, finding: false, problem: null };
+/** `droppedPick` names a pick that re-matching cleared, because it's no longer one of the Matches (#11). */
+type QuestionState = { dealt: boolean; finding: boolean; problem: MatchProblem | null; droppedPick: string | null };
+const IDLE: QuestionState = { dealt: false, finding: false, problem: null, droppedPick: null };
 
 /** Finding and dealing a deck's Matches with the shipped Matcher (config), against the Candidate's current
  * Scenarios. Results are saved on each Question through `update`, which applies to the latest saved Interview. */
@@ -45,12 +47,16 @@ export function useQuestionMatches(
 
   /** Finds the Question's Matches (again, for a re-run), and saves them on it. */
   async function match(question: Question) {
-    set(question.id, { dealt: true, finding: true, problem: null });
+    set(question.id, { dealt: true, finding: true, problem: null, droppedPick: null });
     try {
       const { scenarios: current } = await bank.list();
       setScenarios(current);
       if (current.length === 0) return set(question.id, { problem: "no-scenarios" });
       const result = await findShippedMatches(gateway, question, current);
+      const { pickedScenarioId } = question;
+      if (pickedScenarioId && !withMatchResult(question, result).pickedScenarioId) {
+        set(question.id, { droppedPick: current.find((s) => s.id === pickedScenarioId)?.title ?? null });
+      }
       await save(question.id, result);
     } catch (e) {
       const problem = callProblemOf(e); // including a reply that didn't cover every Scenario
@@ -63,7 +69,7 @@ export function useQuestionMatches(
 
   async function save(questionId: string, matchResult: MatchResult) {
     try {
-      await update((interview) => ({ ...interview, questions: interview.questions.map((q) => (q.id === questionId ? { ...q, matchResult } : q)) }));
+      await update((interview) => ({ ...interview, questions: interview.questions.map((q) => (q.id === questionId ? withMatchResult(q, matchResult) : q)) }));
     } catch {
       set(questionId, { problem: "not-saved" }); // the Vault locked meanwhile, or storage is full
     }
@@ -72,6 +78,8 @@ export function useQuestionMatches(
   return {
     scenarios,
     stateOf,
+    /** Forgets the note about a cleared pick, e.g. once the Candidate picks again. */
+    clearDroppedPick: (id: string) => set(id, { droppedPick: null }),
     match: (question: Question) => void match(question),
     /** Deals a Question's Matches: saved ones show at once; otherwise they're found now (the first time). */
     deal(question: Question) {

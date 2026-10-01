@@ -9,6 +9,7 @@ import { InterviewsHome } from "../interviews/InterviewsHome";
 import { JumpMenu } from "../interviews/JumpMenu";
 import { useOpenInterview } from "../interviews/useOpenInterview";
 import { answeredCount } from "../interviews/answers";
+import { pickedCount } from "../interviews/picks";
 import { FIRST_BATCH } from "../interviews/questionGenerator";
 import { useQuestionWriting } from "../interviews/useQuestionWriting";
 import { ScenarioBank, type CoWriteStart } from "../scenarios/ScenarioBank";
@@ -70,6 +71,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   const ready = openInterview?.status === "ready" ? openInterview : null;
   const [accessRequests, setAccessRequests] = useState(0); // each one opens the Access Token panel
   const [bankStart, setBankStart] = useState<BankStart | null>(null);
+  const [listVersion, setListVersion] = useState(0); // bumped to read the Interviews list again, e.g. after Remove demo
   const [gaps, setGaps] = useState<SkillGaps>([]);
   const [accessActive, setAccessActive] = useState(false);
   const [expiredReports, setExpiredReports] = useState(0); // each one tells the Access chip the token has expired
@@ -99,6 +101,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   );
   const openGaps = ready ? gapCount(ready.interview) : 0;
   const answered = ready ? answeredCount(ready.interview) : 0;
+  const picked = ready ? pickedCount(ready.interview) : 0;
 
   return (
     <>
@@ -116,7 +119,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
                 </h1>
                 <p className="top-bar-progress">
                   {[
-                    countOf(ready.interview.questions.length, "Question"),
+                    picked > 0 ? `${picked}/${ready.interview.questions.length} picked` : countOf(ready.interview.questions.length, "Question"),
                     answered > 0 && `${answered} answered`,
                     openGaps > 0 && countOf(openGaps, "Gap"),
                   ]
@@ -191,6 +194,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
             {tab === "interviews" ? (
               <div className="home-grid">
                 <InterviewsHome
+                  key={listVersion}
                   store={interviews}
                   onOpen={(interviewId) => setView({ interviewId })}
                   accessActive={accessActive}
@@ -201,7 +205,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
                   }}
                 />
                 <aside className="side-column" aria-label="Status">
-                  <ScenarioBankCard vault={vault} onOpen={() => setView({ tab: "scenario-bank" })} />
+                  <ScenarioBankCard vault={vault} onOpen={() => setView({ tab: "scenario-bank" })} onDemoRemoved={() => setListVersion((n) => n + 1)} />
                   <GapsCard gaps={gaps} />
                 </aside>
               </div>

@@ -8,6 +8,7 @@ import { NO_SKILL } from "./gaps";
 import { PopupMenu } from "../PopupMenu";
 import { countOf } from "../text";
 import { AnswerBar, type OnSaveNow } from "./AnswerBar";
+import { usedFor } from "./picks";
 import type { Interview, Question } from "./interview";
 import type { SavedInterview } from "./interviewStore";
 import { FIRST_BATCH, MORE_BATCH, type Batch } from "./questionGenerator";
@@ -133,6 +134,13 @@ export function InterviewScreen({
     if (await save((current) => ({ ...current, questions: [...current.questions, question] }), "Couldn't add the Question. Try again.")) onMove(questions.length);
   }
 
+  /** Picks a Scenario for the Question from its Matches, or un-picks (null). */
+  const pick = (questionId: string, scenarioId: string | null) =>
+    save(
+      (current) => ({ ...current, questions: current.questions.map((q) => (q.id === questionId ? { ...q, pickedScenarioId: scenarioId ?? undefined } : q)) }),
+      "Couldn't save your pick. Try again.",
+    );
+
   /** Saves the Answer on its Question (the answer bar says whether it worked); empty text clears it. */
   const saveAnswer = (questionId: string, text: string) =>
     onChange((current) => {
@@ -200,13 +208,21 @@ export function InterviewScreen({
             onDelete={() => void remove(questions[at])}
             onRematch={() => matches.match(questions[at])}
           />
-          <AnswerBar key={questions[at].id} question={questions[at]} onSave={(text) => saveAnswer(questions[at].id, text)} onSaveNow={onAnswerSaveNow} />
+          <AnswerBar
+            key={questions[at].id}
+            question={questions[at]}
+            using={matches.scenarios?.find((s) => s.id === questions[at].pickedScenarioId)?.title}
+            onSave={(text) => saveAnswer(questions[at].id, text)}
+            onSaveNow={onAnswerSaveNow}
+          />
           <DealtMatches
             question={questions[at]}
             matches={matches}
             onNeedToken={onNeedToken}
             onOpenScenarioBank={onOpenScenarioBank}
             onWriteScenario={() => onWriteScenario(questions[at])}
+            onPick={(scenarioId) => void pick(questions[at].id, scenarioId)}
+            usedFor={(scenarioId) => usedFor(interview, scenarioId, questions[at].id)}
           />
         </div>
       ) : writing.active && questions.length === 0 ? (
@@ -352,14 +368,16 @@ function CardMenu({ onDelete, onRematch }: { onDelete: () => void; onRematch: ()
 }
 
 /** The deal button under a Question card, and what it deals. */
-function DealtMatches({ question, matches, onNeedToken, onOpenScenarioBank, onWriteScenario }: {
+function DealtMatches({ question, matches, onNeedToken, onOpenScenarioBank, onWriteScenario, onPick, usedFor }: {
   question: Question;
   matches: ReturnType<typeof useQuestionMatches>;
   onNeedToken: () => void;
   onOpenScenarioBank: () => void;
   onWriteScenario: () => void;
+  onPick: (scenarioId: string | null) => void;
+  usedFor: (scenarioId: string) => number[];
 }) {
-  const { dealt, finding, problem } = matches.stateOf(question.id);
+  const { dealt, finding, problem, droppedPick } = matches.stateOf(question.id);
   return (
     <>
       {!finding && (
@@ -379,6 +397,13 @@ function DealtMatches({ question, matches, onNeedToken, onOpenScenarioBank, onWr
           onNeedToken={onNeedToken}
           onOpenScenarioBank={onOpenScenarioBank}
           onWriteScenario={onWriteScenario}
+          pickedScenarioId={question.pickedScenarioId}
+          onPick={(scenarioId) => {
+            matches.clearDroppedPick(question.id);
+            onPick(scenarioId);
+          }}
+          usedFor={usedFor}
+          droppedPick={droppedPick}
         />
       )}
     </>

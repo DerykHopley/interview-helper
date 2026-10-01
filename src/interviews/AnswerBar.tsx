@@ -26,12 +26,14 @@ type Props = {
   /** Saves the Answer on the Question; empty text clears it. Rejects when it can't be saved. */
   onSave: (text: string) => Promise<void>;
   onSaveNow?: OnSaveNow;
+  /** The title of the Scenario picked for this Question, if any (#11). */
+  using?: string;
 };
 
 /** The K1 answer bar (#31): a box fixed to the bottom of the Interview screen for the Candidate's Answer to the Question
  * on show. It saves as they type, after a short pause, and when they move to another card or leave, so nothing typed
  * is lost. Mount it once per Question (`key`), so moving on saves what was there. */
-export function AnswerBar({ question, onSave, onSaveNow }: Props) {
+export function AnswerBar({ question, onSave, onSaveNow, using }: Props) {
   const [text, setText] = useState(question.answer?.text ?? "");
   const [status, setStatus] = useState<Status>("saved");
   const box = useRef<HTMLTextAreaElement>(null);
@@ -118,6 +120,11 @@ export function AnswerBar({ question, onSave, onSaveNow }: Props) {
   const words = wordCount(text);
   return (
     <div className="answer-bar" ref={bar}>
+      {using && (
+        <p className="answer-using">
+          Using <strong>{using}</strong>
+        </p>
+      )}
       <label htmlFor={`answer-${question.id}`} className="visually-hidden">
         Your answer
       </label>

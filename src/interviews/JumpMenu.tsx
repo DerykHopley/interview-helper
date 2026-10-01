@@ -25,13 +25,13 @@ export function JumpMenu({ questions, current, onJump }: { questions: Question[]
   );
 }
 
-/** ! for a Gap, a circle once matched, a dashed circle before; #11 adds ✓ for a kept Match. */
+/** ✓ once a Match is picked (#11), ! for a Gap, a circle once matched, a dashed circle before. */
 function StatusDot({ question }: { question: Question }) {
-  const status = question.matchResult?.gap ? "gap" : question.matchResult ? "matched" : "unmatched";
-  const label = { gap: "Gap", matched: "matched", unmatched: "not matched yet" }[status];
+  const status = question.pickedScenarioId ? "picked" : question.matchResult?.gap ? "gap" : question.matchResult ? "matched" : "unmatched";
+  const label = { picked: "picked", gap: "Gap", matched: "matched", unmatched: "not matched yet" }[status];
   return (
     <span className={`jump-dot is-${status}`} aria-hidden="false">
-      <span aria-hidden="true">{status === "gap" ? "!" : ""}</span>
+      <span aria-hidden="true">{status === "picked" ? "✓" : status === "gap" ? "!" : ""}</span>
       <span className="visually-hidden">({label})</span>
     </span>
   );

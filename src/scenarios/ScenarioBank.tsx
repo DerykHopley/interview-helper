@@ -7,6 +7,8 @@ import { isDemo, REMOVE_DEMO_FAILED, scenarioBank, type SavedScenario } from "./
 import { ScenarioForm } from "./ScenarioForm";
 import { OriginBadge, ScenarioReader, SkillTags } from "./ScenarioReader";
 import type { Scenario } from "./scenarioFormat";
+import { interviewStore, type SavedInterview } from "../interviews/interviewStore";
+import { picksOf } from "../interviews/picks";
 import type { AccessHandlers } from "../model-gateway/callProblems";
 import { countOf, unreadableNotice } from "../text";
 import { hasSkill, skillCounts } from "./skills";
@@ -45,6 +47,8 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
   const [overviewShown, setOverviewShown] = useState(true);
   const [failure, setFailure] = useState<string | null>(null);
   const [newSkill, setNewSkill] = useState(startNew ?? ""); // arriving from a Gap: its skill
+  const interviews = useMemo(() => interviewStore(vault), [vault]);
+  const [picksIn, setPicksIn] = useState<SavedInterview[]>([]); // the Interviews, for where each Scenario is picked
 
   useCancellableEffect(
     (isCurrent) => {
@@ -52,14 +56,24 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
         (result) => isCurrent() && setLoaded(result),
         () => isCurrent() && setFailure("Couldn't open your Scenarios. Lock the app and unlock it again."),
       );
+      interviews.list().then(
+        (result) => isCurrent() && setPicksIn(result.interviews),
+        () => {}, // the bank still works without "picked in"
+      );
     },
-    [bank],
+    [bank, interviews],
   );
+  const picksOfScenario = (id: string) => picksOf(picksIn, id);
 
   /** Reloads the list after a change, dropping a skill filter that no Scenario matches any more. */
   async function reload() {
     const result = await bank.list();
     setLoaded(result);
+    // "Picked in" follows in the background, so saving or deleting doesn't wait for it.
+    interviews.list().then(
+      (result) => setPicksIn(result.interviews),
+      () => {},
+    );
     setSkillFilter((key) => (key && result.scenarios.some((s) => hasSkill(s.skills, key)) ? key : null));
   }
 
@@ -85,7 +99,9 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
   }
 
   async function remove(scenario: SavedScenario) {
-    if (!confirm(`Delete "${scenario.title}"? This can't be undone.`)) return;
+    const picked = picksOfScenario(scenario.id).length;
+    const warning = picked > 0 ? ` It's the picked Scenario in ${countOf(picked, "Interview")}; those Questions will need a new pick.` : "";
+    if (!confirm(`Delete "${scenario.title}"? This can't be undone.${warning}`)) return;
     try {
       await bank.delete(scenario.id);
       await reload();
@@ -216,6 +232,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
                 <span className="bank-item-title">{scenario.title}</span>
                 <SkillTags skills={scenario.skills} />
                 <OriginBadge origin={scenario.origin} />
+                {picksOfScenario(scenario.id).length > 0 && <span className="bank-picked">picked in {picksOfScenario(scenario.id).length}</span>}
               </button>
             </li>
           ))}
@@ -271,6 +288,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
         {selected && pane.mode === "read" && (
           <ScenarioReader
             scenario={selected}
+            pickedIn={picksOfScenario(selected.id).map(({ interview, numbers }) => `${interview.role} (${numbers.map((n) => `Q${n}`).join(", ")})`)}
             actions={
               <div className="actions">
                 <button type="button" className="button-secondary" onClick={() => setPane({ mode: "edit", id: selected.id })}>
