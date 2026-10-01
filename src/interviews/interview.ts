@@ -29,6 +29,8 @@ export const questionSchema = z.object({
   skill: text.optional(),
   origin: z.enum(["typed", "generated", "pack"]),
   matchResult: matchResultSchema.optional(),
+  /** The Candidate's latest Answer, as typed in the answer bar (#31); absent until they answer. */
+  answer: z.object({ text, savedAt: z.string() }).optional(),
 });
 export type Question = z.infer<typeof questionSchema>;
 
@@ -38,5 +40,7 @@ export const interviewSchema = z.object({
   /** None for an Interview from a Pack that doesn't give one (#7): then no Questions can be written for it. */
   jobSpec: text.optional(),
   questions: z.array(questionSchema).default([]),
+  /** When an Answer was last saved here (#31), for the Interviews list. Clearing an Answer later doesn't undo it. */
+  lastPractisedAt: z.string().optional(),
 });
 export type Interview = z.infer<typeof interviewSchema>;

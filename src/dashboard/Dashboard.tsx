@@ -8,6 +8,7 @@ import { InterviewScreen } from "../interviews/InterviewScreen";
 import { InterviewsHome } from "../interviews/InterviewsHome";
 import { JumpMenu } from "../interviews/JumpMenu";
 import { useOpenInterview } from "../interviews/useOpenInterview";
+import { answeredCount } from "../interviews/answers";
 import { FIRST_BATCH } from "../interviews/questionGenerator";
 import { useQuestionWriting } from "../interviews/useQuestionWriting";
 import { ScenarioBank, type CoWriteStart } from "../scenarios/ScenarioBank";
@@ -46,6 +47,15 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   const interviews = useMemo(() => interviewStore(vault), [vault]);
   const [view, setViewState] = useState<View>(startInterviewId ? { interviewId: startInterviewId } : { tab: "interviews" });
   const coWritingOpen = useRef(false); // a co-writing chat lives in memory only, so leaving it asks first
+  const answerSaveNow = useRef<(() => Promise<void>) | null>(null); // the answer being typed, saved before locking
+  const onAnswerSaveNow = useCallback((saveNow: (() => Promise<void>) | null) => {
+    answerSaveNow.current = saveNow;
+  }, []);
+  /** Locks, after saving an answer typed in the last moment (the auto-lock only comes after 15 quiet minutes). */
+  const lock = async () => {
+    await answerSaveNow.current?.().catch(() => {}); // the answer bar has already said if it failed
+    onLock();
+  };
   /** Shows a tab or an Interview; `start` opens the Scenario Bank on the form or a co-writing chat. */
   const setView = (next: View, start: BankStart | null = null) => {
     if (coWritingOpen.current && !confirm(LEAVE_CHAT)) return;
@@ -88,6 +98,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
     [interviews, tab],
   );
   const openGaps = ready ? gapCount(ready.interview) : 0;
+  const answered = ready ? answeredCount(ready.interview) : 0;
 
   return (
     <>
@@ -104,7 +115,11 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
                   {ready.interview.company && <span className="interview-company">{ready.interview.company}</span>}
                 </h1>
                 <p className="top-bar-progress">
-                  {[countOf(ready.interview.questions.length, "Question"), openGaps > 0 && countOf(openGaps, "Gap")]
+                  {[
+                    countOf(ready.interview.questions.length, "Question"),
+                    answered > 0 && `${answered} answered`,
+                    openGaps > 0 && countOf(openGaps, "Gap"),
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
@@ -135,7 +150,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
         <div className="top-bar-end">
           {ready && <JumpMenu questions={ready.interview.questions} current={ready.position} onJump={ready.move} />}
           <AccessChip vault={vault} openRequests={accessRequests} expiredReports={expiredReports} onActiveChange={setAccessActive} />
-          <button type="button" className="button-header" onClick={onLock}>
+          <button type="button" className="button-header" onClick={() => void lock()}>
             Lock
           </button>
         </div>
@@ -161,6 +176,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
             onWrite={(batch) => writing.write(ready.interview.id, batch)}
             onOpenScenarioBank={() => setView({ tab: "scenario-bank" })}
             dealtOnOpen={atQuestion}
+            onAnswerSaveNow={onAnswerSaveNow}
             onWriteScenario={(question) =>
               setView(
                 { tab: "scenario-bank" },
