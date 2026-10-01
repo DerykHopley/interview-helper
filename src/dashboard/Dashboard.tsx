@@ -48,7 +48,9 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   const [view, setViewState] = useState<View>(startInterviewId ? { interviewId: startInterviewId } : { tab: "interviews" });
   const coWritingOpen = useRef(false); // a co-writing chat lives in memory only, so leaving it asks first
   const answerSaveNow = useRef<(() => Promise<void>) | null>(null); // the answer being typed, saved before locking
-  const onAnswerSaveNow = useCallback((saveNow: (() => Promise<void>) | null) => void (answerSaveNow.current = saveNow), []);
+  const onAnswerSaveNow = useCallback((saveNow: (() => Promise<void>) | null) => {
+    answerSaveNow.current = saveNow;
+  }, []);
   /** Locks, after saving an answer typed in the last moment (the auto-lock only comes after 15 quiet minutes). */
   const lock = async () => {
     await answerSaveNow.current?.().catch(() => {}); // the answer bar has already said if it failed
@@ -96,6 +98,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
     [interviews, tab],
   );
   const openGaps = ready ? gapCount(ready.interview) : 0;
+  const answered = ready ? answeredCount(ready.interview) : 0;
 
   return (
     <>
@@ -114,7 +117,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
                 <p className="top-bar-progress">
                   {[
                     countOf(ready.interview.questions.length, "Question"),
-                    answeredCount(ready.interview) > 0 && `${answeredCount(ready.interview)} answered`,
+                    answered > 0 && `${answered} answered`,
                     openGaps > 0 && countOf(openGaps, "Gap"),
                   ]
                     .filter(Boolean)

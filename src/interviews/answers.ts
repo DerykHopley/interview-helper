@@ -4,11 +4,8 @@ import type { Interview } from "./interview";
 
 export const answeredCount = (interview: Interview) => interview.questions.filter((q) => q.answer).length;
 
-/** When any of the Interview's Answers was last saved, or null if none has been. */
-export function lastPractised(interview: Interview): Date | null {
-  const times = interview.questions.flatMap((q) => (q.answer ? [Date.parse(q.answer.savedAt)] : []));
-  return times.length ? new Date(Math.max(...times)) : null;
-}
+/** When an Answer was last saved in the Interview, or null if none ever has been. */
+export const lastPractised = (interview: Interview): Date | null => (interview.lastPractisedAt ? new Date(interview.lastPractisedAt) : null);
 
 /** "Today", "Yesterday", "3 Oct" (with the year if it isn't this one), or "—" if never. */
 export function practisedLabel(date: Date | null, now = new Date()): string {

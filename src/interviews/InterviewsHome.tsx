@@ -1,4 +1,3 @@
-import { lastPractised, practisedLabel } from "./answers";
 import { useRef, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import type { Interview } from "./interview";
@@ -6,6 +5,7 @@ import type { InterviewStore, SavedInterview } from "./interviewStore";
 import { countOf, unreadableNotice } from "../text";
 import { gapCount } from "./gaps";
 import { NewInterview } from "./NewInterview";
+import { lastPractised, practisedLabel } from "./answers";
 
 type Props = {
   store: InterviewStore;

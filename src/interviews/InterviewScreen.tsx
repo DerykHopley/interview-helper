@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useLatest } from "../hooks";
-import { AnswerBar, type OnSaveNow } from "./AnswerBar";
 import { MatchesPanel } from "../matching/MatchesPanel";
 import { useQuestionMatches } from "../matching/useQuestionMatches";
 import { SHARED_PROBLEM_TEXT } from "../model-gateway/callProblems";
@@ -8,6 +7,7 @@ import type { UnlockedVault } from "../vault/vault";
 import { NO_SKILL } from "./gaps";
 import { PopupMenu } from "../PopupMenu";
 import { countOf } from "../text";
+import { AnswerBar, type OnSaveNow } from "./AnswerBar";
 import type { Interview, Question } from "./interview";
 import type { SavedInterview } from "./interviewStore";
 import { FIRST_BATCH, MORE_BATCH, type Batch } from "./questionGenerator";
@@ -135,10 +135,15 @@ export function InterviewScreen({
 
   /** Saves the Answer on its Question (the answer bar says whether it worked); empty text clears it. */
   const saveAnswer = (questionId: string, text: string) =>
-    onChange((current) => ({
-      ...current,
-      questions: current.questions.map((q) => (q.id === questionId ? { ...q, answer: text.trim() ? { text, savedAt: new Date().toISOString() } : undefined } : q)),
-    }));
+    onChange((current) => {
+      const savedAt = new Date().toISOString();
+      const answer = text.trim() ? { text, savedAt } : undefined;
+      return {
+        ...current,
+        questions: current.questions.map((q) => (q.id === questionId ? { ...q, answer } : q)),
+        lastPractisedAt: answer ? savedAt : current.lastPractisedAt,
+      };
+    });
 
   /** Saves a change, and says so if it failed (the Vault locked meanwhile, or storage is full). */
   async function save(change: (current: Interview) => Interview, onFailure: string) {

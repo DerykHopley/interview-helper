@@ -30,6 +30,8 @@ async function setUpWithToken() {
 }
 
 const drawer = () => screen.getByRole("dialog", { name: "New Interview" });
+/** The status region saying exactly this: the deck's notice, beside the answer bar's own status (#31). */
+const statusSaying = (text: string) => screen.getAllByRole("status").find((s) => s.textContent === text);
 
 /** Opens the drawer and pastes the Job Spec, as a Candidate would. */
 async function pasteJobSpec(text = JOB_SPEC) {
@@ -142,7 +144,7 @@ describe("writing Questions for a new Interview", () => {
     await act(() => Promise.resolve(writing.control.release!()));
 
     expect(await screen.findByText("8 Questions")).toBeInTheDocument();
-    expect(screen.getByText("8 new Questions added")).toHaveAttribute("role", "status"); // beside the answer bar's own status
+    expect(statusSaying("8 new Questions added")).toBeInTheDocument();
     const card = screen.getByRole("article", { name: "Question 1 of 8" });
     expect(within(card).getByText("1/8")).toBeInTheDocument();
     expect(card).toHaveTextContent("skill 1");
@@ -318,7 +320,7 @@ describe("asking for more Questions", () => {
     await user.click(screen.getByRole("button", { name: "Ask for 4 more Questions" }));
     expect(await screen.findByText("12 Questions")).toBeInTheDocument();
     // It says what happened, and shows the first new one, whose card gives its place in the deck.
-    expect(screen.getByText("4 new Questions added")).toHaveAttribute("role", "status");
+    expect(statusSaying("4 new Questions added")).toBeInTheDocument();
     expect(within(screen.getByRole("article", { name: "Question 9 of 12" })).getByText("9/12")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Next Question" }));
     expect(screen.queryByText("4 new Questions added")).not.toBeInTheDocument();
@@ -347,7 +349,7 @@ describe("asking for more Questions", () => {
     await waitFor(() => expect(more.control.release).toBeDefined());
     await act(() => Promise.resolve(more.control.release!()));
 
-    expect(await screen.findByText("4 new Questions added at the end of the deck")).toHaveAttribute("role", "status");
+    await waitFor(() => expect(statusSaying("4 new Questions added at the end of the deck")).toBeInTheDocument());
     expect(screen.getByRole("article", { name: "Question 8 of 12" })).toBeInTheDocument();
   });
 

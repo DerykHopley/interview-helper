@@ -40,5 +40,7 @@ export const interviewSchema = z.object({
   /** None for an Interview from a Pack that doesn't give one (#7): then no Questions can be written for it. */
   jobSpec: text.optional(),
   questions: z.array(questionSchema).default([]),
+  /** When an Answer was last saved here (#31), for the Interviews list. Clearing an Answer later doesn't undo it. */
+  lastPractisedAt: z.string().optional(),
 });
 export type Interview = z.infer<typeof interviewSchema>;

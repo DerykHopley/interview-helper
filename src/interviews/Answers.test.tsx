@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { deleteStoredRecord } from "../test/browserStorage";
 import { openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
 import { renderApp } from "../test/renderApp";
 
@@ -112,14 +113,25 @@ describe("the answer bar", () => {
   it("says so when an answer can't be saved, and keeps the text", async () => {
     renderApp();
     await inThePackInterview();
-    const put = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(() => {
-      throw new DOMException("The storage is full", "QuotaExceededError");
-    });
+    await deleteStoredRecord((id) => id.startsWith("interview:")); // as another tab deleting it would
     await user().type(answerBox(), ANSWER);
 
     await waitFor(() => expect(screen.getByRole("status", { name: "Answer" })).toHaveTextContent("Couldn't save your answer"), { timeout: 3000 });
     expect(answerBox()).toHaveValue(ANSWER);
-    put.mockRestore();
+  });
+
+  it("keeps an answer that was still being saved when the app is locked", async () => {
+    renderApp();
+    const unlockKey = await inThePackInterview();
+    await user().type(answerBox(), "Saving as I lock");
+    // Lock as soon as the save after the pause has started (it may already have finished: both must keep the answer).
+    await waitFor(() => expect(screen.getByRole("status", { name: "Answer" })).toHaveTextContent(/Saving…|Saved/), { timeout: 3000 });
+    await user().click(screen.getByRole("button", { name: "Lock" }));
+
+    await unlockWith(unlockKey);
+    await user().click(await screen.findByRole("button", { name: "Practise" }));
+    await screen.findByRole("article", { name: "Question 1 of 6" });
+    expect(answerBox()).toHaveValue("Saving as I lock");
   });
 
   it("keeps an answer typed just before the app is locked", async () => {
@@ -156,6 +168,13 @@ describe("Last practised", () => {
     await user().click(table.getByRole("button", { name: "Practise" }));
     await screen.findByRole("article", { name: "Question 1 of 6" });
     await answer(ANSWER);
+    await user().click(screen.getByRole("button", { name: "← Interviews" }));
+    expect(await screen.findByRole("row", { name: /Engineering Manager/ })).toHaveTextContent("Today");
+
+    // Clearing the Answer later doesn't undo the practice.
+    await user().click(screen.getByRole("button", { name: "Practise" }));
+    await user().clear(await screen.findByLabelText("Your answer"));
+    await waitFor(() => expect(screen.getByText(/^6 Questions/)).not.toHaveTextContent("answered"), { timeout: 3000 });
     await user().click(screen.getByRole("button", { name: "← Interviews" }));
     expect(await screen.findByRole("row", { name: /Engineering Manager/ })).toHaveTextContent("Today");
     first.unmount();

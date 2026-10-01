@@ -36,7 +36,9 @@ export function AnswerBar({ question, onSave, onSaveNow }: Props) {
   const [status, setStatus] = useState<Status>("saved");
   const box = useRef<HTMLTextAreaElement>(null);
   const bar = useRef<HTMLDivElement>(null);
-  const requested = useRef(text); // the text last sent to be saved, so the same text isn't saved twice
+  // The text last sent to be saved, so the same text isn't saved twice; null after a failure, so any text retries.
+  const requested = useRef<string | null>(text);
+  const inFlight = useRef<Promise<void>>(Promise.resolve()); // the latest save, for Lock to wait on
   const latest = useLatest({ text, onSave });
   const edited = useRef(false); // typed in since this card opened
 
@@ -49,17 +51,22 @@ export function AnswerBar({ question, onSave, onSaveNow }: Props) {
     setText(savedText);
   }, [savedText]);
 
-  async function save(value: string) {
-    if (value === requested.current) return;
+  /** Saves this text, unless it's what was last sent; resolves when the latest save has settled. Only the latest
+   * save's outcome is shown, so an older one finishing late can't overwrite it. */
+  function save(value: string): Promise<void> {
+    if (value === requested.current) return inFlight.current;
     requested.current = value;
     setStatus("saving");
-    try {
-      await onSave(value);
-      setStatus((s) => (requested.current === value && s !== "unsaved" ? "saved" : s));
-    } catch {
-      requested.current = ""; // so the next change tries again
-      setStatus("failed");
-    }
+    const isLatest = () => requested.current === value;
+    inFlight.current = onSave(value).then(
+      () => void (isLatest() && setStatus((s) => (s === "unsaved" ? s : "saved"))),
+      () => {
+        if (!isLatest()) return;
+        requested.current = null;
+        setStatus("failed");
+      },
+    );
+    return inFlight.current;
   }
 
   // Saved after a pause in typing.
@@ -100,11 +107,11 @@ export function AnswerBar({ question, onSave, onSaveNow }: Props) {
     const el = bar.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const root = document.documentElement.style;
-    const observer = new ResizeObserver(() => root.setProperty("--answer-bar-space", `${el.offsetHeight + 24}px`));
+    const observer = new ResizeObserver(() => root.setProperty("--answer-bar-height", `${el.offsetHeight}px`));
     observer.observe(el);
     return () => {
       observer.disconnect();
-      root.removeProperty("--answer-bar-space");
+      root.removeProperty("--answer-bar-height");
     };
   }, []);
 
