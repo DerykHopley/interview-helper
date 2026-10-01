@@ -1,10 +1,12 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { enterAccessToken, finishSetup, openTab, setUpWithoutToken } from "../test/candidate";
 import { createFakeModelGateway, type ReplyFor } from "../test/fakeModelGateway";
+import { mic, microphone, microphoneOn, removeMicrophone, speak } from "../test/microphone";
 import { renderApp } from "../test/renderApp";
+import { MAX_ANSWER_LENGTH } from "./coWriter";
 
 const TOKEN = "group-token";
 const ACTIVE = { [TOKEN]: { ok: true as const, label: "Cohort 7", expiresAt: new Date("2099-01-01T00:00:00.000Z") } };
@@ -350,5 +352,106 @@ describe("leaving a co-writing chat", () => {
     expect(await screen.findByText(/^No Scenarios yet\. Add your first/)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Co-write a Scenario" })).not.toBeInTheDocument();
     confirm.mockRestore();
+  });
+});
+
+describe("speaking an answer to the co-writer", () => {
+  const SPOKEN = "i was the senior engineer on the dispatch team";
+  const replyBox = () => screen.getByLabelText("Your answer");
+  afterEach(removeMicrophone);
+
+  it("puts what was said after what's typed, for the Candidate to check before sending", async () => {
+    microphone();
+    const gateway = createFakeModelGateway({ accessTokens: ACTIVE, transcripts: [SPOKEN], transcriberDownloaded: true, generate: { "co-writing": [turn("What was going on?", { role: FULL.role })] } });
+    await startCoWriting(gateway);
+    await user().type(replyBox(), "Role:");
+    await speak();
+
+    await waitFor(() => expect(replyBox()).toHaveValue(`Role: ${SPOKEN}`));
+    expect(messages()).toEqual([`co-writer: ${OPENER}`]); // nothing is sent by itself
+    await user().click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(messages()).toContain(`you: Role: ${SPOKEN}`));
+  });
+
+  it("explains the one-time download first, like the answer bar", async () => {
+    microphone();
+    await startCoWriting(createFakeModelGateway({ accessTokens: ACTIVE, transcripts: [SPOKEN] }));
+    await user().click(mic());
+
+    expect(screen.getByText(/^Voice needs a one-time download of about 63 MB/)).toBeInTheDocument();
+  });
+
+  it("can record while the co-writer is thinking; Send waits for its reply", async () => {
+    microphone();
+    let release = () => {};
+    const held: ReplyFor = () => new Promise((resolve) => (release = () => resolve(turn("What was your role?", { title: FULL.title }))));
+    await startCoWriting(createFakeModelGateway({ accessTokens: ACTIVE, transcripts: [SPOKEN], transcriberDownloaded: true, generate: { "co-writing": [held] } }));
+    await user().type(replyBox(), "The dispatch system");
+    await user().click(screen.getByRole("button", { name: "Send" }));
+    expect(screen.getByRole("status")).toHaveTextContent("The co-writer is thinking…");
+
+    await speak();
+    await waitFor(() => expect(replyBox()).toHaveValue(SPOKEN));
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+
+    release();
+    await waitFor(() => expect(messages().at(-1)).toBe("co-writer: What was your role?"));
+    expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+    expect(replyBox()).toHaveValue(SPOKEN);
+  });
+
+  it("cuts what was said at the answer length limit", async () => {
+    microphone();
+    await startCoWriting(createFakeModelGateway({ accessTokens: ACTIVE, transcripts: [SPOKEN], transcriberDownloaded: true }));
+    const typed = "x".repeat(MAX_ANSWER_LENGTH - 10);
+    fireEvent.change(replyBox(), { target: { value: typed } });
+    await speak();
+
+    await waitFor(() => expect(replyBox()).toHaveValue(`${typed} ${SPOKEN}`.slice(0, MAX_ANSWER_LENGTH)));
+  });
+
+  it("still records after the Access Token expires mid-chat", async () => {
+    microphone();
+    const expired: ReplyFor = () => Promise.reject(new ModelGatewayError("expired_token"));
+    await startCoWriting(createFakeModelGateway({ accessTokens: ACTIVE, transcripts: [SPOKEN], transcriberDownloaded: true, generate: { "co-writing": [expired] } }));
+    await answer("The dispatch system");
+    expect(screen.getByRole("alert")).toHaveTextContent("your Access Token has expired");
+
+    await speak();
+    await waitFor(() => expect(replyBox()).toHaveValue(SPOKEN));
+  });
+
+  it("turns the microphone off and drops the recording when the chat is discarded", async () => {
+    microphone();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const gateway = createFakeModelGateway({ accessTokens: ACTIVE, transcripts: [SPOKEN], transcriberDownloaded: true });
+    const transcribe = vi.spyOn(gateway, "transcribe");
+    await startCoWriting(gateway);
+    await user().click(mic());
+    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
+
+    await user().click(screen.getByRole("button", { name: "Discard chat" }));
+    expect(await screen.findByText(/^No Scenarios yet\. Add your first/)).toBeInTheDocument();
+    expect(microphoneOn()).toBe(false);
+    expect(transcribe).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it("turns the microphone off and drops the recording when the draft goes to review", async () => {
+    microphone();
+    let release = () => {};
+    const held: ReplyFor = () => new Promise((resolve) => (release = () => resolve(turn("Your draft is ready to review.", FULL, true))));
+    const gateway = createFakeModelGateway({ accessTokens: ACTIVE, transcripts: [SPOKEN], transcriberDownloaded: true, generate: { "co-writing": [held] } });
+    const transcribe = vi.spyOn(gateway, "transcribe");
+    await startCoWriting(gateway);
+    await user().type(replyBox(), "The dispatch system");
+    await user().click(screen.getByRole("button", { name: "Send" }));
+    await user().click(mic());
+    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
+
+    release();
+    expect(await screen.findByRole("heading", { name: "Review your draft" })).toBeInTheDocument();
+    expect(microphoneOn()).toBe(false);
+    expect(transcribe).not.toHaveBeenCalled();
   });
 });

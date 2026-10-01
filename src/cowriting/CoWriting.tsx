@@ -4,6 +4,8 @@ import type { RematchOutcome } from "../matching/shippedMatching";
 import { callProblemOf, SHARED_PROBLEM_TEXT, type AccessHandlers, type CallProblem } from "../model-gateway/callProblems";
 import { ProblemAlert } from "../model-gateway/ProblemAlert";
 import { useModelGateway } from "../model-gateway/context";
+import { withSpoken } from "../interviews/answers";
+import { VoiceButton } from "../interviews/VoiceButton";
 import { ScenarioForm } from "../scenarios/ScenarioForm";
 import type { Scenario } from "../scenarios/scenarioFormat";
 import { draftAsScenario, draftFor, MAX_ANSWER_LENGTH, MAX_ANSWERS, nextTurn, openerFor, PARTS, type Draft, type Exchange, type Seed } from "./coWriter";
@@ -170,18 +172,22 @@ export function CoWriting({ onSave, onDiscard, access, seed = {}, fromGap, onSho
         <label htmlFor="cowrite-answer" className="visually-hidden">
           Your answer
         </label>
-        <textarea
-          id="cowrite-answer"
-          className="field"
-          rows={2}
-          maxLength={MAX_ANSWER_LENGTH}
-          placeholder="Type your answer"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) send(e);
-          }}
-        />
+        <div className="reply-input">
+          <textarea
+            id="cowrite-answer"
+            className="field"
+            rows={2}
+            maxLength={MAX_ANSWER_LENGTH}
+            placeholder="Type your answer"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) send(e);
+            }}
+          />
+          {/* What was said goes after what's typed, to check before sending; ending the chat drops it (#54). */}
+          <VoiceButton onTranscript={(spoken) => setText((typed) => withSpoken(typed, spoken).slice(0, MAX_ANSWER_LENGTH))} />
+        </div>
         <div className="reply-box-actions">
           <button type="button" className="button-link" onClick={() => confirm(LEAVE_CHAT) && onDiscard()}>
             Discard chat

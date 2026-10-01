@@ -21,15 +21,16 @@ function unavailable(): string | null {
 }
 
 type Props = {
-  /** What was said, while this card is still on screen. */
+  /** What was said, while the mic is still on screen. */
   onTranscript: (text: string) => void;
-  /** What was said after the Candidate left this card mid-recording: it still belongs to this Question. */
-  onTranscriptAfterLeaving: (text: string) => void;
+  /** What was said after the Candidate left mid-recording, when it still has somewhere to go (the answer bar: its
+   * Question). Without it, a recording cut short by leaving is dropped without being transcribed. */
+  onTranscriptAfterLeaving?: (text: string) => void;
 };
 
-/** The answer bar's mic (#33): tap to record, tap to stop. What was said is turned into text by a speech model running
- * in this browser, so no audio leaves the device. Leaving the card turns the microphone off; what was said by then is
- * still transcribed for this Question. */
+/** The mic beside the answer bar (#33) and the co-writing reply box (#54): tap to record, tap to stop. What was said
+ * is turned into text by a speech model running in this browser, so no audio leaves the device. Leaving turns the
+ * microphone off at once. */
 export function VoiceButton({ onTranscript, onTranscriptAfterLeaving }: Props) {
   const gateway = useModelGateway();
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
@@ -58,7 +59,7 @@ export function VoiceButton({ onTranscript, onTranscriptAfterLeaving }: Props) {
     };
   }, [phase.kind]);
 
-  // Leaving the card: the microphone goes off at once, and a recording under way stops and is still transcribed.
+  // Leaving: the microphone goes off at once, and a recording under way stops (transcribed only if it has somewhere to go).
   useEffect(() => {
     onScreen.current = true;
     return () => {
@@ -113,6 +114,7 @@ export function VoiceButton({ onTranscript, onTranscriptAfterLeaving }: Props) {
       rec.onstop = () => {
         micOff();
         recorder.current = null;
+        if (!onScreen.current && !handlers.current.onTranscriptAfterLeaving) return; // nowhere for it to go
         void transcribe(new Blob(chunks, { type: rec.mimeType || "audio/webm" }));
       };
       rec.start();
@@ -138,7 +140,7 @@ export function VoiceButton({ onTranscript, onTranscriptAfterLeaving }: Props) {
       setPhase({ kind: "idle" });
       return setProblem({ text: "Couldn't turn that into text. Try again, or type your answer.", retry: audio });
     }
-    if (!onScreen.current) return void (text && handlers.current.onTranscriptAfterLeaving(text));
+    if (!onScreen.current) return void (text && handlers.current.onTranscriptAfterLeaving?.(text));
     setDownload(null);
     setPhase({ kind: "idle" });
     if (text) handlers.current.onTranscript(text);
