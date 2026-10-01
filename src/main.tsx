@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./styles/app.css";
+import { browserTranscriber } from "./model-gateway/browserTranscriber";
 import { createWorkerGateway } from "./model-gateway/workerGateway";
 
 // The Worker's URL. In dev it defaults to `npm run dev:worker` on port 8787; a production build must set
@@ -11,6 +12,6 @@ if (!workerUrl) throw new Error("VITE_WORKER_URL isn't set for this build");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App createGateway={(getAccessToken) => createWorkerGateway({ baseUrl: workerUrl, getAccessToken })} />
+    <App createGateway={(getAccessToken) => createWorkerGateway({ baseUrl: workerUrl, getAccessToken, speech: browserTranscriber() })} />
   </StrictMode>,
 );

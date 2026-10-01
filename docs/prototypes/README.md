@@ -11,6 +11,7 @@ Throwaway UI prototypes were used to choose each screen's design before building
 | Interview practice | S3 — flashcard deck on a dark table, dealt hand, answer bar, header, missing states, end card, quick jump | #8–#11, #13, #31–#33 | [interview-view](interview-view/README.md) |
 | Co-writing | W5 — chat with pinned part chips, fixed reply box | #12, #13 | [co-writing](co-writing/README.md) |
 | Developer panel | P1 — side drawer | #17 | [dev-panel](dev-panel/README.md) |
+| Voice input (speech model) | Moonshine base, in the browser (a comparison page, not a UI prototype) | #33 | [voice](voice/README.md) |
 
 Parked for later: interview date and application status (#25), and "Undo" after deleting an Interview.
 

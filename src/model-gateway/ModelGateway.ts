@@ -64,4 +64,12 @@ export interface ModelGateway {
   decide<Keys extends string>(request: DecisionRequest<Keys>): Promise<Record<Keys, DecisionAnswer>>;
   /** Checks an Access Token with the Worker, before it's used. */
   checkAccess(token: string): Promise<AccessStatus>;
+  /** A spoken Answer as text (#33), by a speech model running in this browser: no audio leaves the device. The first use
+   * downloads the model; `onDownload` reports how much of it has arrived (0 to 1). */
+  transcribe(audio: Blob, onDownload?: (fraction: number) => void): Promise<string>;
+  /** Whether the speech model is already in this browser, so a first use can say what it will download. */
+  transcriberDownloaded(): Promise<boolean>;
+  /** Starts getting the speech model ready (downloading it the first time), e.g. while the Candidate records.
+   * `onDownload` reports progress as for `transcribe`. */
+  prepareTranscriber(onDownload?: (fraction: number) => void): Promise<void>;
 }

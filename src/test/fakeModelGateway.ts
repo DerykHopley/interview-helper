@@ -22,13 +22,21 @@ export function createFakeModelGateway({
   decide = {},
   embeddings = [],
   accessTokens = {},
+  transcripts = [],
+  transcriberDownloaded: downloadedAtStart = false,
 }: {
   generate?: Script;
   decide?: DecisionScript;
   embeddings?: number[][];
   /** How the Worker would answer for each token; any other token is invalid. */
   accessTokens?: Record<string, AccessStatus>;
+  /** What each transcription returns, in order: the text, or an error to fail with. */
+  transcripts?: (string | Error)[];
+  /** Whether the speech model is already in this browser; the first transcription downloads it otherwise. */
+  transcriberDownloaded?: boolean;
 } = {}): FakeModelGateway {
+  const queuedTranscripts = [...transcripts];
+  let downloaded = downloadedAtStart;
   const queues = Object.fromEntries(Object.entries(generate).map(([job, replies]) => [job, [...replies]])) as Script;
   const decisions = structuredClone(decide);
   let getAccessToken = (): string | null => null;
@@ -48,6 +56,18 @@ export function createFakeModelGateway({
       if (embeddings.length < texts.length) return Promise.reject(new Error("Not enough scripted embeddings"));
       return Promise.resolve(embeddings.splice(0, texts.length));
     },
+    transcribe(_audio, onDownload) {
+      const next = queuedTranscripts.shift();
+      if (next === undefined) return Promise.reject(new Error("No scripted transcript"));
+      if (!downloaded) {
+        onDownload?.(0.5);
+        onDownload?.(1);
+        downloaded = true;
+      }
+      return next instanceof Error ? Promise.reject(next) : Promise.resolve(next);
+    },
+    transcriberDownloaded: () => Promise.resolve(downloaded),
+    prepareTranscriber: () => Promise.resolve(),
     checkAccess(token) {
       return Promise.resolve(accessTokens[token.trim()] ?? { ok: false, reason: "invalid" });
     },

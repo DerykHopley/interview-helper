@@ -11,6 +11,9 @@ type Options = {
   /** Told about every model call the Worker answered: which model ran and what it cost. The Matcher Report (#14)
    * totals it, and the Developer panel (#17) can show it. */
   onCall?: (call: ModelCall) => void;
+  /** Speech to text, which runs in the browser rather than through the Worker (#33). Without it, transcribing is
+   * refused ("not_connected"), as in the Worker's own tests. */
+  speech?: Pick<ModelGateway, "transcribe" | "transcriberDownloaded" | "prepareTranscriber">;
 };
 
 export type ModelCall = { job: ModelJob; model: string; cost: number | null };
@@ -23,7 +26,7 @@ function toStrictJsonSchema(schema: z.ZodType) {
 }
 
 /** The real Model Gateway: reaches models through the Worker, which checks the Access Token and calls OpenRouter. */
-export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThis.fetch.bind(globalThis), onCall }: Options): ModelGateway {
+export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThis.fetch.bind(globalThis), onCall, speech }: Options): ModelGateway {
   const call = async (path: string, init: RequestInit, token = getAccessToken()) => {
     const headers = new Headers(init.headers);
     if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -73,6 +76,9 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
 
     // Embeddings and Jev decisions reach the Worker in later tickets (#10, #20, #21).
     embed: () => Promise.reject(new ModelGatewayError("not_connected")),
+    transcribe: (audio, onDownload) => (speech ? speech.transcribe(audio, onDownload) : Promise.reject(new ModelGatewayError("not_connected"))),
+    transcriberDownloaded: () => (speech ? speech.transcriberDownloaded() : Promise.resolve(false)),
+    prepareTranscriber: (onDownload) => (speech ? speech.prepareTranscriber(onDownload) : Promise.reject(new ModelGatewayError("not_connected"))),
     decide: () => Promise.reject(new ModelGatewayError("not_connected")),
   };
 }

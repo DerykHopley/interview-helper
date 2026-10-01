@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speech model comparison</title>
+<style>
+  :root { --felt: #0b1512; --card: #fffdf7; --ink: #1f2937; --muted: #6b7280; --line: #e4ddca; --accent: #fcd34d; --ok: #16a34a; --bad: #b45309; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--felt); color: #f3f4f6; font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-family: Georgia, serif; margin: 0; }
+  .card { background: var(--card); color: var(--ink); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  label { display: inline-flex; gap: 6px; align-items: center; }
+  button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); }
+  button.rec { background: #dc2626; color: #fff; border-color: #dc2626; }
+  button:disabled { opacity: .5; cursor: default; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .muted { color: var(--muted); font-size: 13px; }
+  #status { min-height: 1.5em; }
+  audio { width: 100%; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Speech model comparison (#33)</h1>
+  <p>Throwaway test page. Every model runs in this browser; no audio leaves the device. Models download once from Hugging Face and are then cached by the browser.</p>
+
+  <section class="card">
+    <strong>1. Choose models and device</strong>
+    <div class="row" id="models"></div>
+    <div class="row">
+      <label><input type="radio" name="device" value="wasm" checked> WASM (works everywhere)</label>
+      <label><input type="radio" name="device" value="webgpu" id="webgpu"> WebGPU (faster where supported)</label>
+    </div>
+    <p class="muted" id="gpu"></p>
+  </section>
+
+  <section class="card">
+    <strong>2. Audio</strong>
+    <div class="row">
+      <button id="sample">Use the sample clip (JFK, 11 s)</button>
+      <button id="record">● Record</button>
+      <span id="timer" class="muted"></span>
+    </div>
+    <audio id="player" controls hidden></audio>
+    <p class="muted" id="audioInfo">No audio yet.</p>
+  </section>
+
+  <section class="card">
+    <strong>3. Transcribe</strong>
+    <div class="row"><button id="run" class="primary" disabled>Transcribe with each chosen model</button></div>
+    <p id="status" class="muted"></p>
+    <table>
+      <thead><tr><th>Model</th><th>Device</th><th>Download</th><th>Load</th><th>Transcribe</th><th>Text</th></tr></thead>
+      <tbody id="results"></tbody>
+    </table>
+    <p class="muted">"Load" is the first time includes the download; run again to see a cached load. Times are for this browser on this computer.</p>
+  </section>
+</main>
+
+<script type="module">
+  import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0";
+  env.allowLocalModels = false;
+
+  const MODELS = [
+    { id: "onnx-community/moonshine-tiny-ONNX", name: "Moonshine tiny", mb: 28 },
+    { id: "onnx-community/whisper-tiny.en", name: "Whisper tiny.en", mb: 41 },
+    { id: "onnx-community/moonshine-base-ONNX", name: "Moonshine base", mb: 63 },
+    { id: "onnx-community/whisper-base.en", name: "Whisper base.en", mb: 77 },
+  ];
+  const $ = (id) => document.getElementById(id);
+  $("models").innerHTML = MODELS.map((m, i) => `<label><input type="checkbox" value="${i}" checked> ${m.name} (~${m.mb} MB)</label>`).join("");
+  $("gpu").textContent = navigator.gpu ? "This browser offers WebGPU." : "This browser doesn't offer WebGPU here; use WASM.";
+  if (!navigator.gpu) $("webgpu").disabled = true;
+
+  let audio = null; // Float32Array, 16 kHz mono
+  const loaded = new Map(); // id|device -> pipeline
+
+  async function toMono16k(arrayBuffer) {
+    const ctx = new AudioContext({ sampleRate: 16000 });
+    const decoded = await ctx.decodeAudioData(arrayBuffer);
+    await ctx.close();
+    return decoded.getChannelData(0);
+  }
+  function setAudio(samples, blob, label) {
+    audio = samples;
+    $("player").src = URL.createObjectURL(blob);
+    $("player").hidden = false;
+    $("audioInfo").textContent = `${label}: ${(samples.length / 16000).toFixed(1)} s`;
+    $("run").disabled = false;
+  }
+
+  $("sample").onclick = async () => {
+    $("audioInfo").textContent = "Fetching the sample…";
+    const blob = await (await fetch("https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/jfk.wav")).blob();
+    setAudio(await toMono16k(await blob.arrayBuffer()), blob, "Sample clip");
+  };
+
+  let recorder = null, started = 0, tick = null;
+  $("record").onclick = async () => {
+    if (recorder) return recorder.stop();
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch (e) { $("audioInfo").textContent = `Microphone not available: ${e.message}`; return; }
+    const chunks = [];
+    recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = (e) => chunks.push(e.data);
+    recorder.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      clearInterval(tick); $("timer").textContent = "";
+      $("record").textContent = "● Record"; $("record").classList.remove("rec");
+      recorder = null;
+      const blob = new Blob(chunks, { type: chunks[0]?.type || "audio/webm" });
+      setAudio(await toMono16k(await blob.arrayBuffer()), blob, "Your recording");
+    };
+    recorder.start();
+    started = performance.now();
+    tick = setInterval(() => ($("timer").textContent = `${((performance.now() - started) / 1000).toFixed(0)} s`), 250);
+    $("record").textContent = "■ Stop"; $("record").classList.add("rec");
+  };
+
+  $("run").onclick = async () => {
+    const device = document.querySelector('input[name="device"]:checked').value;
+    const chosen = [...document.querySelectorAll("#models input:checked")].map((b) => MODELS[+b.value]);
+    $("run").disabled = true;
+    for (const m of chosen) {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${m.name}</td><td>${device}</td><td class="num">…</td><td class="num">…</td><td class="num">…</td><td></td>`;
+      $("results").prepend(row);
+      const cell = row.children;
+      try {
+        const key = `${m.id}|${device}`;
+        let bytes = 0;
+        const seen = new Map();
+        const t0 = performance.now();
+        let asr = loaded.get(key);
+        if (!asr) {
+          $("status").textContent = `Loading ${m.name}…`;
+          asr = await pipeline("automatic-speech-recognition", m.id, {
+            dtype: "q8",
+            device,
+            progress_callback: (p) => {
+              if (p.status === "progress" && p.file) { seen.set(p.file, p.total ?? 0); bytes = [...seen.values()].reduce((a, b) => a + b, 0); cell[2].textContent = `${(bytes / 1e6).toFixed(0)} MB`; }
+            },
+          });
+          loaded.set(key, asr);
+        } else cell[2].textContent = "cached";
+        const t1 = performance.now();
+        cell[3].textContent = `${((t1 - t0) / 1000).toFixed(1)} s`;
+        $("status").textContent = `Transcribing with ${m.name}…`;
+        const out = await asr(audio, { chunk_length_s: 30, stride_length_s: 5 });
+        const t2 = performance.now();
+        cell[4].textContent = `${((t2 - t1) / 1000).toFixed(1)} s`;
+        cell[5].textContent = out.text.trim();
+        if (bytes === 0 && cell[2].textContent === "…") cell[2].textContent = "from cache";
+      } catch (e) {
+        cell[5].textContent = `Failed: ${e.message}`;
+      }
+    }
+    $("status").textContent = "Done.";
+    $("run").disabled = false;
+  };
+</script>
+</body>
+</html>
