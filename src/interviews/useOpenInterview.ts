@@ -17,7 +17,7 @@ export type OpenInterview =
 
 /** The Interview the Candidate has open, if any: read from the Vault, where its deck is, and saving changes. A save
  * that finishes after the Candidate has left (or opened another) is kept in the Vault but not shown. */
-export function useOpenInterview(store: InterviewStore, id: string | null): OpenInterview | null {
+export function useOpenInterview(store: InterviewStore, id: string | null, atQuestion: string | null = null): OpenInterview | null {
   const [loaded, setLoaded] = useState<{ id: string; interview: SavedInterview | null } | null>(null);
   const [position, setPosition] = useState(0);
 
@@ -26,11 +26,16 @@ export function useOpenInterview(store: InterviewStore, id: string | null): Open
       setPosition(0);
       if (!id) return;
       store.get(id).then(
-        (interview) => isCurrent() && setLoaded({ id, interview }),
+        (interview) => {
+          if (!isCurrent()) return;
+          setLoaded({ id, interview });
+          const index = interview?.questions.findIndex((q) => q.id === atQuestion) ?? -1;
+          if (index > 0) setPosition(index); // opening at that Question's card
+        },
         () => isCurrent() && setLoaded({ id, interview: null }),
       );
     },
-    [store, id],
+    [store, id, atQuestion],
   );
 
   // A change saved elsewhere (Questions written in the background) shows at once.

@@ -23,8 +23,10 @@ type Props = {
   /** Opens the Access Token panel, e.g. when matching needs a new token. */
   onNeedToken: () => void;
   onOpenScenarioBank: () => void;
-  /** Starts a new Scenario tagged with this skill (a Gap's "Write a Scenario for this"). #13 makes it co-writing. */
-  onWriteScenario: (skill: string | undefined) => void;
+  /** A Gap's "Write a Scenario for this": co-writing from its Question (#13), or the form without a token. */
+  onWriteScenario: (question: Question) => void;
+  /** A Question whose Matches are dealt as the screen opens (back from its Gap). */
+  dealtOnOpen?: string | null;
   /** Whether this Interview's Questions are being written, or why they last couldn't be (#9). */
   writing: Writing;
   /** Whether an Access Token is active, so Questions can be written. */
@@ -70,13 +72,14 @@ export function InterviewScreen({
   onNeedToken,
   onOpenScenarioBank,
   onWriteScenario,
+  dealtOnOpen = null,
   writing,
   accessActive,
   onTokenExpired,
   onWrite,
 }: Props) {
   const { questions } = interview;
-  const matches = useQuestionMatches(vault, onChange, onTokenExpired);
+  const matches = useQuestionMatches(vault, onChange, onTokenExpired, dealtOnOpen);
   const at = Math.min(position, questions.length);
   const go = (to: number) => onMove(Math.max(0, Math.min(to, questions.length)));
   const latestGo = useLatest((by: number) => go(at + by));
@@ -186,7 +189,7 @@ export function InterviewScreen({
             matches={matches}
             onNeedToken={onNeedToken}
             onOpenScenarioBank={onOpenScenarioBank}
-            onWriteScenario={() => onWriteScenario(questions[at].skill)}
+            onWriteScenario={() => onWriteScenario(questions[at])}
           />
         </div>
       ) : writing.active && questions.length === 0 ? (

@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLatest } from "../hooks";
 import { callProblemOf, SHARED_PROBLEM_TEXT, type AccessHandlers, type CallProblem } from "../model-gateway/callProblems";
 import { useModelGateway } from "../model-gateway/context";
 import { ScenarioForm } from "../scenarios/ScenarioForm";
 import type { Scenario } from "../scenarios/scenarioFormat";
-import { draftAsScenario, EMPTY_DRAFT, MAX_ANSWER_LENGTH, MAX_ANSWERS, nextTurn, OPENER, PARTS, type Draft, type Exchange } from "./coWriter";
+import { draftAsScenario, draftFor, MAX_ANSWER_LENGTH, MAX_ANSWERS, nextTurn, openerFor, PARTS, type Draft, type Exchange, type Seed } from "./coWriter";
 
 /** What each problem says, and whether its fix is a new Access Token (otherwise: try again). */
 const PROBLEMS: Record<CallProblem, { text: string; needsToken?: boolean }> = {
@@ -14,12 +15,28 @@ const PROBLEMS: Record<CallProblem, { text: string; needsToken?: boolean }> = {
   failed: { text: "The co-writer's reply couldn't be read this time. Try again." },
 };
 
+/** What re-matching a Gap's Question found once the Scenario was saved (#13). */
+export type RematchOutcome = { gap: true } | { gap: false; title: string; score: number; reason: string; isNew: boolean };
+
+/** Re-matching a Gap's Question after saving: what each problem says, and whether its fix is a new Access Token. */
+const REMATCH_PROBLEMS: Record<CallProblem, { text: string; needsToken?: boolean }> = {
+  "no-token": { text: "Re-matching needs an active Access Token.", needsToken: true },
+  "expired-token": { text: "Re-matching stopped: your Access Token has expired.", needsToken: true },
+  unreachable: { text: SHARED_PROBLEM_TEXT.unreachable },
+  "cut-off": { text: SHARED_PROBLEM_TEXT["cut-off"] },
+  failed: { text: "Matching didn't work this time. Try again." },
+};
+
 type Props = {
   /** Saves the approved draft as a co-written Scenario. */
   onSave: (scenario: Scenario) => Promise<void>;
   /** The chat or its draft was discarded: nothing is saved. */
   onDiscard: () => void;
   access: AccessHandlers;
+  /** What the chat starts from: a Gap's Question and skill, or a skill (#13). */
+  seed?: Seed;
+  /** For a chat from a Gap: re-matches its Question once the Scenario is saved, and goes back to it. */
+  fromGap?: { rematch: () => Promise<RematchOutcome>; onBack: () => void };
 };
 
 /** Asked before a chat is thrown away, here or by leaving it (the dashboard asks the same). */
@@ -27,10 +44,11 @@ export const LEAVE_CHAT = "Leave and lose this chat? Nothing from it has been sa
 
 /** Co-writing a Scenario (W5 design): part chips above a chat, a reply box fixed to the bottom of the screen, then a
  * review of the draft at the top of the page. The chat lives in memory only, so discarding it leaves no trace. */
-export function CoWriting({ onSave, onDiscard, access }: Props) {
+export function CoWriting({ onSave, onDiscard, access, seed = {}, fromGap }: Props) {
   const gateway = useModelGateway();
-  const [chat, setChat] = useState<Exchange[]>([{ from: "co-writer", text: OPENER }]);
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const [chat, setChat] = useState<Exchange[]>(() => [{ from: "co-writer", text: openerFor(seed) }]);
+  const [draft, setDraft] = useState<Draft>(() => draftFor(seed));
+  const [saved, setSaved] = useState(false); // from a Gap: saved, and re-matching
   const [review, setReview] = useState<{ capped: boolean } | null>(null);
   const [text, setText] = useState("");
   const [waiting, setWaiting] = useState(false);
@@ -49,7 +67,7 @@ export function CoWriting({ onSave, onDiscard, access }: Props) {
     setWaiting(true);
     setProblem(null);
     try {
-      const turn = await nextTurn(gateway, sent.slice(0, -1), sent.at(-1)!.text, draft);
+      const turn = await nextTurn(gateway, sent.slice(0, -1), sent.at(-1)!.text, draft, seed);
       setChat([...sent, { from: "co-writer", text: turn.message }]);
       setDraft(turn.draft);
       const answers = sent.filter((m) => m.from === "you").length;
@@ -73,6 +91,13 @@ export function CoWriting({ onSave, onDiscard, access }: Props) {
     void ask(sent);
   }
 
+  async function approve(scenario: Scenario) {
+    await onSave(scenario);
+    if (fromGap) setSaved(true);
+  }
+
+  if (saved && fromGap) return <SavedFromGap question={seed.gap?.question ?? ""} {...fromGap} access={access} />;
+
   if (review) {
     return (
       <div className="cowrite">
@@ -80,7 +105,7 @@ export function CoWriting({ onSave, onDiscard, access }: Props) {
         <p className="cowrite-review-why">Your own answers, arranged. Edit anything, then approve it to save.</p>
         {review.capped && <p className="notice-info">That's as long as one chat can be, so here's the draft so far.</p>}
         <div className="card">
-          <ScenarioForm initial={draftAsScenario(draft)} onSave={onSave} onCancel={onDiscard} saveLabel="Approve and save" cancelLabel="Discard draft" checkNow />
+          <ScenarioForm initial={draftAsScenario(draft)} onSave={approve} onCancel={onDiscard} saveLabel="Approve and save" cancelLabel="Discard draft" checkNow />
         </div>
       </div>
     );
@@ -91,6 +116,11 @@ export function CoWriting({ onSave, onDiscard, access }: Props) {
   return (
     <div className="cowrite has-reply-box">
       <h2 className="page-title">Co-write a Scenario</h2>
+      {seed.gap && (
+        <p className="gap-banner">
+          For the Gap: “{seed.gap.question}”{seed.skill ? ` · ${seed.skill}` : ""}
+        </p>
+      )}
       {/* Pinned to the top while the chat scrolls, with a done part's words when its chip is clicked. */}
       <div className="part-bar">
         <ol className="part-chips" aria-label="Parts of the Scenario">
@@ -172,6 +202,81 @@ export function CoWriting({ onSave, onDiscard, access }: Props) {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+/** After saving a Scenario co-written from a Gap: its Question is re-matched, and the Candidate sees whether the Gap
+ * closed, then goes back to it. */
+function SavedFromGap({ question, rematch, onBack, access }: { question: string; access: AccessHandlers } & NonNullable<Props["fromGap"]>) {
+  const [outcome, setOutcome] = useState<RematchOutcome | null>(null);
+  const [problem, setProblem] = useState<CallProblem | null>(null);
+
+  const run = useLatest(async () => {
+    setProblem(null);
+    try {
+      setOutcome(await rematch());
+    } catch (e) {
+      const found = callProblemOf(e);
+      if (found === "expired-token") access.onTokenExpired();
+      setProblem(found);
+    }
+  });
+  // Once: React's StrictMode runs effects twice in development, and each re-match is a paid call.
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    void run.current();
+  }, [run]);
+
+  const back = (
+    <button type="button" className="button-primary" onClick={onBack}>
+      Back to the Question →
+    </button>
+  );
+  const { text: problemText, needsToken } = problem ? REMATCH_PROBLEMS[problem] : { text: "", needsToken: false };
+  return (
+    <div className="cowrite">
+      <p className="notice-ok">✓ Saved to your Scenario Bank</p>
+      {!outcome && !problem && (
+        <p className="chat-waiting" role="status">
+          Re-matching “{question}”…
+        </p>
+      )}
+      {problem && (
+        <div role="alert" className="notice-warn">
+          <p>{problemText}</p>
+          <div className="actions">
+            {needsToken && (
+              <button type="button" className="button-secondary" onClick={access.onNeedToken}>
+                Enter a new token
+              </button>
+            )}
+            <button type="button" className="button-secondary" onClick={() => void run.current()}>
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+      {outcome && !outcome.gap && (
+        <section className="card rematch-outcome is-closed" aria-label="Gap closed">
+          <h3 className="card-title">Gap closed.</h3>
+          <p>
+            {outcome.isNew ? "Your new Scenario is now the best Match for this Question" : "This Question now has Matches. The best"}:{" "}
+            <strong>{outcome.title}</strong> · {Math.round(outcome.score)}%
+          </p>
+          <p className="match-reason-on-card">{outcome.reason}</p>
+          <div className="actions">{back}</div>
+        </section>
+      )}
+      {outcome?.gap && (
+        <section className="card rematch-outcome" aria-label="Still a Gap">
+          <h3 className="card-title">Still a Gap.</h3>
+          <p>Your new Scenario is saved, but it isn't a strong enough Match for this Question yet. You can edit it in the Scenario Bank and re-run matching.</p>
+          <div className="actions">{back}</div>
+        </section>
+      )}
     </div>
   );
 }

@@ -310,6 +310,12 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
 .cowrite-review-why { margin: 0 0 12px; color: var(--on-table-muted); }
 .cowrite .notice-info { margin-bottom: 12px; }
 .choices { gap: 12px; }
+.gap-banner { margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--gap); border-radius: var(--radius-field); background: var(--gap-tint); color: var(--gap); font-size: 14px; }
+.notice-ok { margin: 8px 0 12px; padding: 10px 12px; border-radius: var(--radius-field); background: var(--ok-tint); color: var(--ok-soft); font-weight: 700; }
+.rematch-outcome { gap: 8px; }
+.rematch-outcome p { margin: 0; }
+.rematch-outcome.is-closed { border-left: 4px solid var(--ok); }
+.match-reason-on-card { color: var(--ink-muted); font-size: 14px; }
 
 /* ---------- storage refused ---------- */
 .notice-blocking { padding: 16px; border: 1px solid var(--danger-line); border-radius: var(--radius-card); background: var(--danger-card); color: var(--danger-on-card); }

@@ -5,9 +5,9 @@ import { useModelGateway } from "../model-gateway/context";
 import { callProblemOf } from "../model-gateway/callProblems";
 import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
-import { findMatches, scenariosFingerprint } from "./findMatches";
+import { scenariosFingerprint } from "./findMatches";
 import type { MatchProblem, Staleness } from "./MatchesPanel";
-import { gapThresholdFor, MATCHERS, MATCHING_CONFIG } from "./matchingConfig";
+import { findShippedMatches, shippedMatcher } from "./rematch";
 
 /** Where one Question's Matches are on screen: dealt or not, being found, or why they couldn't be. */
 type QuestionState = { dealt: boolean; finding: boolean; problem: MatchProblem | null };
@@ -20,14 +20,14 @@ export function useQuestionMatches(
   update: (change: (current: Interview) => Interview) => Promise<void>,
   /** A call found the Access Token expired. */
   onTokenExpired: () => void = () => {},
+  /** A Question whose Matches are dealt as the deck opens, e.g. one just re-matched from its Gap (#13). */
+  dealtOnOpen: string | null = null,
 ) {
   const gateway = useModelGateway();
   const bank = useMemo(() => scenarioBank(vault), [vault]);
-  const { create } = MATCHERS[MATCHING_CONFIG.matcher];
-  const matcher = useMemo(() => create(gateway, MATCHING_CONFIG), [create, gateway]);
-  const gapThreshold = gapThresholdFor(matcher.name);
+  const { matcher } = useMemo(() => shippedMatcher(gateway), [gateway]);
   const [scenarios, setScenarios] = useState<SavedScenario[] | null>(null); // null until read
-  const [states, setStates] = useState<Map<string, QuestionState>>(new Map());
+  const [states, setStates] = useState<Map<string, QuestionState>>(() => new Map(dealtOnOpen ? [[dealtOnOpen, { ...IDLE, dealt: true }]] : []));
 
   useCancellableEffect(
     (isCurrent) => {
@@ -50,7 +50,7 @@ export function useQuestionMatches(
       const { scenarios: current } = await bank.list();
       setScenarios(current);
       if (current.length === 0) return set(question.id, { problem: "no-scenarios" });
-      const result = await findMatches({ matcher, gateway, settings: { gapThreshold, shown: MATCHING_CONFIG.shown } }, question, current);
+      const result = await findShippedMatches(gateway, question, current);
       await save(question.id, result);
     } catch (e) {
       const problem = callProblemOf(e); // including a reply that didn't cover every Scenario
