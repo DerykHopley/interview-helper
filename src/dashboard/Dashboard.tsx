@@ -11,6 +11,9 @@ import { useOpenInterview } from "../interviews/useOpenInterview";
 import { FIRST_BATCH } from "../interviews/questionGenerator";
 import { useQuestionWriting } from "../interviews/useQuestionWriting";
 import { ScenarioBank, type CoWriteStart } from "../scenarios/ScenarioBank";
+import type { Question } from "../interviews/interview";
+import { rematchAfterSaving } from "../matching/shippedMatching";
+import { useModelGateway } from "../model-gateway/context";
 import { countOf } from "../text";
 import { useAutoLock } from "../vault/useAutoLock";
 import type { UnlockedVault } from "../vault/vault";
@@ -43,7 +46,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   const interviews = useMemo(() => interviewStore(vault), [vault]);
   const [view, setViewState] = useState<View>(startInterviewId ? { interviewId: startInterviewId } : { tab: "interviews" });
   const coWritingOpen = useRef(false); // a co-writing chat lives in memory only, so leaving it asks first
-  /** Shows a tab or an Interview; `bankStart` opens the Scenario Bank on the form or a co-writing chat. */
+  /** Shows a tab or an Interview; `start` opens the Scenario Bank on the form or a co-writing chat. */
   const setView = (next: View, start: BankStart | null = null) => {
     if (coWritingOpen.current && !confirm(LEAVE_CHAT)) return;
     coWritingOpen.current = false;
@@ -62,6 +65,15 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   const [expiredReports, setExpiredReports] = useState(0); // each one tells the Access chip the token has expired
   const reportTokenExpired = () => setExpiredReports((n) => n + 1);
   const writing = useQuestionWriting(interviews, reportTokenExpired);
+  const gateway = useModelGateway();
+  /** Co-writing from a Gap's Question (#13): re-matched once the Scenario is saved, then shown again with its Matches. */
+  const fromGap = (interviewId: string, question: Question): CoWriteStart => ({
+    seed: { skill: question.skill, gap: { question: question.text } },
+    fromGap: {
+      rematch: (newScenarioId) => rematchAfterSaving(gateway, vault, { interviewId, questionId: question.id, newScenarioId }),
+      onBack: () => setView({ interviewId, atQuestion: question.id }),
+    },
+  });
 
   // Gaps by skill, for the Interviews tab's Gaps card and the Scenario Bank's "Not covered yet": read afresh from the
   // Interviews' saved Gaps each time a tab opens.
@@ -153,9 +165,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
               setView(
                 { tab: "scenario-bank" },
                 // Co-writing needs an active Access Token; without one, the hand-written form.
-                accessActive
-                  ? { coWrite: { skill: question.skill, gap: { interviewId: ready.interview.id, questionId: question.id, question: question.text } } }
-                  : { form: question.skill ?? "" },
+                accessActive ? { coWrite: fromGap(ready.interview.id, question) } : { form: question.skill ?? "" },
               )
             }
           />
@@ -185,7 +195,6 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
                 gapSkills={gaps.map((g) => g.skill).filter((s) => s !== NO_SKILL)}
                 startNew={bankStart && "form" in bankStart ? bankStart.form : null}
                 startCoWriting={bankStart && "coWrite" in bankStart ? bankStart.coWrite : null}
-                onBackToQuestion={(interviewId, questionId) => setView({ interviewId, atQuestion: questionId })}
                 access={{ active: accessActive, onNeedToken: () => setAccessRequests((n) => n + 1), onTokenExpired: reportTokenExpired }}
                 onCoWritingChange={onCoWritingChange}
               />

@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CoWriting, type RematchOutcome } from "../cowriting/CoWriting";
-import { rematchQuestion } from "../matching/rematch";
-import { useModelGateway } from "../model-gateway/context";
+import { useEffect, useMemo, useState } from "react";
+import { CoWriting, type FromGap } from "../cowriting/CoWriting";
+import type { Seed } from "../cowriting/coWriter";
 import { useCancellableEffect } from "../hooks";
 import type { UnlockedVault } from "../vault/vault";
 import { isDemo, REMOVE_DEMO_FAILED, scenarioBank, type SavedScenario } from "./scenarioBank";
@@ -16,7 +15,7 @@ import { SkillsOverview } from "./SkillsOverview";
 type Pane = { mode: "read" | "edit"; id: string } | { mode: "choose" | "new" | "co-write" } | { mode: "none" };
 type Loaded = { scenarios: SavedScenario[]; unreadable: number };
 /** What a co-writing chat starts from: a skill not covered yet, or a Gap's Question in an Interview (#13). */
-export type CoWriteStart = { skill?: string; gap?: { interviewId: string; questionId: string; question: string } };
+export type CoWriteStart = { seed: Seed; fromGap?: FromGap };
 
 type Props = {
   vault: UnlockedVault;
@@ -27,8 +26,6 @@ type Props = {
   startNew?: string | null;
   /** A co-writing chat to start with, e.g. from a Gap (#13); read once, as the bank opens. */
   startCoWriting?: CoWriteStart | null;
-  /** Opens a Gap's Question again, its new Matches dealt, after the Scenario written for it is saved. */
-  onBackToQuestion?: (interviewId: string, questionId: string) => void;
   /** The Access Token: co-writing is offered only while one is active. */
   access: AccessHandlers;
   /** Tells the dashboard while a co-writing chat is open, so leaving it asks first (it lives in memory only). */
@@ -37,14 +34,12 @@ type Props = {
 
 /** The Candidate's Scenarios (C4 design): a skills overview on top, then a list on the left and the selected
  * Scenario in full on the right. On a phone the list and the Scenario are two screens. */
-export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWriting = null, onBackToQuestion = () => {}, access, onCoWritingChange }: Props) {
-  const gateway = useModelGateway();
+export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWriting = null, access, onCoWritingChange }: Props) {
   const bank = useMemo(() => scenarioBank(vault), [vault]);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [pane, setPane] = useState<Pane>(startCoWriting ? { mode: "co-write" } : startNew !== null ? { mode: "new" } : { mode: "none" });
-  const [coWrite, setCoWrite] = useState<CoWriteStart>(startCoWriting ?? {});
+  const [coWrite, setCoWrite] = useState<CoWriteStart>(startCoWriting ?? { seed: {} });
   const [coWriteSaved, setCoWriteSaved] = useState(false); // from a Gap: saved, so leaving loses nothing
-  const savedId = useRef<string | null>(null); // the Scenario co-written from a Gap, to tell whether it's the new best Match
   const [query, setQuery] = useState("");
   const [skillFilter, setSkillFilter] = useState<string | null>(null); // a skillKey
   const [overviewShown, setOverviewShown] = useState(true);
@@ -73,7 +68,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
   /** Starts co-writing, or the hand-written form without an Access Token, for a skill not covered yet. */
   function writeFor(skill: string) {
     if (access.active) {
-      setCoWrite({ skill });
+      setCoWrite({ seed: { skill } });
       setPane({ mode: "co-write" });
     } else {
       setNewSkill(skill);
@@ -81,19 +76,12 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
     }
   }
 
-  /** From a Gap: re-matches its Question against every Scenario, the new one included. */
-  async function rematchGap({ interviewId, questionId }: NonNullable<CoWriteStart["gap"]>): Promise<RematchOutcome> {
-    const { result, scenarios } = await rematchQuestion(gateway, vault, interviewId, questionId);
-    const best = result.matches[0];
-    if (result.gap || !best) return { gap: true };
-    const title = scenarios.find((s) => s.id === best.scenarioId)?.title ?? "";
-    return { gap: false, title, score: best.score, reason: best.reason, isNew: best.scenarioId === savedId.current };
-  }
-
-  async function save(scenario: Scenario, existingId?: string) {
+  /** Saves a Scenario and shows it, or (`stay`) leaves the page as it is, e.g. to show a Gap's re-match. */
+  async function save(scenario: Scenario, existingId?: string, { stay = false } = {}) {
     const id = await bank.save(scenario, existingId);
     await reload();
-    setPane({ mode: "read", id });
+    if (!stay) setPane({ mode: "read", id });
+    return id;
   }
 
   async function remove(scenario: SavedScenario) {
@@ -118,19 +106,19 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
   }
 
   if (pane.mode === "co-write") {
-    const { gap } = coWrite;
+    const { seed, fromGap } = coWrite;
     return (
       <CoWriting
-        seed={{ skill: coWrite.skill, gap: gap && { question: gap.question } }}
+        seed={seed}
+        fromGap={fromGap}
         onSave={async (scenario) => {
-          if (!gap) return save(scenario);
-          savedId.current = await bank.save(scenario); // the page stays, to show the re-match
-          setCoWriteSaved(true);
-          await reload();
+          const id = await save(scenario, undefined, { stay: Boolean(fromGap) }); // from a Gap, the page shows the re-match
+          if (fromGap) setCoWriteSaved(true);
+          return id;
         }}
         onDiscard={() => setPane({ mode: "none" })}
+        onShowSaved={(id) => setPane({ mode: "read", id })}
         access={access}
-        fromGap={gap && { rematch: () => rematchGap(gap), onBack: () => onBackToQuestion(gap.interviewId, gap.questionId) }}
       />
     );
   }
@@ -254,7 +242,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
               </button>
               <button type="button" className="choice" disabled={!access.active}
                 onClick={() => {
-                  setCoWrite({});
+                  setCoWrite({ seed: {} });
                   setPane({ mode: "co-write" });
                 }}>
                 <strong>Co-write with AI</strong>

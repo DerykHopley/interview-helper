@@ -19,14 +19,29 @@ export function findShippedMatches(gateway: ModelGateway, question: Question, sc
   return findMatches({ ...shippedMatcher(gateway), gateway }, question, scenarios);
 }
 
-/** Matches one saved Question again against all the Candidate's Scenarios, and saves the result on it. Resolves to the
- * result, with the Scenarios it was matched against (to name its Matches). */
-export async function rematchQuestion(gateway: ModelGateway, vault: UnlockedVault, interviewId: string, questionId: string) {
+/** What re-matching a Gap's Question found after a Scenario was written for it (#13). */
+export type RematchOutcome =
+  | { kind: "closed"; best: { title: string; score: number; reason: string }; newRank: number | null }
+  | { kind: "gap"; bestScore: number | null }
+  /** The Question, or its Interview, was deleted meanwhile (e.g. in another tab). */
+  | { kind: "gone" };
+
+/** Matches a Gap's Question again against all the Candidate's Scenarios, once one has been written for it, and saves
+ * the result on the Question. Says where the new Scenario ranks among the Matches shown (1 for the best). */
+export async function rematchAfterSaving(gateway: ModelGateway, vault: UnlockedVault, { interviewId, questionId, newScenarioId }: { interviewId: string; questionId: string; newScenarioId: string }): Promise<RematchOutcome> {
   const { scenarios } = await scenarioBank(vault).list();
   const store = interviewStore(vault);
   const question = (await store.get(interviewId))?.questions.find((q) => q.id === questionId);
-  if (!question) throw new Error("That Question is no longer in the Interview");
+  if (!question) return { kind: "gone" };
   const result = await findShippedMatches(gateway, question, scenarios);
-  await store.update(interviewId, (interview) => ({ ...interview, questions: interview.questions.map((q) => (q.id === questionId ? { ...q, matchResult: result } : q)) }));
-  return { result, scenarios };
+  try {
+    await store.update(interviewId, (interview) => ({ ...interview, questions: interview.questions.map((q) => (q.id === questionId ? { ...q, matchResult: result } : q)) }));
+  } catch {
+    return { kind: "gone" }; // deleted while it was being matched
+  }
+  const [best] = result.matches;
+  if (result.gap || !best) return { kind: "gap", bestScore: result.bestScore ?? null };
+  const rank = result.matches.findIndex((m) => m.scenarioId === newScenarioId);
+  const title = scenarios.find((s) => s.id === best.scenarioId)?.title ?? "";
+  return { kind: "closed", best: { title, score: best.score, reason: best.reason }, newRank: rank >= 0 ? rank + 1 : null };
 }

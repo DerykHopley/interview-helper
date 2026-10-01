@@ -64,3 +64,25 @@ export async function corruptStoredRecord(matches: (id: string) => boolean) {
   });
   db.close();
 }
+
+/** Deletes the first stored record whose id matches, as another tab deleting it would. */
+export async function deleteStoredRecord(matches: (id: string) => boolean) {
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open("interview-helper");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("IndexedDB request failed"));
+  });
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction("records", "readwrite");
+    const request = tx.objectStore("records").openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      if (!matches(cursor.key as string)) return cursor.continue();
+      cursor.delete();
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error("IndexedDB request failed"));
+  });
+  db.close();
+}

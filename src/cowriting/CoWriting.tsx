@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLatest } from "../hooks";
+import type { RematchOutcome } from "../matching/shippedMatching";
 import { callProblemOf, SHARED_PROBLEM_TEXT, type AccessHandlers, type CallProblem } from "../model-gateway/callProblems";
+import { ProblemAlert } from "../model-gateway/ProblemAlert";
 import { useModelGateway } from "../model-gateway/context";
 import { ScenarioForm } from "../scenarios/ScenarioForm";
 import type { Scenario } from "../scenarios/scenarioFormat";
@@ -15,9 +17,6 @@ const PROBLEMS: Record<CallProblem, { text: string; needsToken?: boolean }> = {
   failed: { text: "The co-writer's reply couldn't be read this time. Try again." },
 };
 
-/** What re-matching a Gap's Question found once the Scenario was saved (#13). */
-export type RematchOutcome = { gap: true } | { gap: false; title: string; score: number; reason: string; isNew: boolean };
-
 /** Re-matching a Gap's Question after saving: what each problem says, and whether its fix is a new Access Token. */
 const REMATCH_PROBLEMS: Record<CallProblem, { text: string; needsToken?: boolean }> = {
   "no-token": { text: "Re-matching needs an active Access Token.", needsToken: true },
@@ -27,16 +26,20 @@ const REMATCH_PROBLEMS: Record<CallProblem, { text: string; needsToken?: boolean
   failed: { text: "Matching didn't work this time. Try again." },
 };
 
+/** For a chat from a Gap (#13): re-matches its Question once the Scenario is saved, and goes back to it. */
+export type FromGap = { rematch: (newScenarioId: string) => Promise<RematchOutcome>; onBack: () => void };
+
 type Props = {
-  /** Saves the approved draft as a co-written Scenario. */
-  onSave: (scenario: Scenario) => Promise<void>;
+  /** Saves the approved draft as a co-written Scenario, and resolves to its id. */
+  onSave: (scenario: Scenario) => Promise<string>;
   /** The chat or its draft was discarded: nothing is saved. */
   onDiscard: () => void;
   access: AccessHandlers;
   /** What the chat starts from: a Gap's Question and skill, or a skill (#13). */
   seed?: Seed;
-  /** For a chat from a Gap: re-matches its Question once the Scenario is saved, and goes back to it. */
-  fromGap?: { rematch: () => Promise<RematchOutcome>; onBack: () => void };
+  fromGap?: FromGap;
+  /** Shows a saved Scenario, e.g. when its Gap's Question was deleted meanwhile. */
+  onShowSaved: (id: string) => void;
 };
 
 /** Asked before a chat is thrown away, here or by leaving it (the dashboard asks the same). */
@@ -44,11 +47,11 @@ export const LEAVE_CHAT = "Leave and lose this chat? Nothing from it has been sa
 
 /** Co-writing a Scenario (W5 design): part chips above a chat, a reply box fixed to the bottom of the screen, then a
  * review of the draft at the top of the page. The chat lives in memory only, so discarding it leaves no trace. */
-export function CoWriting({ onSave, onDiscard, access, seed = {}, fromGap }: Props) {
+export function CoWriting({ onSave, onDiscard, access, seed = {}, fromGap, onShowSaved }: Props) {
   const gateway = useModelGateway();
   const [chat, setChat] = useState<Exchange[]>(() => [{ from: "co-writer", text: openerFor(seed) }]);
   const [draft, setDraft] = useState<Draft>(() => draftFor(seed));
-  const [saved, setSaved] = useState(false); // from a Gap: saved, and re-matching
+  const [savedId, setSavedId] = useState<string | null>(null); // from a Gap: saved, and re-matching
   const [review, setReview] = useState<{ capped: boolean } | null>(null);
   const [text, setText] = useState("");
   const [waiting, setWaiting] = useState(false);
@@ -92,11 +95,11 @@ export function CoWriting({ onSave, onDiscard, access, seed = {}, fromGap }: Pro
   }
 
   async function approve(scenario: Scenario) {
-    await onSave(scenario);
-    if (fromGap) setSaved(true);
+    const id = await onSave(scenario);
+    if (fromGap) setSavedId(id);
   }
 
-  if (saved && fromGap) return <SavedFromGap question={seed.gap?.question ?? ""} {...fromGap} access={access} />;
+  if (savedId && fromGap) return <SavedFromGap question={seed.gap?.question ?? ""} {...fromGap} access={access} onShow={() => onShowSaved(savedId)} newScenarioId={savedId} />;
 
   if (review) {
     return (
@@ -162,21 +165,7 @@ export function CoWriting({ onSave, onDiscard, access, seed = {}, fromGap }: Pro
           The co-writer is thinking…
         </p>
       )}
-      {problem && (
-        <div role="alert" className="notice-warn">
-          <p>{problemText}</p>
-          <div className="actions">
-            {needsToken && (
-              <button type="button" className="button-secondary" onClick={access.onNeedToken}>
-                Enter a new token
-              </button>
-            )}
-            <button type="button" className="button-secondary" onClick={() => void ask(chat)}>
-              Try again
-            </button>
-          </div>
-        </div>
-      )}
+      {problem && <ProblemAlert text={problemText} needsToken={needsToken} onNeedToken={access.onNeedToken} onRetry={() => void ask(chat)} />}
       <form className="reply-box" onSubmit={send}>
         <label htmlFor="cowrite-answer" className="visually-hidden">
           Your answer
@@ -207,15 +196,15 @@ export function CoWriting({ onSave, onDiscard, access, seed = {}, fromGap }: Pro
 }
 
 /** After saving a Scenario co-written from a Gap: its Question is re-matched, and the Candidate sees whether the Gap
- * closed, then goes back to it. */
-function SavedFromGap({ question, rematch, onBack, access }: { question: string; access: AccessHandlers } & NonNullable<Props["fromGap"]>) {
+ * closed and where their new Scenario ranks, then goes back to it. */
+function SavedFromGap({ question, rematch, onBack, onShow, newScenarioId, access }: FromGap & { question: string; onShow: () => void; newScenarioId: string; access: AccessHandlers }) {
   const [outcome, setOutcome] = useState<RematchOutcome | null>(null);
   const [problem, setProblem] = useState<CallProblem | null>(null);
 
   const run = useLatest(async () => {
     setProblem(null);
     try {
-      setOutcome(await rematch());
+      setOutcome(await rematch(newScenarioId));
     } catch (e) {
       const found = callProblemOf(e);
       if (found === "expired-token") access.onTokenExpired();
@@ -231,11 +220,13 @@ function SavedFromGap({ question, rematch, onBack, access }: { question: string;
   }, [run]);
 
   const back = (
-    <button type="button" className="button-primary" onClick={onBack}>
-      Back to the Question →
-    </button>
+    <div className="actions">
+      <button type="button" className="button-primary" onClick={onBack}>
+        Back to the Question →
+      </button>
+    </div>
   );
-  const { text: problemText, needsToken } = problem ? REMATCH_PROBLEMS[problem] : { text: "", needsToken: false };
+  const rank = (n: number | null) => (n === null ? "Your new Scenario isn't in the top three." : `Your new Scenario is #${n}.`);
   return (
     <div className="cowrite">
       <p className="notice-ok">✓ Saved to your Scenario Bank</p>
@@ -244,37 +235,39 @@ function SavedFromGap({ question, rematch, onBack, access }: { question: string;
           Re-matching “{question}”…
         </p>
       )}
-      {problem && (
-        <div role="alert" className="notice-warn">
-          <p>{problemText}</p>
-          <div className="actions">
-            {needsToken && (
-              <button type="button" className="button-secondary" onClick={access.onNeedToken}>
-                Enter a new token
-              </button>
-            )}
-            <button type="button" className="button-secondary" onClick={() => void run.current()}>
-              Try again
-            </button>
-          </div>
-        </div>
-      )}
-      {outcome && !outcome.gap && (
+      {problem && <ProblemAlert {...REMATCH_PROBLEMS[problem]} onNeedToken={access.onNeedToken} onRetry={() => void run.current()} />}
+      {outcome?.kind === "closed" && (
         <section className="card rematch-outcome is-closed" aria-label="Gap closed">
           <h3 className="card-title">Gap closed.</h3>
           <p>
-            {outcome.isNew ? "Your new Scenario is now the best Match for this Question" : "This Question now has Matches. The best"}:{" "}
-            <strong>{outcome.title}</strong> · {Math.round(outcome.score)}%
+            {outcome.newRank === 1 ? "Your new Scenario is now the best Match for this Question" : "The best Match for this Question is now"}:{" "}
+            <strong>{outcome.best.title}</strong> · {Math.round(outcome.best.score)}%
           </p>
-          <p className="match-reason-on-card">{outcome.reason}</p>
-          <div className="actions">{back}</div>
+          <p className="match-reason-on-card">{outcome.best.reason}</p>
+          {outcome.newRank !== 1 && <p>{rank(outcome.newRank)}</p>}
+          {back}
         </section>
       )}
-      {outcome?.gap && (
+      {outcome?.kind === "gap" && (
         <section className="card rematch-outcome" aria-label="Still a Gap">
           <h3 className="card-title">Still a Gap.</h3>
-          <p>Your new Scenario is saved, but it isn't a strong enough Match for this Question yet. You can edit it in the Scenario Bank and re-run matching.</p>
-          <div className="actions">{back}</div>
+          <p>
+            Your new Scenario is saved, but it isn't a strong enough Match for this Question yet
+            {outcome.bestScore !== null ? `: the best score was ${Math.round(outcome.bestScore)}%.` : "."} You can edit it in the
+            Scenario Bank and re-run matching.
+          </p>
+          {back}
+        </section>
+      )}
+      {outcome?.kind === "gone" && (
+        <section className="card rematch-outcome" aria-label="Nothing to re-match">
+          <h3 className="card-title">Nothing to re-match.</h3>
+          <p>Your Scenario is saved, but that Question is no longer in its Interview.</p>
+          <div className="actions">
+            <button type="button" className="button-primary" onClick={onShow}>
+              See your Scenario
+            </button>
+          </div>
         </section>
       )}
     </div>

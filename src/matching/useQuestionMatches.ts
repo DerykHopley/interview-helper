@@ -7,7 +7,7 @@ import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
 import { scenariosFingerprint } from "./findMatches";
 import type { MatchProblem, Staleness } from "./MatchesPanel";
-import { findShippedMatches, shippedMatcher } from "./rematch";
+import { findShippedMatches, shippedMatcher } from "./shippedMatching";
 
 /** Where one Question's Matches are on screen: dealt or not, being found, or why they couldn't be. */
 type QuestionState = { dealt: boolean; finding: boolean; problem: MatchProblem | null };

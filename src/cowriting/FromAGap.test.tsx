@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { ModelGatewayError } from "../model-gateway/ModelGateway";
+import { deleteStoredRecord } from "../test/browserStorage";
 import { enterAccessToken, openTab, setUpWithoutToken } from "../test/candidate";
 import { createFakeModelGateway, type ReplyFor } from "../test/fakeModelGateway";
 import { renderApp } from "../test/renderApp";
@@ -116,14 +117,42 @@ describe("co-writing from a Gap", () => {
     await atTheGap({
       "co-writing": [ready],
       matching: [scores({}), scores({ [NEW_TITLE]: 40 })],
-      "match-reasons": [{ suggestion: SUGGESTION }, { suggestion: "Still a different story." }],
+      "match-reasons": [{ suggestion: SUGGESTION }, { suggestion: "Still a different Scenario." }],
     });
     await user().click(screen.getByRole("button", { name: "Write a Scenario for this" }));
     await answerAndApprove();
 
     const outcome = await screen.findByRole("region", { name: "Still a Gap" });
-    expect(outcome).toHaveTextContent("Your new Scenario is saved, but it isn't a strong enough Match for this Question yet.");
+    expect(outcome).toHaveTextContent("Your new Scenario is saved, but it isn't a strong enough Match for this Question yet: the best score was 40%.");
     expect(within(outcome).getByRole("button", { name: "Back to the Question →" })).toBeInTheDocument();
+  });
+
+  it("says where the new Scenario ranks when another one is now the best Match", async () => {
+    const BEST = "Turned around a team that kept missing its sprint goals"; // one of the Pack's own
+    await atTheGap({
+      "co-writing": [ready],
+      matching: [scores({}), scores({ [BEST]: 88, [NEW_TITLE]: 80 })],
+      "match-reasons": [{ suggestion: SUGGESTION }, reasons({ [BEST]: "You steadied a struggling team." })],
+    });
+    await user().click(screen.getByRole("button", { name: "Write a Scenario for this" }));
+    await answerAndApprove();
+
+    const outcome = await screen.findByRole("region", { name: "Gap closed" });
+    expect(outcome).toHaveTextContent(`The best Match for this Question is now: ${BEST} · 88%`);
+    expect(outcome).toHaveTextContent("Your new Scenario is #2.");
+  });
+
+  it("says so when the Interview was deleted meanwhile (e.g. in another tab), and keeps the saved Scenario", async () => {
+    await atTheGap({ "co-writing": [ready] });
+    await user().click(screen.getByRole("button", { name: "Write a Scenario for this" }));
+    await deleteStoredRecord((id) => id.startsWith("interview:"));
+    await answerAndApprove();
+
+    const outcome = await screen.findByRole("region", { name: "Nothing to re-match" });
+    expect(outcome).toHaveTextContent("Your Scenario is saved, but that Question is no longer in its Interview.");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user().click(within(outcome).getByRole("button", { name: "See your Scenario" }));
+    expect(await screen.findByRole("article", { name: NEW_TITLE })).toBeInTheDocument();
   });
 
   it("keeps the saved Scenario and offers Try again when re-matching fails", async () => {
