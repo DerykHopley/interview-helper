@@ -1,6 +1,7 @@
 import { SHARED_PROBLEM_TEXT, type CallProblem } from "../model-gateway/callProblems";
 import { NO_SKILL } from "../interviews/gaps";
 import type { MatchResult } from "../interviews/interview";
+import { questionList } from "../interviews/picks";
 import type { SavedScenario } from "../scenarios/scenarioBank";
 
 /** Why Matches couldn't be found or kept just now. */
@@ -28,6 +29,19 @@ type Props = {
   onNeedToken: () => void;
   onOpenScenarioBank: () => void;
   onWriteScenario: () => void;
+  picking: Picking;
+};
+
+/** Picking a Match for this Question (#11). */
+export type Picking = {
+  /** The Scenario picked for it, if any. */
+  pickedScenarioId?: string;
+  /** Picks a Scenario, or un-picks (null). */
+  onPick: (scenarioId: string | null) => void;
+  /** The other Questions (Q numbers) a Scenario is already picked for in this Interview. */
+  usedFor: (scenarioId: string) => number[];
+  /** A pick that re-matching cleared, by its title. */
+  droppedPick: string | null;
 };
 
 type Action = "retry" | "token" | "scenario-bank";
@@ -45,7 +59,19 @@ const PROBLEMS: Record<MatchProblem, { text: string; action: Action }> = {
 };
 
 /** What's dealt below a Question card (S3): finding placeholders, the fanned Matches, or the Gap card. */
-export function MatchesPanel({ finding, problem, matchResult, stale, skill, scenarios, onRetry, onNeedToken, onOpenScenarioBank, onWriteScenario }: Props) {
+export function MatchesPanel({
+  finding,
+  problem,
+  matchResult,
+  stale,
+  skill,
+  scenarios,
+  onRetry,
+  onNeedToken,
+  onOpenScenarioBank,
+  onWriteScenario,
+  picking: { pickedScenarioId, onPick, usedFor, droppedPick },
+}: Props) {
   const act: Record<Action, () => void> = { retry: onRetry, token: onNeedToken, "scenario-bank": onOpenScenarioBank };
   const staleNote = stale && (
     <p className="matches-status">
@@ -55,6 +81,8 @@ export function MatchesPanel({ finding, problem, matchResult, stale, skill, scen
       </button>
     </p>
   );
+
+  const droppedNote = droppedPick && <p className="matches-status">Your pick, “{droppedPick}”, isn't among the new Matches. Pick again.</p>;
 
   if (finding || (matchResult && !matchResult.gap && scenarios === null)) {
     return (
@@ -88,6 +116,7 @@ export function MatchesPanel({ finding, problem, matchResult, stale, skill, scen
           No Scenario fits this Question yet
         </h3>
         {matchResult.suggestion && <p className="gap-suggestion">{matchResult.suggestion}</p>}
+        {droppedNote}
         {staleNote}
         <div className="actions">
           <button type="button" className="button-primary" onClick={onWriteScenario}>
@@ -102,22 +131,46 @@ export function MatchesPanel({ finding, problem, matchResult, stale, skill, scen
       </section>
     );
   }
-  const shown = matchResult.matches
-    .map((match) => ({ match, scenario: scenarios?.find((s) => s.id === match.scenarioId) }))
+  const ranked = matchResult.matches
+    .map((match, rank) => ({ match, rank, scenario: scenarios?.find((s) => s.id === match.scenarioId) }))
     .filter((m) => m.scenario); // a Scenario deleted since matching isn't shown
+  // The fan's middle card (the first) is the picked one, or the best Match if none is picked (S3).
+  const shown = [...ranked.filter((m) => m.match.scenarioId === pickedScenarioId), ...ranked.filter((m) => m.match.scenarioId !== pickedScenarioId)];
   return (
     <div className="matches">
+      {droppedNote}
       <ol className="match-fan" aria-label="Matches">
-        {shown.map(({ match, scenario }, i) => (
-          <li key={match.scenarioId} className={`match-card${i === 0 ? " is-best" : ""}`}>
-            <p className="label-caps match-rank">
-              {i === 0 ? "Best fit" : `#${i + 1}`} · {Math.round(match.score)}%
-            </p>
-            <p className="match-title">{scenario!.title}</p>
-            {scenario!.origin === "demo" && <span className="origin is-demo">Demo</span>}
-            <p className="match-reason">{match.reason}</p>
-          </li>
-        ))}
+        {shown.map(({ match, rank, scenario }) => {
+          const picked = match.scenarioId === pickedScenarioId;
+          const used = usedFor(match.scenarioId);
+          return (
+            <li key={match.scenarioId}>
+              {/* Named by its title; the pressed state says whether it's picked, the rest describes it. */}
+              <button
+                type="button"
+                className={`match-card${rank === 0 ? " is-best" : ""}${picked ? " is-picked" : ""}`}
+                aria-pressed={picked}
+                aria-labelledby={`match-title-${match.scenarioId}`}
+                aria-describedby={`match-about-${match.scenarioId}`}
+                onClick={() => onPick(picked ? null : match.scenarioId)}
+              >
+                <span className="label-caps match-rank">
+                  {rank === 0 ? "Best fit" : `#${rank + 1}`} · {Math.round(match.score)}%
+                </span>
+                {/* Near the top, so it shows above the answer bar before any scrolling. */}
+                {used.length > 0 && <span className="match-used">Already used for {questionList(used)}</span>}
+                <span className="match-title" id={`match-title-${match.scenarioId}`}>
+                  {scenario!.title}
+                </span>
+                {scenario!.origin === "demo" && <span className="origin is-demo">Demo</span>}
+                <span className="match-reason" id={`match-about-${match.scenarioId}`}>
+                  {match.reason}
+                </span>
+                <span className="match-pick">{picked ? "✓ Picked" : "Tap to pick"}</span>
+              </button>
+            </li>
+          );
+        })}
       </ol>
       {staleNote}
     </div>

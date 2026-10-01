@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCancellableEffect } from "../hooks";
+import { removeDemoScenarios } from "../scenarios/removeScenarios";
 import { isDemo, REMOVE_DEMO_FAILED, scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import { wordFor } from "../text";
 import type { UnlockedVault } from "../vault/vault";
@@ -8,7 +9,7 @@ type Counts = { all: number; demo: number };
 const countsOf = ({ scenarios }: { scenarios: SavedScenario[] }): Counts => ({ all: scenarios.length, demo: scenarios.filter(isDemo).length });
 
 /** D2's side column card for the Scenario Bank, with "N demo · Remove demo" while there are Demo Scenarios. */
-export function ScenarioBankCard({ vault, onOpen }: { vault: UnlockedVault; onOpen: () => void }) {
+export function ScenarioBankCard({ vault, onOpen, onDemoRemoved = () => {} }: { vault: UnlockedVault; onOpen: () => void; onDemoRemoved?: () => void }) {
   const bank = useMemo(() => scenarioBank(vault), [vault]);
   const [counts, setCounts] = useState<Counts | null>(null);
   const [failure, setFailure] = useState(false);
@@ -26,7 +27,9 @@ export function ScenarioBankCard({ vault, onOpen }: { vault: UnlockedVault; onOp
   async function removeDemo(count: number) {
     setFailure(false);
     try {
-      if (await bank.removeDemo(count)) setCounts(countsOf(await bank.list()));
+      if (!(await removeDemoScenarios(vault, count))) return;
+      setCounts(countsOf(await bank.list()));
+      onDemoRemoved(); // their picks were cleared, so the Interviews list beside the card is out of date
     } catch {
       setFailure(true);
     }

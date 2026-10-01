@@ -6,6 +6,7 @@ import { countOf, unreadableNotice } from "../text";
 import { gapCount } from "./gaps";
 import { NewInterview } from "./NewInterview";
 import { lastPractised, practisedLabel } from "./answers";
+import { pickedCount } from "./picks";
 
 type Props = {
   store: InterviewStore;
@@ -16,10 +17,12 @@ type Props = {
   onTokenExpired: () => void;
   /** A new Interview was saved; `generate` asks for its first Questions. */
   onCreated: (id: string, generate: boolean) => void;
+  /** Changes when the list should be read again, e.g. after Remove demo cleared picks beside it. */
+  refresh?: number;
 };
 
 /** The Interviews tab, the dashboard's home (D2): the Candidate's Interviews, and creating one. */
-export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, onCreated }: Props) {
+export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, onCreated, refresh = 0 }: Props) {
   const [interviews, setInterviews] = useState<SavedInterview[] | null>(null);
   const [unreadable, setUnreadable] = useState(0);
   const [creating, setCreating] = useState(false);
@@ -41,7 +44,7 @@ export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, on
         () => isCurrent() && setFailure("Couldn't open your Interviews. Lock the app and unlock it again."),
       );
     },
-    [store],
+    [store, refresh],
   );
 
   async function create(interview: Interview, generate: boolean) {
@@ -84,6 +87,7 @@ export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, on
           <tr>
             <th scope="col">Role</th>
             <th scope="col">Questions</th>
+            <th scope="col">Picked</th>
             <th scope="col">Gaps</th>
             <th scope="col">Last practised</th>
             <th scope="col">
@@ -101,6 +105,14 @@ export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, on
                   {interview.company && <span className="interview-company">{interview.company}</span>}
                 </th>
                 <td>{interview.questions.length}</td>
+                <td className="picked">
+                  <span className="picked-bar" aria-hidden="true">
+                    <span style={{ width: `${(100 * pickedCount(interview)) / Math.max(interview.questions.length, 1)}%` }} />
+                  </span>
+                  <span>
+                    {pickedCount(interview)}/{interview.questions.length}
+                  </span>
+                </td>
                 <td className={gaps > 0 ? "has-gaps" : undefined}>{gaps > 0 ? countOf(gaps, "Gap") : "—"}</td>
                 <td className="last-practised">{practisedLabel(lastPractised(interview))}</td>
                 <td>

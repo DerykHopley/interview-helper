@@ -166,7 +166,8 @@ describe("editing and deleting", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
-    expect(confirm).toHaveBeenCalledWith(`Delete "${CHECKOUT.Title}"? This can't be undone.`);
+    // Asked once its picks have been read (#11), so it may come a moment after the click.
+    await waitFor(() => expect(confirm).toHaveBeenCalledWith(`Delete "${CHECKOUT.Title}"? This can't be undone.`));
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Scenarios" })).queryAllByRole("listitem")).toHaveLength(0));
     expect(screen.queryByRole("article")).not.toBeInTheDocument();
     unmount();

@@ -29,6 +29,8 @@ export const questionSchema = z.object({
   skill: text.optional(),
   origin: z.enum(["typed", "generated", "pack"]),
   matchResult: matchResultSchema.optional(),
+  /** The Scenario the Candidate picked from the Matches (#11); absent until they pick one, or after un-picking. */
+  pickedScenarioId: z.string().optional(),
   /** The Candidate's latest Answer, as typed in the answer bar (#31); absent until they answer. */
   answer: z.object({ text, savedAt: z.string() }).optional(),
 });

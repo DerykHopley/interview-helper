@@ -1,6 +1,5 @@
 // The Scenario Bank's storage: each Scenario is kept in the Vault, encrypted, as its Markdown text.
 import type { UnlockedVault } from "../vault/vault";
-import { countOf } from "../text";
 import { parseScenario, toMarkdown, type Scenario } from "./scenarioFormat";
 
 const PREFIX = "scenario:";
@@ -31,14 +30,6 @@ export function scenarioBank(vault: UnlockedVault) {
       return id;
     },
     delete: (id: string) => vault.delete(id),
-    /** Asks first, then deletes every Demo Scenario, edited or not; the Candidate's own stay. Resolves to whether they
-     * were removed. Used by the Scenario Bank's demo bar and the dashboard's card. */
-    async removeDemo(count: number) {
-      if (!confirm(`Remove ${countOf(count, "demo Scenario")}? Your own Scenarios stay, and so do your Interviews.`)) return false;
-      const { scenarios } = await list();
-      await Promise.all(scenarios.filter(isDemo).map((s) => vault.delete(s.id)));
-      return true;
-    },
   };
 }
 

@@ -23,7 +23,7 @@ export function SkillTags({ skills }: { skills: string[] }) {
 }
 
 /** A Scenario in full, in its fixed shape, for reading before practising (spec #1, story 27). */
-export function ScenarioReader({ scenario, actions }: { scenario: SavedScenario; actions: ReactNode }) {
+export function ScenarioReader({ scenario, actions, pickedIn = [] }: { scenario: SavedScenario; actions: ReactNode; pickedIn?: string[] }) {
   const roleAndContext = [scenario.role, scenario.company, scenario.date].filter(Boolean).join(" · ");
   return (
     <article className="reader" aria-labelledby="reader-title">
@@ -54,6 +54,7 @@ export function ScenarioReader({ scenario, actions }: { scenario: SavedScenario;
           </section>
         )}
         <SkillTags skills={scenario.skills} />
+        {pickedIn.length > 0 && <p className="reader-picked">Picked in: {pickedIn.join("; ")}</p>}
       </div>
     </article>
   );

@@ -2,6 +2,7 @@
 // (#10), and a Scenario co-written from that Question's Gap (#13), which re-matches it once saved.
 import type { MatchResult, Question } from "../interviews/interview";
 import { interviewStore } from "../interviews/interviewStore";
+import { withMatchResult } from "../interviews/picks";
 import type { ModelGateway } from "../model-gateway/ModelGateway";
 import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
@@ -35,7 +36,7 @@ export async function rematchAfterSaving(gateway: ModelGateway, vault: UnlockedV
   if (!question) return { kind: "gone" };
   const result = await findShippedMatches(gateway, question, scenarios);
   try {
-    await store.update(interviewId, (interview) => ({ ...interview, questions: interview.questions.map((q) => (q.id === questionId ? { ...q, matchResult: result } : q)) }));
+    await store.update(interviewId, (interview) => ({ ...interview, questions: interview.questions.map((q) => (q.id === questionId ? withMatchResult(q, result) : q)) }));
   } catch {
     return { kind: "gone" }; // deleted while it was being matched
   }

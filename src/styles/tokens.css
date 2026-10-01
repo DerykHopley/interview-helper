@@ -42,6 +42,8 @@
   --origin-cowritten-on-card-bg: #e0e7ff;
   --origin-cowritten-on-card: #3730a3;
   --chat-you-bg: var(--skill-on-card); /* the Candidate's messages in a co-writing chat */
+  --picked-card: #14532d; /* the Match picked for a Question */
+  --match-edge: #4b5563; /* a Match card's border */
   --note-bg: #f3efe3;
   --warn-bg: #fef3c7;
   --warn-line: #f59e0b66;
