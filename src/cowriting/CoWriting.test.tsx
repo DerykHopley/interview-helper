@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { enterAccessToken, finishSetup, openTab, setUpWithoutToken } from "../test/candidate";
 import { createFakeModelGateway, type ReplyFor } from "../test/fakeModelGateway";
-import { microphone, microphoneOn, removeMicrophone } from "../test/microphone";
+import { mic, microphone, microphoneOn, removeMicrophone, speak } from "../test/microphone";
 import { renderApp } from "../test/renderApp";
 import { MAX_ANSWER_LENGTH } from "./coWriter";
 
@@ -357,16 +357,8 @@ describe("leaving a co-writing chat", () => {
 
 describe("speaking an answer to the co-writer", () => {
   const SPOKEN = "i was the senior engineer on the dispatch team";
-  const mic = () => screen.getByRole("button", { name: /^(Record your answer|Stop recording)$/ });
   const replyBox = () => screen.getByLabelText("Your answer");
   afterEach(removeMicrophone);
-
-  /** Records, then stops, once the mic is recording. */
-  async function speak() {
-    await user().click(mic());
-    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
-    await user().click(mic());
-  }
 
   it("puts what was said after what's typed, for the Candidate to check before sending", async () => {
     microphone();
@@ -416,6 +408,17 @@ describe("speaking an answer to the co-writer", () => {
     await speak();
 
     await waitFor(() => expect(replyBox()).toHaveValue(`${typed} ${SPOKEN}`.slice(0, MAX_ANSWER_LENGTH)));
+  });
+
+  it("still records after the Access Token expires mid-chat", async () => {
+    microphone();
+    const expired: ReplyFor = () => Promise.reject(new ModelGatewayError("expired_token"));
+    await startCoWriting(createFakeModelGateway({ accessTokens: ACTIVE, transcripts: [SPOKEN], transcriberDownloaded: true, generate: { "co-writing": [expired] } }));
+    await answer("The dispatch system");
+    expect(screen.getByRole("alert")).toHaveTextContent("your Access Token has expired");
+
+    await speak();
+    await waitFor(() => expect(replyBox()).toHaveValue(SPOKEN));
   });
 
   it("turns the microphone off and drops the recording when the chat is discarded", async () => {

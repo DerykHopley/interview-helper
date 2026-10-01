@@ -1,4 +1,6 @@
-import { vi } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, vi } from "vitest";
 
 /** A stand-in for the browser's MediaRecorder: stopping it hands over one chunk of "audio". */
 export class FakeRecorder {
@@ -48,3 +50,13 @@ export function microphone({ allowed = true, recorder = true, secure = true, hel
 }
 
 export const removeMicrophone = () => void Reflect.deleteProperty(navigator, "mediaDevices");
+
+/** The mic button, whether recording or not. */
+export const mic = () => screen.getByRole("button", { name: /^(Record your answer|Stop recording)$/ });
+
+/** Starts recording, waits for it to be under way, then stops, once the model is downloaded. */
+export async function speak() {
+  await userEvent.click(mic());
+  await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
+  await userEvent.click(mic());
+}

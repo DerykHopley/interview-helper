@@ -21,7 +21,7 @@ function unavailable(): string | null {
 }
 
 type Props = {
-  /** What was said, while this card is still on screen. */
+  /** What was said, while the mic is still on screen. */
   onTranscript: (text: string) => void;
   /** What was said after the Candidate left mid-recording, when it still has somewhere to go (the answer bar: its
    * Question). Without it, a recording cut short by leaving is dropped without being transcribed. */
@@ -59,7 +59,7 @@ export function VoiceButton({ onTranscript, onTranscriptAfterLeaving }: Props) {
     };
   }, [phase.kind]);
 
-  // Leaving the card: the microphone goes off at once, and a recording under way stops and is still transcribed.
+  // Leaving: the microphone goes off at once, and a recording under way stops (transcribed only if it has somewhere to go).
   useEffect(() => {
     onScreen.current = true;
     return () => {

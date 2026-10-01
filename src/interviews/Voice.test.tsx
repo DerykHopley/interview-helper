@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { openTab, setUpWithoutToken } from "../test/candidate";
 import { createFakeModelGateway } from "../test/fakeModelGateway";
-import { FakeRecorder, microphone, microphoneOn, removeMicrophone } from "../test/microphone";
+import { FakeRecorder, mic, microphone, microphoneOn, removeMicrophone, speak } from "../test/microphone";
 import { renderApp } from "../test/renderApp";
 
 const SPOKEN = "I opened an incident call and split the team in two.";
@@ -24,7 +24,6 @@ async function inThePackInterview(gateway = createFakeModelGateway({ transcripts
 }
 
 const answerBox = () => screen.getByLabelText("Your answer");
-const mic = () => screen.getByRole("button", { name: /^(Record your answer|Stop recording)$/ });
 
 describe("speaking an answer", () => {
   it("explains the one-time download before the first use, then records and adds what was said", async () => {
@@ -58,9 +57,7 @@ describe("speaking an answer", () => {
     microphone();
     await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], transcriberDownloaded: true }));
     await user().type(answerBox(), "The warehouse system went down.");
-    await user().click(mic());
-    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
-    await user().click(mic());
+    await speak();
 
     await waitFor(() => expect(answerBox()).toHaveValue(`The warehouse system went down. ${SPOKEN}`));
   });
@@ -83,9 +80,7 @@ describe("speaking an answer", () => {
     await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], transcriberDownloaded: true }));
     expect(screen.getByRole("button", { name: /^Access/ })).toHaveTextContent(/none/i);
 
-    await user().click(mic());
-    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
-    await user().click(mic());
+    await speak();
     await waitFor(() => expect(answerBox()).toHaveValue(SPOKEN));
   });
 });
@@ -138,9 +133,7 @@ describe("when voice can't work", () => {
   it("keeps the recording when it can't be turned into text, and tries again", async () => {
     microphone();
     await inThePackInterview(createFakeModelGateway({ transcripts: [new Error("download failed"), SPOKEN], transcriberDownloaded: true }));
-    await user().click(mic());
-    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
-    await user().click(mic());
+    await speak();
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Couldn't turn that into text.");
@@ -187,9 +180,7 @@ describe("when voice can't work", () => {
     microphone();
     await inThePackInterview(createFakeModelGateway({ transcripts: [new ModelGatewayError("not_connected")], transcriberDownloaded: true }));
     await user().type(answerBox(), "Typed first.");
-    await user().click(mic());
-    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
-    await user().click(mic());
+    await speak();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't turn that into text. Try again, or type your answer.");
     expect(answerBox()).toHaveValue("Typed first.");

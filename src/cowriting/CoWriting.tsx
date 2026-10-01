@@ -178,7 +178,7 @@ export function CoWriting({ onSave, onDiscard, access, seed = {}, fromGap, onSho
             className="field"
             rows={2}
             maxLength={MAX_ANSWER_LENGTH}
-            placeholder="Type or speak your answer"
+            placeholder="Type your answer"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
