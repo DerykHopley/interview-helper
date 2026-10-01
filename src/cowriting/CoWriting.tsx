@@ -49,7 +49,7 @@ export function CoWriting({ onSave, onDiscard, access }: Props) {
     setWaiting(true);
     setProblem(null);
     try {
-      const turn = await nextTurn(gateway, sent.slice(0, -1), sent.at(-1)!.text);
+      const turn = await nextTurn(gateway, sent.slice(0, -1), sent.at(-1)!.text, draft);
       setChat([...sent, { from: "co-writer", text: turn.message }]);
       setDraft(turn.draft);
       const answers = sent.filter((m) => m.from === "you").length;
