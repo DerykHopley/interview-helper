@@ -33,7 +33,8 @@ export type Question = z.infer<typeof questionSchema>;
 export const interviewSchema = z.object({
   role: text,
   company: text.optional(),
-  jobSpec: text,
+  /** None for an Interview from a Pack that doesn't give one (#7): then no Questions can be written for it. */
+  jobSpec: text.optional(),
   questions: z.array(questionSchema).default([]),
 });
 export type Interview = z.infer<typeof interviewSchema>;

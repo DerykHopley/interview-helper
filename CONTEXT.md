@@ -29,7 +29,7 @@ _Avoid_: Backup, Pack
 ### Practice
 
 **Interview**:
-One job the Candidate is preparing for: its role and company, its Job Spec (none when it comes from a Pack), the Questions for it, and for each Question its Matches, the Scenario the Candidate picked and their Answer. A Candidate can have several Interviews.
+One job the Candidate is preparing for: its role and company, its Job Spec (optional when it comes from a Pack), the Questions for it, and for each Question its Matches, the Scenario the Candidate picked and their Answer. A Candidate can have several Interviews.
 _Avoid_: Session, application, prep
 
 **Job Spec**:
@@ -111,7 +111,7 @@ _Avoid_: Database, store, session
 ### Shared content
 
 **Pack**:
-A role preset, such as Engineering Manager or Software Developer, in one plain-text file: Questions and Example Scenarios. Choosing one creates an Interview from its Questions and adds its Example Scenarios as Demo Scenarios.
+A role preset, such as Engineering Manager or Software Developer, in one plain-text file: an Interview (with an optional Job Spec), its Questions and Example Scenarios. Choosing one creates that Interview and adds its Example Scenarios as Demo Scenarios, so the whole app can be tried before writing any Scenarios.
 _Avoid_: Interview pack, template, module
 
 **Example Scenario**:

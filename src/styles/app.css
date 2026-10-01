@@ -264,6 +264,28 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
   .top-bar-progress { order: 10; width: 100%; }
 }
 
+/* ---------- Backup page (X4) and Packs ---------- */
+.backup { max-width: 1140px; margin: 0 auto; }
+.backup-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
+.backup-panel { display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid var(--faint-line); border-radius: var(--radius-card); background: var(--panel-dark); }
+.backup-panel-title { margin: 0; font-size: 18px; }
+.backup-panel-why { margin: 0; color: var(--on-table-muted); }
+.pack-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pack-row { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 10px 12px; text-align: left; border: 1px solid transparent; border-radius: var(--radius-field); background: var(--panel-raised); color: var(--on-table); cursor: pointer; }
+.pack-row:hover { border-color: var(--accent); }
+.pack-row-detail { font-size: 13px; color: var(--on-table-muted); }
+.drop-zone { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 20px 12px; border: 2px dashed var(--on-table-muted); border-radius: var(--radius-field); text-align: center; cursor: pointer; }
+.drop-zone:hover, .drop-zone:focus-within { border-color: var(--accent); }
+.drop-zone-detail { font-size: 13px; color: var(--on-table-muted); }
+.import-preview-title { margin: 0; font-family: var(--font-display); font-size: 22px; }
+.import-preview-company { margin: -6px 0 0; color: var(--ink-muted); }
+.import-preview .label-caps { color: var(--ink-muted); }
+.pack-questions, .pack-examples { display: flex; flex-direction: column; gap: 6px; margin: 0; padding-left: 20px; }
+.pack-examples .is-skipped { color: var(--ink-muted); }
+.import-summary { margin: 0; padding: 10px 12px; border-radius: 6px; background: var(--note-bg); font-weight: 700; }
+.demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: var(--radius-field); background: var(--accent-tint); color: var(--on-table); font-size: 14px; }
+.side-card-demo { margin: 0; color: var(--accent); font-size: 14px; }
+
 /* ---------- storage refused ---------- */
 .notice-blocking { padding: 16px; border: 1px solid var(--danger-line); border-radius: var(--radius-card); background: var(--danger-card); color: var(--danger-on-card); }
 
