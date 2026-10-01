@@ -12,6 +12,7 @@ export function VaultGate() {
   const [startInterviewId, setStartInterviewId] = useState<string | null>(null); // made by setup from a Pack
   const lockApp = useCallback(() => {
     dropAccessTokenFromMemory();
+    setStartInterviewId(null); // setup's first Interview opens once; after unlocking, the dashboard opens as usual
     lock();
   }, [lock]);
 
