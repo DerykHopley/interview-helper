@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { createScenario, enterAccessToken, finishSetup, openTab, setUpWithoutToken } from "../test/candidate";
+import { createScenario, enterAccessToken, finishSetup, openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
 import { createFakeModelGateway, type ReplyFor } from "../test/fakeModelGateway";
 import { renderApp } from "../test/renderApp";
 
@@ -293,6 +293,23 @@ describe("the shipped Packs", () => {
     const scenarios = await listed();
     expect(scenarios.length).toBeGreaterThan(0);
     expect(scenarios.every((s) => s?.endsWith("Demo"))).toBe(true);
+  });
+});
+
+describe("after starting from a Pack", () => {
+  it("opens the dashboard, not the Pack's Interview, after locking and unlocking", async () => {
+    renderApp();
+    await user().click(await screen.findByRole("button", { name: "I don't have one yet" }));
+    const unlockKey = (await screen.findByLabelText("Your Unlock Key")).textContent;
+    await user().click(screen.getByLabelText(/I've saved my Unlock Key/));
+    await user().click(screen.getByRole("button", { name: "Continue" }));
+    await user().click(screen.getByRole("button", { name: /^Start from the Engineering Manager Pack/ }));
+    await screen.findByRole("article", { name: "Question 1 of 6" });
+
+    await user().click(screen.getByRole("button", { name: "Lock" }));
+    await unlockWith(unlockKey);
+    expect(await screen.findByRole("table", { name: "Interviews" })).toBeInTheDocument();
+    expect(screen.queryByRole("article", { name: /^Question/ })).not.toBeInTheDocument();
   });
 });
 

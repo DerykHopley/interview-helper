@@ -318,6 +318,23 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
 .answer-status.is-saved { color: var(--ok-soft); }
 .answer-status.is-failed { color: var(--gap); }
 
+/* ---------- Feedback (#32) ---------- */
+.feedback { align-self: stretch; gap: 8px; }
+.feedback-stale { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--warn-bg); color: var(--ink); font-size: 14px; }
+.feedback-parts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.feedback-parts li { padding: 2px 10px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 700; }
+.feedback-parts .is-said { background: var(--skill-on-card-bg); color: var(--skill-on-card); }
+.feedback-parts .is-missing { background: var(--gap-tint); color: var(--missing-ink); }
+.feedback-heading { color: var(--ink-muted); }
+.feedback-ok { margin: 0; color: var(--skill-on-card); font-weight: 700; font-size: 14px; }
+.feedback-claims { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.feedback-claims li { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-left: 3px solid var(--gap); background: var(--note-bg); border-radius: 4px; overflow-wrap: anywhere; }
+.feedback-quote { font-weight: 700; }
+.feedback-says { font-size: 14px; color: var(--ink-muted); }
+.feedback-why { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.answer-feedback { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.answer-feedback .button-secondary { padding: 4px 12px; font-size: 13px; }
+
 /* ---------- Co-writing (W5) ---------- */
 .cowrite { max-width: 760px; margin: 0 auto; }
 .cowrite.has-reply-box { padding-bottom: 180px; } /* room for the fixed reply box */

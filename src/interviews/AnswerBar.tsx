@@ -28,19 +28,24 @@ type Props = {
   onSaveNow?: OnSaveNow;
   /** The title of the Scenario picked for this Question, if any (#11). */
   using?: string;
+  feedback?: FeedbackControls;
 };
+
+/** "Get feedback" in the bar's footer (#32): why it can't be asked for on this text yet (null when it can), whether
+ * it's being fetched, whether there's Feedback already, and asking for it on the Answer once saved. */
+export type FeedbackControls = { blockedBy: (text: string) => string | null; busy: boolean; again: boolean; onAsk: (text: string) => void };
 
 /** The K1 answer bar (#31): a box fixed to the bottom of the Interview screen for the Candidate's Answer to the Question
  * on show. It saves as they type, after a short pause, and when they move to another card or leave, so nothing typed
  * is lost. Mount it once per Question (`key`), so moving on saves what was there. */
-export function AnswerBar({ question, onSave, onSaveNow, using }: Props) {
+export function AnswerBar({ question, onSave, onSaveNow, using, feedback }: Props) {
   const [text, setText] = useState(question.answer?.text ?? "");
   const [status, setStatus] = useState<Status>("saved");
   const box = useRef<HTMLTextAreaElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   // The text last sent to be saved, so the same text isn't saved twice; null after a failure, so any text retries.
   const requested = useRef<string | null>(text);
-  const inFlight = useRef<Promise<void>>(Promise.resolve()); // the latest save, for Lock to wait on
+  const inFlight = useRef<Promise<boolean>>(Promise.resolve(true)); // the latest save and whether it worked, for Lock and Feedback to wait on
   const latest = useLatest({ text, onSave });
   const edited = useRef(false); // typed in since this card opened
 
@@ -53,19 +58,24 @@ export function AnswerBar({ question, onSave, onSaveNow, using }: Props) {
     setText(savedText);
   }, [savedText]);
 
-  /** Saves this text, unless it's what was last sent; resolves when the latest save has settled. Only the latest
-   * save's outcome is shown, so an older one finishing late can't overwrite it. */
-  function save(value: string): Promise<void> {
+  /** Saves this text, unless it's what was last sent; resolves, once the latest save has settled, to whether it worked.
+   * Only the latest save's outcome is shown, so an older one finishing late can't overwrite it. */
+  function save(value: string): Promise<boolean> {
     if (value === requested.current) return inFlight.current;
     requested.current = value;
     setStatus("saving");
     const isLatest = () => requested.current === value;
     inFlight.current = onSave(value).then(
-      () => void (isLatest() && setStatus((s) => (s === "unsaved" ? s : "saved"))),
       () => {
-        if (!isLatest()) return;
-        requested.current = null;
-        setStatus("failed");
+        if (isLatest()) setStatus((s) => (s === "unsaved" ? s : "saved"));
+        return true;
+      },
+      () => {
+        if (isLatest()) {
+          requested.current = null;
+          setStatus("failed");
+        }
+        return false;
       },
     );
     return inFlight.current;
@@ -92,7 +102,7 @@ export function AnswerBar({ question, onSave, onSaveNow, using }: Props) {
   // What's typed can be saved at once, e.g. just before the Candidate locks the app.
   const saveLatest = useLatest(() => save(text));
   useEffect(() => {
-    onSaveNow?.(() => saveLatest.current());
+    onSaveNow?.(() => saveLatest.current().then(() => {}));
     return () => onSaveNow?.(null);
   }, [onSaveNow, saveLatest]);
 
@@ -146,7 +156,28 @@ export function AnswerBar({ question, onSave, onSaveNow, using }: Props) {
         <span role="status" aria-label="Answer" className={`answer-status is-${status}`}>
           {STATUS_TEXT[status]}
         </span>
+        {feedback && (
+          <GetFeedbackButton
+            reason={feedback.blockedBy(text)}
+            busy={feedback.busy}
+            again={feedback.again}
+            onClick={() => void save(text).then((saved) => saved && feedback.onAsk(text))}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+/** The "Get feedback" button, with why it can't be pressed yet. It's only asked once the Answer has saved, so
+ * Feedback is always on what's saved. */
+function GetFeedbackButton({ reason, busy, again, onClick }: { reason: string | null; busy: boolean; again: boolean; onClick: () => void }) {
+  return (
+    <span className="answer-feedback">
+      {reason && <span className="form-hint">{reason}</span>}
+      <button type="button" className="button-secondary" disabled={reason !== null || busy} onClick={onClick}>
+        {busy ? "Getting feedback…" : again ? "Get feedback again" : "Get feedback"}
+      </button>
+    </span>
   );
 }

@@ -22,6 +22,18 @@ export const matchResultSchema = z.object({
 });
 export type MatchResult = z.infer<typeof matchResultSchema>;
 
+const coverage = z.enum(["said", "missing"]);
+/** Feedback's checklist as stored (#32). Kept here, apart from the model's reply schema (feedback.ts), so a change to
+ * the prompt doesn't stop saved Feedback from reading. */
+export const storedChecklistSchema = z.object({
+  star: z.object({ situation: coverage, task: coverage, action: coverage, result: coverage }),
+  measurableResult: coverage,
+  notInScenario: z.array(z.object({ quote: z.string(), scenarioSays: z.string().nullable() })),
+  /** Null when the Question gives no skill. */
+  skill: z.object({ addressed: z.enum(["yes", "partly", "no"]), why: z.string() }).nullable(),
+});
+export type StoredChecklist = z.infer<typeof storedChecklistSchema>;
+
 export const questionSchema = z.object({
   id: z.string(),
   text,
@@ -32,7 +44,17 @@ export const questionSchema = z.object({
   /** The Scenario the Candidate picked from the Matches (#11); absent until they pick one, or after un-picking. */
   pickedScenarioId: z.string().optional(),
   /** The Candidate's latest Answer, as typed in the answer bar (#31); absent until they answer. */
-  answer: z.object({ text, savedAt: z.string() }).optional(),
+  answer: z
+    .object({
+      text,
+      savedAt: z.string(),
+      /** The latest Feedback on it (#32), with the text and the Scenario it was given for, so a later edit or another
+       * pick shows it's out of date. */
+      feedback: z
+        .object({ checklist: storedChecklistSchema, forText: z.string(), forScenarioId: z.string(), forScenarioFingerprint: z.string(), gotAt: z.string() })
+        .optional(),
+    })
+    .optional(),
 });
 export type Question = z.infer<typeof questionSchema>;
 
