@@ -3,6 +3,7 @@
 // whether it's ready for review. The chat goes as real user and assistant turns; the co-writer's turns go back as
 // their messages only, and it drafts afresh from the whole chat each time.
 import { z } from "zod";
+import { delimited } from "../model-gateway/delimited";
 import type { ChatTurn, ModelGateway } from "../model-gateway/ModelGateway";
 import type { Scenario } from "../scenarios/scenarioFormat";
 
@@ -93,18 +94,14 @@ export type Exchange = { from: "co-writer" | "you"; text: string };
 export async function nextTurn(gateway: ModelGateway, chat: Exchange[], answer: string, draft: Draft = EMPTY_DRAFT, seed: Seed = {}): Promise<Turn> {
   const messages: ChatTurn[] = chat.map(({ from, text }) => (from === "you" ? { role: "user", content: asAnswer(text) } : { role: "assistant", content: text }));
   // A Gap's Question and skill only: its suggestion is model-written, so it could leak into the draft as a claim.
-  const gap = seed.gap ? `\n\n<gap_question>${escapeTag(JSON.stringify({ question: seed.gap.question, skill: seed.skill ?? null }), "gap_question")}</gap_question>` : "";
-  const system = `${SYSTEM}\n\n<draft_so_far>${escapeTag(JSON.stringify(draft), "draft_so_far")}</draft_so_far>${gap}`;
+  const gap = seed.gap ? `\n\n${delimited("gap_question", JSON.stringify({ question: seed.gap.question, skill: seed.skill ?? null }))}` : "";
+  const system = `${SYSTEM}\n\n${delimited("draft_so_far", JSON.stringify(draft))}${gap}`;
   const turn = await gateway.generate({ job: "co-writing", system, messages, user: asAnswer(answer), schema: turnSchema });
   return { ...turn, draft: keepFilled(draft, tidy(turn.draft)) };
 }
 
-/** Changes a tag inside text so it can't close or open that tag. The replacement is one character, so the length
- * doesn't grow. */
-const escapeTag = (text: string, tag: string) => text.replace(new RegExp(`<(\\/?${tag})`, "gi"), "‹$1");
-
 /** An answer delimited as data (spec #1, "Security"). */
-const asAnswer = (text: string) => `<answer>${escapeTag(text, "answer")}</answer>`;
+const asAnswer = (text: string) => delimited("answer", text);
 
 /** The new draft, with any part it left out that the draft before had. */
 function keepFilled(before: Draft, after: Draft): Draft {

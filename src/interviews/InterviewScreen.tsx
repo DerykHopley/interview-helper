@@ -3,15 +3,18 @@ import { useLatest } from "../hooks";
 import { MatchesPanel } from "../matching/MatchesPanel";
 import { useQuestionMatches } from "../matching/useQuestionMatches";
 import { SHARED_PROBLEM_TEXT } from "../model-gateway/callProblems";
+import { ProblemAlert } from "../model-gateway/ProblemAlert";
 import type { UnlockedVault } from "../vault/vault";
 import { NO_SKILL } from "./gaps";
 import { PopupMenu } from "../PopupMenu";
 import { countOf } from "../text";
 import { AnswerBar, type OnSaveNow } from "./AnswerBar";
+import { FeedbackCard } from "./FeedbackCard";
 import { usedFor } from "./picks";
 import type { Interview, Question } from "./interview";
 import type { SavedInterview } from "./interviewStore";
 import { FIRST_BATCH, MORE_BATCH, type Batch } from "./questionGenerator";
+import { FEEDBACK_PROBLEMS, useAnswerFeedback, type FeedbackRequest, type FeedbackStaleness } from "./useAnswerFeedback";
 import type { Writing, WriteProblem } from "./useQuestionWriting";
 
 type Props = {
@@ -85,6 +88,7 @@ export function InterviewScreen({
 }: Props) {
   const { questions } = interview;
   const matches = useQuestionMatches(vault, onChange, onTokenExpired, dealtOnOpen);
+  const feedback = useAnswerFeedback({ onChange, onTokenExpired, accessActive, scenarios: matches.scenarios });
   const at = Math.min(position, questions.length);
   const go = (to: number) => onMove(Math.max(0, Math.min(to, questions.length)));
   const latestGo = useLatest((by: number) => go(at + by));
@@ -145,7 +149,8 @@ export function InterviewScreen({
   const saveAnswer = (questionId: string, text: string) =>
     onChange((current) => {
       const savedAt = new Date().toISOString();
-      const answer = text.trim() ? { text, savedAt } : undefined;
+      // The Feedback stays with an edited Answer, and shows it's on an earlier version.
+      const answer = text.trim() ? { ...current.questions.find((q) => q.id === questionId)?.answer, text, savedAt } : undefined;
       return {
         ...current,
         questions: current.questions.map((q) => (q.id === questionId ? { ...q, answer } : q)),
@@ -214,6 +219,12 @@ export function InterviewScreen({
             using={matches.scenarios?.find((s) => s.id === questions[at].pickedScenarioId)?.title}
             onSave={(text) => saveAnswer(questions[at].id, text)}
             onSaveNow={onAnswerSaveNow}
+            feedback={{
+              blockedBy: (text) => feedback.blockedBy(questions[at], text),
+              busy: feedback.requestOf(questions[at].id)?.busy ?? false,
+              again: Boolean(questions[at].answer?.feedback),
+              onAsk: (text) => void feedback.ask(questions[at], text),
+            }}
           />
           <DealtMatches
             question={questions[at]}
@@ -223,6 +234,14 @@ export function InterviewScreen({
             onWriteScenario={() => onWriteScenario(questions[at])}
             onPick={(scenarioId) => void pick(questions[at].id, scenarioId)}
             usedFor={(scenarioId) => usedFor(interview, scenarioId, questions[at].id)}
+          />
+          {/* Between the Matches and the fixed answer bar, in reading order (#32). */}
+          <FeedbackArea
+            question={questions[at]}
+            request={feedback.requestOf(questions[at].id)}
+            staleness={feedback.staleness(questions[at])}
+            onRetry={(text) => void feedback.ask(questions[at], text)}
+            onNeedToken={onNeedToken}
           />
         </div>
       ) : writing.active && questions.length === 0 ? (
@@ -408,6 +427,24 @@ function DealtMatches({ question, matches, onNeedToken, onOpenScenarioBank, onWr
           }}
         />
       )}
+    </>
+  );
+}
+
+/** Under the Matches: the Answer's latest Feedback (marked out of date once the Answer or its Scenario has changed),
+ * or why asking for it didn't work, with Try again. */
+function FeedbackArea({ question, request, staleness, onRetry, onNeedToken }: {
+  question: Question;
+  request: FeedbackRequest | undefined;
+  staleness: FeedbackStaleness;
+  onRetry: (text: string) => void;
+  onNeedToken: () => void;
+}) {
+  const saved = question.answer?.feedback;
+  return (
+    <>
+      {request?.problem && <ProblemAlert {...FEEDBACK_PROBLEMS[request.problem]} onNeedToken={onNeedToken} onRetry={() => onRetry(request.text)} />}
+      {saved && <FeedbackCard checklist={saved.checklist} skill={question.skill} staleness={staleness} />}
     </>
   );
 }

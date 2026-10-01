@@ -19,6 +19,8 @@
       "matching": "openai/gpt-5-mini",
       "match-reasons": "openai/gpt-5-mini",
       "co-writing": "openai/gpt-5-mini",
+      // Feedback on an Answer, checked against its picked Scenario (#32).
+      "feedback": "openai/gpt-5-mini",
       // The Matcher Report's judge of Match reasons (#18): another company's model than the reasons writer's.
       "reason-judging": "google/gemini-3.8-flash"
     },
@@ -30,6 +32,7 @@
       "matching": { "max_tokens": 6000, "reasoning_effort": "low" },
       "match-reasons": { "max_tokens": 2000, "reasoning_effort": "low" },
       "co-writing": { "max_tokens": 4000, "reasoning_effort": "low" },
+      "feedback": { "max_tokens": 3000, "reasoning_effort": "low" },
       "reason-judging": { "max_tokens": 3000, "reasoning_effort": "low" }
     },
     // The only models the Worker forwards to: the job defaults above, plus the ones the Matcher Report compares
