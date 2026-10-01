@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CoWriting } from "../cowriting/CoWriting";
 import { useCancellableEffect } from "../hooks";
 import type { UnlockedVault } from "../vault/vault";
 import { isDemo, REMOVE_DEMO_FAILED, scenarioBank, type SavedScenario } from "./scenarioBank";
@@ -9,7 +10,7 @@ import { countOf, unreadableNotice } from "../text";
 import { hasSkill, skillCounts } from "./skills";
 import { SkillsOverview } from "./SkillsOverview";
 
-type Pane = { mode: "read" | "edit"; id: string } | { mode: "new" } | { mode: "none" };
+type Pane = { mode: "read" | "edit"; id: string } | { mode: "choose" | "new" | "co-write" } | { mode: "none" };
 type Loaded = { scenarios: SavedScenario[]; unreadable: number };
 
 type Props = {
@@ -19,11 +20,17 @@ type Props = {
   /** A skill to start a new Scenario with (from a Gap), or null. The bank mounts afresh each time its tab opens,
    * so this is read once, as it opens. */
   startNew?: string | null;
+  /** Whether an Access Token is active, so co-writing can be offered. */
+  accessActive?: boolean;
+  /** Tells the dashboard while a co-writing chat is open, so leaving it asks first (it lives in memory only). */
+  onCoWritingChange?: (open: boolean) => void;
+  onNeedToken?: () => void;
+  onTokenExpired?: () => void;
 };
 
 /** The Candidate's Scenarios (C4 design): a skills overview on top, then a list on the left and the selected
  * Scenario in full on the right. On a phone the list and the Scenario are two screens. */
-export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) {
+export function ScenarioBank({ vault, gapSkills = [], startNew = null, accessActive = false, onCoWritingChange, onNeedToken = () => {}, onTokenExpired = () => {} }: Props) {
   const bank = useMemo(() => scenarioBank(vault), [vault]);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [pane, setPane] = useState<Pane>(startNew !== null ? { mode: "new" } : { mode: "none" });
@@ -50,6 +57,8 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) 
     setSkillFilter((key) => (key && result.scenarios.some((s) => hasSkill(s.skills, key)) ? key : null));
   }
 
+  useEffect(() => onCoWritingChange?.(pane.mode === "co-write"), [pane.mode, onCoWritingChange]);
+
   async function save(scenario: Scenario, existingId?: string) {
     const id = await bank.save(scenario, existingId);
     await reload();
@@ -75,6 +84,17 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) 
     } catch {
       setFailure(REMOVE_DEMO_FAILED);
     }
+  }
+
+  if (pane.mode === "co-write") {
+    return (
+      <CoWriting
+        onSave={(scenario) => save(scenario)}
+        onDiscard={() => setPane({ mode: "none" })}
+        onNeedToken={onNeedToken}
+        onTokenExpired={onTokenExpired}
+      />
+    );
   }
 
   if (!loaded) return failure ? <p role="alert" className="notice-blocking">{failure}</p> : null;
@@ -122,7 +142,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) 
             className="button-primary"
             onClick={() => {
               setNewSkill("");
-              setPane({ mode: "new" });
+              setPane({ mode: "choose" });
             }}
           >
             + New Scenario
@@ -188,6 +208,22 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) 
         {pane.mode === "none" && scenarios.length > 0 && <p className="bank-hint">Choose a Scenario to read it in full.</p>}
         {pane.mode === "none" && scenarios.length === 0 && (
           <p className="bank-hint">No Scenarios yet. Add your first with “+ New Scenario”, from your own career.</p>
+        )}
+        {pane.mode === "choose" && (
+          <>
+            <h3 className="pane-title">New Scenario</h3>
+            <div className="card choices">
+              <button type="button" className="choice" onClick={() => setPane({ mode: "new" })}>
+                <strong>Write it myself</strong>
+                <span className="choice-detail">Fill in the form: Situation, Task, Action, Result.</span>
+              </button>
+              <button type="button" className="choice" disabled={!accessActive} onClick={() => setPane({ mode: "co-write" })}>
+                <strong>Co-write with AI</strong>
+                <span className="choice-detail">Answer a few questions. The AI arranges your own words, and never adds any.</span>
+              </button>
+              {!accessActive && <span className="form-hint">Needs an active Access Token</span>}
+            </div>
+          </>
         )}
         {pane.mode === "new" && (
           <>

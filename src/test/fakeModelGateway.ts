@@ -1,7 +1,7 @@
-import type { AccessStatus, DecisionAnswer, ModelGateway, ModelJob } from "../model-gateway/ModelGateway";
+import type { AccessStatus, ChatTurn, DecisionAnswer, ModelGateway, ModelJob } from "../model-gateway/ModelGateway";
 
 /** Makes a reply from the request, e.g. to answer about the Scenarios it sent, or a promise of one. */
-export type ReplyFor = (request: { job: ModelJob; system: string; user: string }) => unknown;
+export type ReplyFor = (request: { job: ModelJob; system: string; messages?: ChatTurn[]; user: string }) => unknown;
 /** Per job, the replies in order: each a scripted value, or a ReplyFor function. */
 type Script = Partial<Record<ModelJob, unknown[]>>;
 type DecisionScript = Partial<Record<ModelJob, Record<string, DecisionAnswer>[]>>;

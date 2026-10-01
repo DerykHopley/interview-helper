@@ -84,6 +84,19 @@ describe("the app's Model Gateway, talking to the Worker", () => {
     expect(openRouter.requests[0].json()).toMatchObject({ reasoning: { effort: "minimal" } });
   });
 
+  it("sends a chat's earlier turns, so the model sees real user and assistant roles", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
+    const gateway = gatewayWith(await mint(inHours(2)));
+
+    const messages = [
+      { role: "user" as const, content: "A Scenario about a migration" },
+      { role: "assistant" as const, content: '{"message":"What was your role?"}' },
+    ];
+    await gateway.generate({ job: "co-writing", system: "s", messages, user: "Tech lead", schema: Questions });
+
+    expect(openRouter.requests[0].json()).toMatchObject({ messages: [{ role: "system", content: "s" }, ...messages, { role: "user", content: "Tech lead" }] });
+  });
+
   it("sends the LLM Matcher's reply schema with notes first, so a Prompt Variant can reason before it scores", async () => {
     openRouter = fakeOpenRouter(() => completion('{"notes":"","scores":[{"id":"S1","score":80}]}'));
     const gateway = gatewayWith(await mint(inHours(2)));

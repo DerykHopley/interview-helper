@@ -39,12 +39,13 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
   };
 
   return {
-    async generate({ job, model: requested, reasoningEffort, system, user, schema }) {
+    async generate({ job, model: requested, reasoningEffort, system, messages, user, schema }) {
       const body: GenerateRequest = {
         job,
         ...(requested && { model: requested }),
         ...(reasoningEffort && { reasoningEffort }),
         system,
+        ...(messages && { messages }),
         user,
         schema: toStrictJsonSchema(schema),
       };

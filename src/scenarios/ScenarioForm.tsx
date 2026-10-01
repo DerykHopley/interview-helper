@@ -40,14 +40,19 @@ type Props = {
   skill?: string;
   onSave: (scenario: Scenario) => Promise<void>;
   onCancel: () => void;
+  /** The buttons' words, e.g. "Approve and save" and "Discard draft" for a co-written draft (#12). */
+  saveLabel?: string;
+  cancelLabel?: string;
+  /** Say which required parts are missing as soon as it opens, e.g. in a co-written draft's review. */
+  checkNow?: boolean;
 };
 
 /** Creating or editing a Scenario by hand (spec #1, stories 28–31). It says which required parts are missing
  * rather than saving an incomplete Scenario. */
-export function ScenarioForm({ initial, skill = "", onSave, onCancel }: Props) {
+export function ScenarioForm({ initial, skill = "", onSave, onCancel, saveLabel = "Save Scenario", cancelLabel = "Cancel", checkNow = false }: Props) {
   const [fields, setFields] = useState<Fields>(() => (initial ? toFields(initial) : { ...EMPTY, skills: skill }));
   const origin: Origin = initial?.origin ?? "hand-written"; // editing never changes where a Scenario came from
-  const [tried, setTried] = useState(false);
+  const [tried, setTried] = useState(checkNow);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const id = useId();
@@ -122,10 +127,10 @@ export function ScenarioForm({ initial, skill = "", onSave, onCancel }: Props) {
       )}
       <div className="actions">
         <button type="submit" className="button-primary" disabled={saving}>
-          Save Scenario
+          {saveLabel}
         </button>
         <button type="button" className="button-link" onClick={onCancel}>
-          Cancel
+          {cancelLabel}
         </button>
       </div>
     </form>
