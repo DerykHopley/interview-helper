@@ -5,7 +5,7 @@ import { ModelGatewayError } from "../../src/model-gateway/ModelGateway";
 import type { AdversarialCase, EvaluationSet, LabelledQuestion } from "./evaluationSet";
 import type { MatcherRun, QuestionRun } from "./scoring";
 
-type Meters = {
+export type Meters = {
   /** Milliseconds, e.g. performance.now. */
   now: () => number;
   /** The total spent so far in USD, e.g. from the gateway's onCall. */
@@ -19,7 +19,7 @@ const asQuestion = ({ text, skill }: LabelledQuestion): QuestionText => (skill ?
 
 /** What a failed call's error is called in the report: a gateway error's code (as the app tells them apart), or the
  * error's name, e.g. IncompleteReplyError. */
-const errorName = (e: unknown) => (e instanceof ModelGatewayError ? e.code : e instanceof Error ? e.name : "unknown");
+export const errorName = (e: unknown) => (e instanceof ModelGatewayError ? e.code : e instanceof Error ? e.name : "unknown");
 
 export async function runMatcher({ matcher, set, now, spent }: { matcher: Matcher; set: EvaluationSet } & Meters): Promise<MatcherRun> {
   async function rank(questionId: string, question: QuestionText, scenarios: ScenarioText[]): Promise<QuestionRun> {

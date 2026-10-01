@@ -82,6 +82,18 @@ _Avoid_: Test data, golden set, benchmark
 An Evaluation Set Question run again with hidden instructions injected into the Question or into one Scenario, to see whether a Matcher obeys them. Each has a goal (make the Scenario it's hidden in the top Match, or turn a Gap into a Match), and it is affected if the attacked run reaches that goal when the clean run didn't.
 _Avoid_: Jailbreak test, attack case, injection test
 
+**Reason judge**:
+An LLM, from a different company than the one writing Match reasons, that grades each Match reason in the Matcher Report: grounded (every fact is in that Scenario) and answers the Question, pass or fail, quoting what's wrong.
+_Avoid_: Grader, evaluator, reviewer
+
+**Reasons model**:
+The model that writes Match reasons (the `match-reasons` job). The Matcher Report compares reasons models on the same picks, so a cheaper one can be judged against what ships.
+_Avoid_: Explainer, reason writer
+
+**Calibration set**:
+Hand-written Match reasons with the verdicts they should get, some with planted inventions, which the reason judge grades on every run so a lenient judge shows up.
+_Avoid_: Golden reasons, judge test data
+
 **Matcher Report**:
 The side-by-side result of running several Matchers, and Prompt Variants, over the same Evaluation Set.
 _Avoid_: Eval results, comparison, scorecard

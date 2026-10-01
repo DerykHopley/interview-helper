@@ -118,6 +118,62 @@ describe("the Matcher Report", () => {
     });
   });
 
+  describe("the Match reasons section", () => {
+    const reasons = {
+      judgeModel: "google/gemini-3.8-flash",
+      scores: [
+        {
+          model: "openai/gpt-5-mini",
+          grounded: { correct: 32, of: 33 },
+          answers: { correct: 33, of: 33 },
+          form: { correct: 33, of: 33 },
+          byRank: {
+            top: { grounded: { correct: 11, of: 11 }, answers: { correct: 11, of: 11 }, form: { correct: 11, of: 11 } },
+            rest: { grounded: { correct: 21, of: 22 }, answers: { correct: 2, of: 22 }, form: { correct: 22, of: 22 } },
+          },
+          costPerQuestion: 0.0004,
+          judgeCostPerQuestion: 0.0002,
+          medianMs: 2100,
+          failedWriting: 0,
+          failedJudging: 1,
+          problems: [{ questionId: "late", scenarioId: "audit", rank: 2, reason: "You passed the audit and saved £1m.", grounded: false, answers: true, note: "£1m isn't in it", form: [] }],
+        },
+      ],
+      calibration: { judgeModel: "google/gemini-3.8-flash", agreed: 9, of: 10, misses: [{ id: "disagree-invented-role", wrong: ["grounded" as const] }], cost: 0.005 },
+    };
+    const withReasons = () =>
+      renderReport({ date: "2026-10-01", setName: "s", set: SET, shipped: "LLM (Rubric, zero-shot)", results: [{ score: scoreRuns([RUN], SET.questions), models: [] }], reasons });
+
+    it("has a row per reasons model with its grounded, answering and form rates, cost and time", () => {
+      expect(withReasons()).toContain("| openai/gpt-5-mini | 32/33 (97%) | 33/33 (100%) | 33/33 (100%) | $0.0004 | $0.0002 | 2.1 s | 0 | 1 |");
+      expect(withReasons()).toContain("| openai/gpt-5-mini | Top Match | 11/11 (100%) | 11/11 (100%) | 11/11 (100%) |");
+      expect(withReasons()).toContain("| openai/gpt-5-mini | 2nd and 3rd | 21/22 (95%) | 2/22 (9%) | 22/22 (100%) |");
+    });
+
+    it("quotes every reason that failed a check, with the judge's note", () => {
+      expect(withReasons()).toContain("- `late` · `audit`, Match 2 (openai/gpt-5-mini): not grounded, £1m isn't in it.");
+      expect(withReasons()).toContain("  > You passed the audit and saved £1m.");
+    });
+
+    it("leaves out the judge check when the set has no calibration reasons", () => {
+      const none = renderReport({
+        date: "d",
+        setName: "s",
+        set: SET,
+        shipped: "LLM (Rubric, zero-shot)",
+        results: [{ score: scoreRuns([RUN], SET.questions), models: [] }],
+        reasons: { ...reasons, calibration: { judgeModel: "g", agreed: 0, of: 0, misses: [], cost: 0 } },
+      });
+
+      expect(none).not.toContain("### Checking the judge");
+    });
+
+    it("says how well the judge did on reasons with known verdicts, and which it got wrong", () => {
+      expect(withReasons()).toContain("The judge (google/gemini-3.8-flash) matched **9 of 10** known verdicts.");
+      expect(withReasons()).toContain("- `disagree-invented-role`: wrong on grounded.");
+    });
+  });
+
   it("says the threshold was chosen on the same set it's measured on", () => {
     expect(report()).toMatch(/chosen on this same Evaluation Set/);
   });

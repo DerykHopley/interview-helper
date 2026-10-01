@@ -1,5 +1,5 @@
 // The Evaluation Set (CONTEXT.md): a fixed collection of Scenarios and labelled Questions used to score Matchers.
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
@@ -25,7 +25,10 @@ export type AdversarialCase = {
   text: string;
 };
 
-export type EvaluationSet = { scenarios: ScenarioText[]; questions: LabelledQuestion[]; adversarial: AdversarialCase[] };
+/** A hand-written Match reason with the verdicts it should get: the reason judge is checked against these (#18). */
+export type CalibrationItem = { id: string; questionId: string; scenarioId: string; reason: string; grounded: boolean; answers: boolean };
+
+export type EvaluationSet = { scenarios: ScenarioText[]; questions: LabelledQuestion[]; adversarial: AdversarialCase[]; calibration?: CalibrationItem[] };
 
 export const isGap = (label: Label): label is { gap: true } => "gap" in label;
 
@@ -55,9 +58,14 @@ const questionsFile = z.object({
     .default([]),
 });
 
-/** Reads an Evaluation Set: Scenarios in the Scenario format keyed by id (their file name), and the labelled
- * Questions and adversarial cases as YAML. Throws, naming the problem, if anything doesn't parse or doesn't add up. */
-export function parseEvaluationSet(scenarioFiles: Record<string, string>, questionsYaml: string): EvaluationSet {
+const calibrationFile = z.object({
+  reasons: z.array(z.object({ id, question: id, scenario: id, reason: z.string().trim().min(1), grounded: z.boolean(), answers: z.boolean() })),
+});
+
+/** Reads an Evaluation Set: Scenarios in the Scenario format keyed by id (their file name), the labelled Questions and
+ * adversarial cases as YAML, and optionally the reason judge's calibration set. Throws, naming the problem, if
+ * anything doesn't parse or doesn't add up. */
+export function parseEvaluationSet(scenarioFiles: Record<string, string>, questionsYaml: string, calibrationYaml?: string): EvaluationSet {
   const scenarios = Object.entries(scenarioFiles).map(([scenarioId, markdown]): ScenarioText => {
     try {
       return asScenarioText({ ...parseScenario(markdown), id: scenarioId });
@@ -92,13 +100,21 @@ export function parseEvaluationSet(scenarioFiles: Record<string, string>, questi
     if (!scenario) throw new Error(`Adversarial case "${id}" goes into a Scenario but doesn't say which`);
     return { id, questionId: question, inject: { into, scenarioId: known(scenario, `Adversarial case "${id}"`) }, goal, text };
   });
-  return { scenarios, questions, adversarial };
+  const calibration = calibrationYaml
+    ? calibrationFile.parse(parse(calibrationYaml)).reasons.map(({ id, question, scenario, reason, grounded, answers }): CalibrationItem => {
+        if (!seen.has(question)) throw new Error(`Calibration reason "${id}" is for Question "${question}", which isn't in the set`);
+        return { id, questionId: question, scenarioId: known(scenario, `Calibration reason "${id}"`), reason, grounded, answers };
+      })
+    : [];
+  return { scenarios, questions, adversarial, calibration };
 }
 
-/** Reads the Evaluation Set in a folder: `scenarios/<id>.md` and `questions.yaml`. */
+/** Reads the Evaluation Set in a folder: `scenarios/<id>.md`, `questions.yaml`, and `reason-calibration.yaml` if
+ * there is one. */
 export function loadEvaluationSet(dir: string): EvaluationSet {
   const scenarioDir = join(dir, "scenarios");
   const files = readdirSync(scenarioDir).filter((f) => f.endsWith(".md")).sort();
   const scenarioFiles = Object.fromEntries(files.map((f) => [basename(f, ".md"), readFileSync(join(scenarioDir, f), "utf8")]));
-  return parseEvaluationSet(scenarioFiles, readFileSync(join(dir, "questions.yaml"), "utf8"));
+  const calibration = join(dir, "reason-calibration.yaml");
+  return parseEvaluationSet(scenarioFiles, readFileSync(join(dir, "questions.yaml"), "utf8"), existsSync(calibration) ? readFileSync(calibration, "utf8") : undefined);
 }

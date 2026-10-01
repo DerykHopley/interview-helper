@@ -1,10 +1,13 @@
 // The Matcher Report (spec #1): a dated Markdown file comparing Matchers on one Evaluation Set.
 import { isGap, type EvaluationSet, type LabelledQuestion } from "./evaluationSet";
+import type { CalibrationScore, ReasonsScore } from "./reasons";
 import { rankScores, type MatcherScore, type Outcome } from "./scoring";
 
 export type ReportResult = { score: MatcherScore; models: string[] };
 /** A section of Setups (by Matcher name) side by side, best first. */
 export type ReportSection = { title: string; intro: string; names: string[] };
+/** The reason judge's results (#18): each reasons model's scores, and how the judge did on the calibration set. */
+export type ReportReasons = { judgeModel: string; scores: ReasonsScore[]; calibration: CalibrationScore };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const ratio = ({ correct, of }: { correct: number; of: number }) => `${correct}/${of} (${of ? Math.round((correct / of) * 100) : 0}%)`;
@@ -52,6 +55,59 @@ function metricsTable(results: ReportResult[]) {
   );
 }
 
+/** The Match reasons section: each reasons model's rates, every reason that failed a check, and the judge's check. */
+function reasonsSection({ judgeModel, scores, calibration }: ReportReasons, shipped: string) {
+  const lines = [
+    "## Match reasons",
+    "",
+    `Each reasons model wrote the Match reasons for the top three Scenarios that **${shipped}** picked on every real-Match Question (one run), and a judge (${judgeModel}) graded each one. **Grounded:** every fact in the reason is in that Scenario. **Answers:** it names the part of the Scenario that answers the Question. **Form:** one sentence of at most 25 words, speaking to the Candidate as "you", checked in code.`,
+    "",
+    table(
+      ["Reasons model", "Grounded", "Answers the Question", "Form", "Cost / Question", "Judge cost / Question", "Median time", "Failed writing", "Failed judging"],
+      scores.map((s) => [
+        s.model,
+        ratio(s.grounded),
+        ratio(s.answers),
+        ratio(s.form),
+        dollars(s.costPerQuestion),
+        s.judgeCostPerQuestion === null ? "not recorded" : dollars(s.judgeCostPerQuestion),
+        seconds(s.medianMs),
+        s.failedWriting,
+        s.failedJudging,
+      ]),
+    ),
+  ];
+  lines.push(
+    "",
+    "By Match: the top Match's reasons apart from the 2nd and 3rd Matches'. A weaker Match often doesn't answer the Question, so its reason can't honestly say it does.",
+    "",
+    table(
+      ["Reasons model", "Match", "Grounded", "Answers the Question", "Form"],
+      scores.flatMap((s) =>
+        (["top", "rest"] as const).map((k) => [s.model, k === "top" ? "Top Match" : "2nd and 3rd", ratio(s.byRank[k].grounded), ratio(s.byRank[k].answers), ratio(s.byRank[k].form)]),
+      ),
+    ),
+  );
+  const problems = scores.flatMap((s) => s.problems.map((p) => ({ ...p, model: s.model })));
+  if (problems.length) {
+    lines.push("", "### Reasons that failed a check", "");
+    for (const p of problems) {
+      const what = [!p.grounded && "not grounded", !p.answers && "doesn't answer the Question", ...p.form].filter(Boolean).join("; ");
+      lines.push(`- \`${p.questionId}\` · \`${p.scenarioId}\`, Match ${p.rank} (${p.model}): ${what}${p.note ? `, ${p.note.replace(/\.$/, "")}` : ""}.`, `  > ${p.reason}`);
+    }
+  }
+  lines.push("", "The reasons of a call that failed count as not passing, so failures can't flatter a model.");
+  if (!calibration.of) return lines;
+  lines.push(
+    "",
+    "### Checking the judge",
+    "",
+    `The judge (${calibration.judgeModel}) matched **${calibration.agreed} of ${calibration.of}** known verdicts. They're hand-written reasons in \`reason-calibration.yaml\`, some with a planted invention, so a lenient judge shows up here (${dollars(calibration.cost)}).`,
+    ...(calibration.misses.length ? ["", ...calibration.misses.map((m) => `- \`${m.id}\`: wrong on ${m.wrong.join(" and ")}.`)] : []),
+  );
+  return lines;
+}
+
 /** `shipped` names the Matcher the app ships. With `sections`, the summary is the shipped Setup's alone, each section
  * puts its Setups side by side, and the other Setups' details are folded away. */
 export function renderReport({
@@ -61,6 +117,7 @@ export function renderReport({
   shipped,
   results,
   sections = [],
+  reasons,
 }: {
   date: string;
   setName: string;
@@ -68,6 +125,7 @@ export function renderReport({
   shipped: string;
   results: ReportResult[];
   sections?: ReportSection[];
+  reasons?: ReportReasons;
 }): string {
   const gaps = set.questions.filter((q) => isGap(q.label)).length;
   const runs = Math.max(...results.map((r) => r.score.runs), 1);
@@ -118,6 +176,7 @@ export function renderReport({
       `Best on this set: **${ranked[0]?.score.name ?? "none"}**. Ranked by top-1, then Gap mistakes (Gaps missed plus false alarms), then attacks that reached their goal, then margin, then cost.`,
     );
   }
+  if (reasons) lines.push("", ...reasonsSection(reasons, shipped));
   for (const result of results) {
     const folded = sections.length > 0 && result.score.name !== shipped;
     lines.push(

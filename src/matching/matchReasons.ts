@@ -24,10 +24,17 @@ const sentence = z.string().trim().min(1).max(300);
 const reasonsReply = z.object({ reasons: z.array(z.object({ id: z.string(), reason: z.string() })) });
 const gapReply = z.object({ suggestion: sentence });
 
-/** One reason per Scenario, by Scenario id. A reply missing one, or with an empty one, is refused. */
-export async function matchReasons(gateway: ModelGateway, question: QuestionText, scenarios: ScenarioText[]) {
+/** One reason per Scenario, by Scenario id. A reply missing one, or with an empty one, is refused. `model` overrides
+ * the job's default in the Worker (the Matcher Report compares reasons models, #18). */
+export async function matchReasons(gateway: ModelGateway, question: QuestionText, scenarios: ScenarioText[], { model }: { model?: string } = {}) {
   const ids = withShortIds(scenarios);
-  const { reasons } = await gateway.generate({ job: "match-reasons", system: REASONS_SYSTEM, user: matchingMessage(question, ids.sent), schema: reasonsReply });
+  const { reasons } = await gateway.generate({
+    job: "match-reasons",
+    ...(model && { model }),
+    system: REASONS_SYSTEM,
+    user: matchingMessage(question, ids.sent),
+    schema: reasonsReply,
+  });
   const byScenario = ids.byScenario(reasons);
   return new Map(
     scenarios.map(({ id }) => {

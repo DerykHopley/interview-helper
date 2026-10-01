@@ -102,3 +102,28 @@ adversarial:
     expect(() => parseEvaluationSet({ broken: "no header here" }, "questions: []\n")).toThrow(/broken/);
   });
 });
+
+describe("the reason judge's calibration set", () => {
+  const questions = "questions:\n  - { id: late-project, text: T, best: rescue }\n";
+
+  it("reads hand-written reasons with the verdicts they should get", () => {
+    const set = parseEvaluationSet(
+      SCENARIOS,
+      questions,
+      "reasons:\n  - { id: c1, question: late-project, scenario: rescue, reason: You cut the scope., grounded: true, answers: true }\n",
+    );
+
+    expect(set.calibration).toEqual([{ id: "c1", questionId: "late-project", scenarioId: "rescue", reason: "You cut the scope.", grounded: true, answers: true }]);
+  });
+
+  it("is optional", () => {
+    expect(parseEvaluationSet(SCENARIOS, questions).calibration).toEqual([]);
+  });
+
+  it("rejects a reason for a Question or Scenario that isn't in the set", () => {
+    const entry = (question: string, scenario: string) => `reasons:\n  - { id: c1, question: ${question}, scenario: ${scenario}, reason: R, grounded: true, answers: true }\n`;
+
+    expect(() => parseEvaluationSet(SCENARIOS, questions, entry("nowhere", "rescue"))).toThrow(/nowhere/);
+    expect(() => parseEvaluationSet(SCENARIOS, questions, entry("late-project", "nowhere"))).toThrow(/nowhere/);
+  });
+});
