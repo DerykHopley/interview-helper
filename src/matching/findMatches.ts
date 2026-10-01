@@ -37,7 +37,7 @@ export async function findMatches(
   const ranked = (await matcher.rank(question, texts)).sort((a, b) => b.score - a.score);
   const found = { matchedAt: new Date().toISOString(), scenariosFingerprint: scenariosFingerprint(scenarios), matchedWith: matcher.name };
   if (!ranked.length || ranked[0].score < settings.gapThreshold) {
-    return { gap: true, matches: [], suggestion: await gapSuggestion(gateway, question), ...found };
+    return { gap: true, matches: [], suggestion: await gapSuggestion(gateway, question), bestScore: ranked[0]?.score, ...found };
   }
   const top = ranked.slice(0, settings.shown);
   const reasons = await matchReasons(gateway, question, top.map((m) => texts.find((t) => t.id === m.scenarioId)!));

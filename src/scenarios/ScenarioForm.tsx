@@ -38,7 +38,8 @@ type Props = {
   initial?: Scenario;
   /** For a new Scenario: a skill to start with, e.g. from a Gap. */
   skill?: string;
-  onSave: (scenario: Scenario) => Promise<void>;
+  /** Saves it; what it resolves to isn't used. */
+  onSave: (scenario: Scenario) => Promise<unknown>;
   onCancel: () => void;
   /** The buttons' words, e.g. "Approve and save" and "Discard draft" for a co-written draft (#12). */
   saveLabel?: string;

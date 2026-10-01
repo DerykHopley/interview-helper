@@ -10,7 +10,10 @@ import { JumpMenu } from "../interviews/JumpMenu";
 import { useOpenInterview } from "../interviews/useOpenInterview";
 import { FIRST_BATCH } from "../interviews/questionGenerator";
 import { useQuestionWriting } from "../interviews/useQuestionWriting";
-import { ScenarioBank } from "../scenarios/ScenarioBank";
+import { ScenarioBank, type CoWriteStart } from "../scenarios/ScenarioBank";
+import type { Question } from "../interviews/interview";
+import { rematchAfterSaving } from "../matching/shippedMatching";
+import { useModelGateway } from "../model-gateway/context";
 import { countOf } from "../text";
 import { useAutoLock } from "../vault/useAutoLock";
 import type { UnlockedVault } from "../vault/vault";
@@ -24,7 +27,10 @@ const TABS = [
   { key: "backup", label: "Backup" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
-type View = { tab: Tab } | { interviewId: string };
+/** A tab, or an Interview: at one of its Questions, with that Question's Matches dealt (back from its Gap, #13). */
+type View = { tab: Tab } | { interviewId: string; atQuestion?: string };
+/** How the Scenario Bank opens: on the hand-written form with a skill, or on a co-writing chat. */
+type BankStart = { form: string } | { coWrite: CoWriteStart };
 
 type Props = {
   vault: UnlockedVault;
@@ -40,24 +46,34 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   const interviews = useMemo(() => interviewStore(vault), [vault]);
   const [view, setViewState] = useState<View>(startInterviewId ? { interviewId: startInterviewId } : { tab: "interviews" });
   const coWritingOpen = useRef(false); // a co-writing chat lives in memory only, so leaving it asks first
-  /** Shows a tab or an Interview; `newScenarioSkill` opens the Scenario Bank on a new Scenario with that skill. */
-  const setView = (next: View, newScenarioSkill: string | null = null) => {
+  /** Shows a tab or an Interview; `start` opens the Scenario Bank on the form or a co-writing chat. */
+  const setView = (next: View, start: BankStart | null = null) => {
     if (coWritingOpen.current && !confirm(LEAVE_CHAT)) return;
     coWritingOpen.current = false;
-    setNewScenarioSkill(newScenarioSkill);
+    setBankStart(start);
     setViewState(next);
   };
   const onCoWritingChange = useCallback((open: boolean) => void (coWritingOpen.current = open), []);
   const tab = "tab" in view ? view.tab : null;
-  const openInterview = useOpenInterview(interviews, "interviewId" in view ? view.interviewId : null);
+  const atQuestion = "interviewId" in view ? (view.atQuestion ?? null) : null;
+  const openInterview = useOpenInterview(interviews, "interviewId" in view ? view.interviewId : null, atQuestion);
   const ready = openInterview?.status === "ready" ? openInterview : null;
   const [accessRequests, setAccessRequests] = useState(0); // each one opens the Access Token panel
-  const [newScenarioSkill, setNewScenarioSkill] = useState<string | null>(null); // a Gap's skill, for a new Scenario
+  const [bankStart, setBankStart] = useState<BankStart | null>(null);
   const [gaps, setGaps] = useState<SkillGaps>([]);
   const [accessActive, setAccessActive] = useState(false);
   const [expiredReports, setExpiredReports] = useState(0); // each one tells the Access chip the token has expired
   const reportTokenExpired = () => setExpiredReports((n) => n + 1);
   const writing = useQuestionWriting(interviews, reportTokenExpired);
+  const gateway = useModelGateway();
+  /** Co-writing from a Gap's Question (#13): re-matched once the Scenario is saved, then shown again with its Matches. */
+  const fromGap = (interviewId: string, question: Question): CoWriteStart => ({
+    seed: { skill: question.skill, gap: { question: question.text } },
+    fromGap: {
+      rematch: (newScenarioId) => rematchAfterSaving(gateway, vault, { interviewId, questionId: question.id, newScenarioId }),
+      onBack: () => setView({ interviewId, atQuestion: question.id }),
+    },
+  });
 
   // Gaps by skill, for the Interviews tab's Gaps card and the Scenario Bank's "Not covered yet": read afresh from the
   // Interviews' saved Gaps each time a tab opens.
@@ -144,7 +160,14 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
             accessActive={accessActive}
             onWrite={(batch) => writing.write(ready.interview.id, batch)}
             onOpenScenarioBank={() => setView({ tab: "scenario-bank" })}
-            onWriteScenario={(skill) => setView({ tab: "scenario-bank" }, skill ?? "")}
+            dealtOnOpen={atQuestion}
+            onWriteScenario={(question) =>
+              setView(
+                { tab: "scenario-bank" },
+                // Co-writing needs an active Access Token; without one, the hand-written form.
+                accessActive ? { coWrite: fromGap(ready.interview.id, question) } : { form: question.skill ?? "" },
+              )
+            }
           />
         )}
         {tab && (
@@ -170,7 +193,8 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
               <ScenarioBank
                 vault={vault}
                 gapSkills={gaps.map((g) => g.skill).filter((s) => s !== NO_SKILL)}
-                startNew={newScenarioSkill}
+                startNew={bankStart && "form" in bankStart ? bankStart.form : null}
+                startCoWriting={bankStart && "coWrite" in bankStart ? bankStart.coWrite : null}
                 access={{ active: accessActive, onNeedToken: () => setAccessRequests((n) => n + 1), onTokenExpired: reportTokenExpired }}
                 onCoWritingChange={onCoWritingChange}
               />

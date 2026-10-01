@@ -10,6 +10,8 @@ export const matchResultSchema = z.object({
   matches: z.array(z.object({ scenarioId: z.string(), score: z.number(), reason: z.string() })),
   /** For a Gap: the kind of Scenario that would answer it. */
   suggestion: z.string().optional(),
+  /** For a Gap: the best score found, below the threshold (#13). Absent on Gaps saved before it was recorded. */
+  bestScore: z.number().optional(),
   matchedAt: z.string(),
   /** Of the Scenarios matched against, so the screen can tell when they've changed since. */
   scenariosFingerprint: z.string(),

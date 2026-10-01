@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { CoWriting } from "../cowriting/CoWriting";
+import { CoWriting, type FromGap } from "../cowriting/CoWriting";
+import type { Seed } from "../cowriting/coWriter";
 import { useCancellableEffect } from "../hooks";
 import type { UnlockedVault } from "../vault/vault";
 import { isDemo, REMOVE_DEMO_FAILED, scenarioBank, type SavedScenario } from "./scenarioBank";
@@ -13,6 +14,8 @@ import { SkillsOverview } from "./SkillsOverview";
 
 type Pane = { mode: "read" | "edit"; id: string } | { mode: "choose" | "new" | "co-write" } | { mode: "none" };
 type Loaded = { scenarios: SavedScenario[]; unreadable: number };
+/** What a co-writing chat starts from: a skill not covered yet, or a Gap's Question in an Interview (#13). */
+export type CoWriteStart = { seed: Seed; fromGap?: FromGap };
 
 type Props = {
   vault: UnlockedVault;
@@ -21,6 +24,8 @@ type Props = {
   /** A skill to start a new Scenario with (from a Gap), or null. The bank mounts afresh each time its tab opens,
    * so this is read once, as it opens. */
   startNew?: string | null;
+  /** A co-writing chat to start with, e.g. from a Gap (#13); read once, as the bank opens. */
+  startCoWriting?: CoWriteStart | null;
   /** The Access Token: co-writing is offered only while one is active. */
   access: AccessHandlers;
   /** Tells the dashboard while a co-writing chat is open, so leaving it asks first (it lives in memory only). */
@@ -29,10 +34,12 @@ type Props = {
 
 /** The Candidate's Scenarios (C4 design): a skills overview on top, then a list on the left and the selected
  * Scenario in full on the right. On a phone the list and the Scenario are two screens. */
-export function ScenarioBank({ vault, gapSkills = [], startNew = null, access, onCoWritingChange }: Props) {
+export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWriting = null, access, onCoWritingChange }: Props) {
   const bank = useMemo(() => scenarioBank(vault), [vault]);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [pane, setPane] = useState<Pane>(startNew !== null ? { mode: "new" } : { mode: "none" });
+  const [pane, setPane] = useState<Pane>(startCoWriting ? { mode: "co-write" } : startNew !== null ? { mode: "new" } : { mode: "none" });
+  const [coWrite, setCoWrite] = useState<CoWriteStart>(startCoWriting ?? { seed: {} });
+  const [coWriteSaved, setCoWriteSaved] = useState(false); // from a Gap: saved, so leaving loses nothing
   const [query, setQuery] = useState("");
   const [skillFilter, setSkillFilter] = useState<string | null>(null); // a skillKey
   const [overviewShown, setOverviewShown] = useState(true);
@@ -56,12 +63,25 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, access, o
     setSkillFilter((key) => (key && result.scenarios.some((s) => hasSkill(s.skills, key)) ? key : null));
   }
 
-  useEffect(() => onCoWritingChange(pane.mode === "co-write"), [pane.mode, onCoWritingChange]);
+  useEffect(() => onCoWritingChange(pane.mode === "co-write" && !coWriteSaved), [pane.mode, coWriteSaved, onCoWritingChange]);
 
-  async function save(scenario: Scenario, existingId?: string) {
+  /** Starts co-writing, or the hand-written form without an Access Token, for a skill not covered yet. */
+  function writeFor(skill: string) {
+    if (access.active) {
+      setCoWrite({ seed: { skill } });
+      setPane({ mode: "co-write" });
+    } else {
+      setNewSkill(skill);
+      setPane({ mode: "new" });
+    }
+  }
+
+  /** Saves a Scenario and shows it, or (`stay`) leaves the page as it is, e.g. to show a Gap's re-match. */
+  async function save(scenario: Scenario, existingId?: string, { stay = false } = {}) {
     const id = await bank.save(scenario, existingId);
     await reload();
-    setPane({ mode: "read", id });
+    if (!stay) setPane({ mode: "read", id });
+    return id;
   }
 
   async function remove(scenario: SavedScenario) {
@@ -86,8 +106,20 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, access, o
   }
 
   if (pane.mode === "co-write") {
+    const { seed, fromGap } = coWrite;
     return (
-      <CoWriting onSave={(scenario) => save(scenario)} onDiscard={() => setPane({ mode: "none" })} access={access} />
+      <CoWriting
+        seed={seed}
+        fromGap={fromGap}
+        onSave={async (scenario) => {
+          const id = await save(scenario, undefined, { stay: Boolean(fromGap) }); // from a Gap, the page shows the re-match
+          if (fromGap) setCoWriteSaved(true);
+          return id;
+        }}
+        onDiscard={() => setPane({ mode: "none" })}
+        onShowSaved={(id) => setPane({ mode: "read", id })}
+        access={access}
+      />
     );
   }
 
@@ -116,10 +148,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, access, o
               gapSkills={gapSkills}
               filter={skillFilter}
               onFilter={setSkillFilter}
-              onWrite={(skill) => {
-                setNewSkill(skill);
-                setPane({ mode: "new" });
-              }}
+              onWrite={writeFor}
             />
           </>
         ) : (
@@ -211,7 +240,11 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, access, o
                 <strong>Write it myself</strong>
                 <span className="choice-detail">Fill in the form: Situation, Task, Action, Result.</span>
               </button>
-              <button type="button" className="choice" disabled={!access.active} onClick={() => setPane({ mode: "co-write" })}>
+              <button type="button" className="choice" disabled={!access.active}
+                onClick={() => {
+                  setCoWrite({ seed: {} });
+                  setPane({ mode: "co-write" });
+                }}>
                 <strong>Co-write with AI</strong>
                 <span className="choice-detail">Answer a few questions. The AI arranges your own words, and never adds any.</span>
               </button>
