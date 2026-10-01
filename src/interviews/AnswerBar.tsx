@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLatest } from "../hooks";
 import { countOf } from "../text";
 import { spokenTime, wordCount } from "./answers";
+import { VoiceButton } from "./VoiceButton";
 import type { Question } from "./interview";
 
 /** How long after the Candidate stops typing their Answer is saved. */
@@ -138,19 +139,29 @@ export function AnswerBar({ question, onSave, onSaveNow, using, feedback }: Prop
       <label htmlFor={`answer-${question.id}`} className="visually-hidden">
         Your answer
       </label>
-      <textarea
-        id={`answer-${question.id}`}
-        ref={box}
-        className="answer-box"
-        rows={2}
-        placeholder="Type your answer, as you'd say it"
-        value={text}
-        onChange={(e) => {
-          edited.current = true;
-          setText(e.target.value);
-          if (status !== "failed") setStatus("unsaved");
-        }}
-      />
+      <div className="answer-input">
+        <textarea
+          id={`answer-${question.id}`}
+          ref={box}
+          className="answer-box"
+          rows={2}
+          placeholder="Type your answer, as you'd say it"
+          value={text}
+          onChange={(e) => {
+            edited.current = true;
+            setText(e.target.value);
+            if (status !== "failed") setStatus("unsaved");
+          }}
+        />
+        {/* What was said goes after what's typed, and saves like typing (#33). */}
+        <VoiceButton
+          onTranscript={(spoken) => {
+            edited.current = true;
+            setText((typed) => (typed.trim() ? `${typed.trimEnd()} ${spoken}` : spoken));
+            if (status !== "failed") setStatus("unsaved");
+          }}
+        />
+      </div>
       <div className="answer-bar-foot">
         <span className="answer-length">{words > 0 ? `${countOf(words, "word")} · ≈ ${spokenTime(words)} spoken` : "Your answer is saved as you type"}</span>
         <span role="status" aria-label="Answer" className={`answer-status is-${status}`}>

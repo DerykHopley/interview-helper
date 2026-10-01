@@ -318,6 +318,22 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
 .answer-status.is-saved { color: var(--ok-soft); }
 .answer-status.is-failed { color: var(--gap); }
 
+/* ---------- Voice (#33) ---------- */
+.answer-input { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.answer-input .answer-box { flex: 1; min-width: 0; }
+.voice { display: contents; } /* its explanation and problems span the bar, above the box; the mic sits beside it */
+.voice-row { display: flex; align-items: center; gap: 8px; }
+.voice-mic { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.voice-mic:disabled { opacity: .45; cursor: default; }
+.voice-mic.is-recording { background: var(--danger); color: var(--on-table); }
+.voice-stop { display: block; width: 14px; height: 14px; border-radius: 3px; background: currentColor; }
+.voice-clock { font-size: 13px; color: var(--on-table-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.voice-explain { order: -1; flex-basis: 100%; padding: 10px 12px; border-radius: var(--radius-field); background: var(--card); color: var(--ink); font-size: 14px; }
+.voice-explain p { margin: 0 0 8px; }
+.voice-problem { order: -1; flex-basis: 100%; margin: 0; font-size: 13px; color: var(--gap); }
+@media (prefers-reduced-motion: no-preference) { .voice-mic.is-recording { animation: voice-pulse 1.2s ease-in-out infinite; } }
+@keyframes voice-pulse { 50% { box-shadow: 0 0 0 6px var(--danger-line); } }
+
 /* ---------- Feedback (#32) ---------- */
 .feedback { align-self: stretch; gap: 8px; }
 .feedback-stale { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--warn-bg); color: var(--ink); font-size: 14px; }
