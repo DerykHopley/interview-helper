@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { useCancellableEffect } from "../hooks";
-import { removeDemoQuestion, scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
+import { isDemo, REMOVE_DEMO_FAILED, scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import { wordFor } from "../text";
 import type { UnlockedVault } from "../vault/vault";
 
 type Counts = { all: number; demo: number };
-const countsOf = ({ scenarios }: { scenarios: SavedScenario[] }): Counts => ({ all: scenarios.length, demo: scenarios.filter((s) => s.origin === "demo").length });
+const countsOf = ({ scenarios }: { scenarios: SavedScenario[] }): Counts => ({ all: scenarios.length, demo: scenarios.filter(isDemo).length });
 
 /** D2's side column card for the Scenario Bank, with "N demo · Remove demo" while there are Demo Scenarios. */
 export function ScenarioBankCard({ vault, onOpen }: { vault: UnlockedVault; onOpen: () => void }) {
@@ -24,11 +24,9 @@ export function ScenarioBankCard({ vault, onOpen }: { vault: UnlockedVault; onOp
   );
 
   async function removeDemo(count: number) {
-    if (!confirm(removeDemoQuestion(count))) return;
     setFailure(false);
     try {
-      await bank.removeDemo();
-      setCounts(countsOf(await bank.list()));
+      if (await bank.removeDemo(count)) setCounts(countsOf(await bank.list()));
     } catch {
       setFailure(true);
     }
@@ -54,7 +52,7 @@ export function ScenarioBankCard({ vault, onOpen }: { vault: UnlockedVault; onOp
       )}
       {failure && (
         <p role="alert" className="notice-warn">
-          Couldn't remove the demo Scenarios. Try again.
+          {REMOVE_DEMO_FAILED}
         </p>
       )}
       <button type="button" className="button-secondary" onClick={onOpen}>

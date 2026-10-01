@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import type { UnlockedVault } from "../vault/vault";
-import { removeDemoQuestion, scenarioBank, type SavedScenario } from "./scenarioBank";
+import { isDemo, REMOVE_DEMO_FAILED, scenarioBank, type SavedScenario } from "./scenarioBank";
 import { ScenarioForm } from "./ScenarioForm";
 import { OriginBadge, ScenarioReader, SkillTags } from "./ScenarioReader";
 import type { Scenario } from "./scenarioFormat";
@@ -68,13 +68,12 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) 
   }
 
   async function removeDemo(count: number) {
-    if (!confirm(removeDemoQuestion(count))) return;
     try {
-      await bank.removeDemo();
+      if (!(await bank.removeDemo(count))) return;
       await reload();
       setPane({ mode: "none" });
     } catch {
-      setFailure("Couldn't remove the demo Scenarios. Try again.");
+      setFailure(REMOVE_DEMO_FAILED);
     }
   }
 
@@ -85,7 +84,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) 
   const shown = scenarios.filter((scenario) => (!skillFilter || hasSkill(scenario.skills, skillFilter)) && (!search || matchesSearch(scenario)));
   const selected = pane.mode === "read" || pane.mode === "edit" ? scenarios.find((s) => s.id === pane.id) : undefined;
   const filterName = skillCounts(scenarios).find((c) => c.key === skillFilter)?.skill;
-  const demoCount = scenarios.filter((s) => s.origin === "demo").length;
+  const demoCount = scenarios.filter(isDemo).length;
 
   return (
     <div className={`bank${pane.mode === "none" ? "" : " has-pane"}`}>

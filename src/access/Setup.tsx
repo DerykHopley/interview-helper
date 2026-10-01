@@ -10,17 +10,25 @@ type Step = (typeof STEPS)[number];
 
 /** First-visit setup, the A2 checklist: Access Token → Unlock Key → how to start. The Access Token is held here, in
  * memory, until the Vault exists to keep it. */
-export function Setup({ onComplete }: { onComplete: (unlockKey: string, accessToken: string | null, pack: Pack | null) => Promise<void> }) {
+/** What setup collected: the new Unlock Key, the Access Token if one was entered, and the Pack to start from, if any. */
+export type SetupChoices = { unlockKey: string; accessToken: string | null; pack: Pack | null };
+
+export function Setup({ onComplete }: { onComplete: (choices: SetupChoices) => Promise<void> }) {
   const [step, setStep] = useState<Step>("token");
   const [token, setToken] = useState<{ value: string; active: Active } | null>(null);
   const [unlockKey] = useState(generateUnlockKey);
   const [starting, setStarting] = useState(false);
+  const [failed, setFailed] = useState(false);
   const stateOf = (s: Step) => (STEPS.indexOf(s) < STEPS.indexOf(step) ? "done" : s === step ? "current" : "upcoming");
 
   /** Creates the Vault, then opens the app: on a new Interview from the Pack, if one was chosen. */
   async function start(pack: Pack | null) {
-    setStarting(true); // creating the Vault twice would give it two different keys
-    await onComplete(unlockKey, token?.value ?? null, pack);
+    setStarting(true); // creating the Vault twice would give it two different keys, so it isn't offered again
+    try {
+      await onComplete({ unlockKey, accessToken: token?.value ?? null, pack });
+    } catch {
+      setFailed(true); // storage failed part-way
+    }
   }
 
   return (
@@ -49,6 +57,11 @@ export function Setup({ onComplete }: { onComplete: (unlockKey: string, accessTo
             Your browser may ask to let this site keep its data. Choose Allow: otherwise it can delete your Scenarios when
             space runs low, or after 7 days away (Safari).
           </p>
+          {failed && (
+            <p role="alert" className="notice-warn">
+              Setup couldn't finish. Reload the page: if it asks for your Unlock Key, enter the one you saved.
+            </p>
+          )}
           <button type="button" className="choice" disabled={starting} onClick={() => void start(null)}>
             <strong>Start with my own Scenarios</strong>
             <span className="choice-detail">Write your first Scenario, by hand or with help.</span>

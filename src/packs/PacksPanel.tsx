@@ -2,7 +2,8 @@ import { useId, useState, type DragEvent } from "react";
 import { ImportPreview } from "../backup/ImportPreview";
 import { countOf } from "../text";
 import type { UnlockedVault } from "../vault/vault";
-import { addPack, planPack, type PackPlan } from "./choosePack";
+import { addPack, planPack, type PackPlan } from "./addPack";
+import type { Scenario } from "../scenarios/scenarioFormat";
 import { readPack, type Pack } from "./packFormat";
 import { SHIPPED_PACKS } from "./shippedPacks";
 
@@ -17,15 +18,25 @@ export function PacksPanel({ vault, onAdded }: { vault: UnlockedVault; onAdded: 
 
   async function choose(pack: Pack) {
     setProblem(null);
-    setChosen({ pack, plan: await planPack(pack, vault) });
+    try {
+      setChosen({ pack, plan: await planPack(pack, vault) });
+    } catch {
+      setProblem("Couldn't read your Scenario Bank to preview this Pack. Try again."); // the Vault locked, or storage failed
+    }
   }
 
   async function importFile(file: File | undefined) {
     if (!file) return;
     setChosen(null);
-    const reading = readPack(await file.text());
+    let content: string;
+    try {
+      content = await file.text();
+    } catch {
+      return setProblem("Couldn't read that file. Try again.");
+    }
+    const reading = readPack(content);
     if (reading.ok) await choose(reading.pack);
-    else setProblem(reading.reason);
+    else setProblem(`${reading.reason} Nothing was changed.`);
   }
 
   function drop(event: DragEvent) {
@@ -50,7 +61,7 @@ export function PacksPanel({ vault, onAdded }: { vault: UnlockedVault; onAdded: 
           onConfirm={async () => onAdded(await addPack(chosen.pack, vault))}
           onCancel={() => setChosen(null)}
         >
-          <PackContents pack={chosen.pack} />
+          <PackContents pack={chosen.pack} skipped={chosen.plan.skipped} />
         </ImportPreview>
       ) : (
         <>
@@ -82,7 +93,7 @@ export function PacksPanel({ vault, onAdded }: { vault: UnlockedVault; onAdded: 
           </label>
           {problem && (
             <p role="alert" className="notice-warn">
-              {problem} Nothing was changed.
+              {problem}
             </p>
           )}
         </>
@@ -93,10 +104,10 @@ export function PacksPanel({ vault, onAdded }: { vault: UnlockedVault; onAdded: 
 
 function summaryOf({ pack, plan }: Chosen) {
   const adds = `Adds 1 Interview with ${countOf(pack.questions.length, "Question")}, and ${countOf(plan.newScenarios.length, "Demo Scenario")}.`;
-  return plan.skipped > 0 ? `${adds} ${plan.skipped} ${plan.skipped === 1 ? "is" : "are"} already in your Scenario Bank, so ${plan.skipped === 1 ? "it's" : "they're"} skipped.` : adds;
+  return plan.skipped.length > 0 ? `${adds} Skips ${countOf(plan.skipped.length, "Example Scenario")} already in your Scenario Bank.` : adds;
 }
 
-function PackContents({ pack }: { pack: Pack }) {
+function PackContents({ pack, skipped }: { pack: Pack; skipped: Scenario[] }) {
   return (
     <>
       <h4 className="import-preview-title">{pack.name}</h4>
@@ -105,7 +116,7 @@ function PackContents({ pack }: { pack: Pack }) {
         {pack.jobSpec ? "Has a Job Spec, so you can ask for more Questions." : "No Job Spec: add more Questions by typing them."}
       </p>
       <p className="label-caps">Questions</p>
-      <ol className="pack-questions">
+      <ol className="pack-questions" aria-label="Questions">
         {pack.questions.map((q, i) => (
           <li key={i}>
             {q.text} <span className="skill-tag">{q.skill}</span>
@@ -113,9 +124,12 @@ function PackContents({ pack }: { pack: Pack }) {
         ))}
       </ol>
       <p className="label-caps">Example Scenarios</p>
-      <ul className="pack-examples">
+      <ul className="pack-examples" aria-label="Example Scenarios">
         {pack.exampleScenarios.map((s, i) => (
-          <li key={i}>{s.title}</li>
+          <li key={i} className={skipped.includes(s) ? "is-skipped" : undefined}>
+            {s.title}
+            {skipped.includes(s) && " · already here"}
+          </li>
         ))}
       </ul>
       <p className="form-hint">

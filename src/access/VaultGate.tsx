@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useVault } from "../vault/useVault";
 import { Dashboard } from "../dashboard/Dashboard";
-import { addPack } from "../packs/choosePack";
+import { addPack } from "../packs/addPack";
 import { dropAccessTokenFromMemory, keptAccessToken } from "./keptAccessToken";
 import { Setup } from "./Setup";
 import { Unlock } from "./Unlock";
@@ -27,7 +27,7 @@ export function VaultGate() {
       )}
       {state.status === "new" && (
         <Setup
-          onComplete={(unlockKey, accessToken, pack) =>
+          onComplete={({ unlockKey, accessToken, pack }) =>
             create(unlockKey, async (unlocked) => {
               if (accessToken) await keptAccessToken(unlocked).keep(accessToken);
               if (pack) setStartInterviewId(await addPack(pack, unlocked));

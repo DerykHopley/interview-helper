@@ -43,6 +43,7 @@ const WRITE_PROBLEMS: Record<WriteProblem, { text: string; needsToken?: boolean 
   "cut-off": { text: SHARED_PROBLEM_TEXT["cut-off"] },
   failed: { text: "Your Questions couldn't be written this time. Try again." },
   "not-saved": { text: "Couldn't save the new Questions. Try again." },
+  "no-job-spec": { text: "This Interview has no Job Spec to write Questions from. Type your own instead." },
 };
 
 

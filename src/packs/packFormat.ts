@@ -27,7 +27,7 @@
 // A Pack comes from someone else, so all of it is untrusted: it's checked here, and only ever shown as plain text.
 import { parse } from "yaml";
 import { z } from "zod";
-import { parseScenario, SECTIONS, type Scenario } from "../scenarios/scenarioFormat";
+import { parseScenario, SECTIONS, splitHeader, type Scenario } from "../scenarios/scenarioFormat";
 
 export type Pack = {
   name: string;
@@ -57,19 +57,19 @@ const headerSchema = z.object({
 /** Reads a Pack file, or says why it can't be used. */
 export function readPack(file: string): PackReading {
   if (new TextEncoder().encode(file).length > MAX_BYTES) return rejected(`it's larger than ${MAX_BYTES / 1000} KB`);
-  const match = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(file.replace(/\r\n/g, "\n"));
-  if (!match) return { ok: false, reason: NOT_READABLE };
+  const split = splitHeader(file);
+  if (!split) return { ok: false, reason: NOT_READABLE };
 
   let raw: unknown;
   try {
-    raw = parse(match[1]);
+    raw = parse(split.header);
   } catch {
     return rejected("its header isn't valid YAML");
   }
   const header = headerSchema.safeParse(raw);
   if (!header.success) return rejected(headerProblem(header.error.issues[0]));
 
-  const [before, ...blocks] = match[2].split(MARKER);
+  const [before, ...blocks] = split.body.split(MARKER);
   if (before.trim()) return rejected("only Example Scenarios, each under a “# Example Scenario” line, can follow the header");
   if (blocks.length === 0) return rejected("it has no Example Scenarios");
   const exampleScenarios: Scenario[] = [];
@@ -93,19 +93,26 @@ function headerProblem(issue: z.core.$ZodIssue): string {
   return `its header's ${issue.path.join(".")} isn't valid`;
 }
 
-/** One Example Scenario, as a Demo Scenario, or what's wrong with it ("has no Result"). */
+/** One Example Scenario, as a Demo Scenario, or what's wrong with it ("has no Result section"). */
 function readExample(block: string): Scenario | string {
+  const split = splitHeader(block);
+  if (!split) return "doesn't start with a YAML header between --- lines";
+  let header: unknown;
+  try {
+    header = parse(split.header);
+  } catch {
+    return "has a header that isn't valid YAML";
+  }
+  // Where a Scenario came from is the app's to say: a Pack's are always Demo Scenarios (#7).
+  if (header && typeof header === "object" && "origin" in header) return "gives an origin. Leave it out: every Example Scenario becomes a Demo Scenario";
   try {
     return parseScenario(block, { origin: "demo" });
   } catch (e) {
-    if (e instanceof z.ZodError) {
-      const issue = e.issues[0];
-      const key = String(issue.path[0]);
-      const heading = SECTIONS.find(([field]) => field === key)?.[1];
-      const missing = issue.code === "too_small" || (issue.code === "invalid_type" && issue.input === undefined);
-      return heading ? `has no ${heading} section` : `${missing ? "has no" : "has an invalid"} ${key} in its header`;
-    }
-    if (e instanceof Error && e.name === "YAMLParseError") return "has a header that isn't valid YAML";
-    return "doesn't start with a YAML header between --- lines";
+    if (!(e instanceof z.ZodError)) throw e;
+    const issue = e.issues[0];
+    const key = String(issue.path[0]);
+    const heading = SECTIONS.find(([field]) => field === key)?.[1];
+    const missing = issue.code === "too_small" || (issue.code === "invalid_type" && issue.input === undefined);
+    return heading ? `has no ${heading} section` : `${missing ? "has no" : "has an invalid"} ${key} in its header`;
   }
 }

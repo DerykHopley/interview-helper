@@ -60,20 +60,27 @@ export function toMarkdown(scenario: Scenario): string {
   return `---\n${stringify(header)}---\n\n${body.join("\n")}`;
 }
 
-/** Throws when the text isn't a valid Scenario. Windows line endings are accepted. `fixed` overrides header fields,
- * e.g. a Pack's Example Scenario always becomes a Demo Scenario. */
-export function parseScenario(markdown: string, fixed: Partial<Scenario> = {}): Scenario {
-  const match = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(markdown.replace(/\r\n/g, "\n"));
-  if (!match) throw new Error("A Scenario starts with a YAML header between --- lines");
+/** Splits text that starts with a YAML header between --- lines into that header and the rest, or null. Windows line
+ * endings are accepted. Scenarios and Packs both start this way. */
+export function splitHeader(text: string): { header: string; body: string } | null {
+  const match = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(text.replace(/\r\n/g, "\n"));
+  return match && { header: match[1], body: match[2] };
+}
+
+/** Throws when the text isn't a valid Scenario. `overrides` replaces header fields, e.g. a Pack's Example Scenario
+ * always becomes a Demo Scenario. */
+export function parseScenario(markdown: string, overrides: Partial<Scenario> = {}): Scenario {
+  const split = splitHeader(markdown);
+  if (!split) throw new Error("A Scenario starts with a YAML header between --- lines");
   const lines: Partial<Record<SectionField, string[]>> = {};
   let current: SectionField | null = null;
-  for (const line of match[2].split("\n")) {
+  for (const line of split.body.split("\n")) {
     const heading = HEADING.exec(line);
     if (heading) current = SECTIONS.find(([, h]) => h === heading[1])![0];
     else if (current) (lines[current] ??= []).push(line);
   }
   const sections = Object.fromEntries(SECTIONS.map(([field]) => [field, unescapeHeadings((lines[field] ?? []).join("\n"))]));
-  return scenarioSchema.parse({ ...(parse(match[1]) as object), ...fixed, ...sections });
+  return scenarioSchema.parse({ ...(parse(split.header) as object), ...overrides, ...sections });
 }
 
 const escapeHeadings = (section: string) => section.replace(/^(\\*)##/gm, "\\$1##");

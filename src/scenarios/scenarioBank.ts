@@ -31,14 +31,18 @@ export function scenarioBank(vault: UnlockedVault) {
       return id;
     },
     delete: (id: string) => vault.delete(id),
-    /** Deletes every Demo Scenario, edited or not. The Candidate's own stay. */
-    async removeDemo() {
+    /** Asks first, then deletes every Demo Scenario, edited or not; the Candidate's own stay. Resolves to whether they
+     * were removed. Used by the Scenario Bank's demo bar and the dashboard's card. */
+    async removeDemo(count: number) {
+      if (!confirm(`Remove ${countOf(count, "demo Scenario")}? Your own Scenarios stay, and so do your Interviews.`)) return false;
       const { scenarios } = await list();
-      await Promise.all(scenarios.filter((s) => s.origin === "demo").map((s) => vault.delete(s.id)));
+      await Promise.all(scenarios.filter(isDemo).map((s) => vault.delete(s.id)));
+      return true;
     },
   };
 }
 
-/** What's asked before removing all Demo Scenarios, from the Scenario Bank's demo bar or the dashboard's card. */
-export const removeDemoQuestion = (n: number) =>
-  `Remove ${countOf(n, "demo Scenario")}? Your own Scenarios stay, and so do your Interviews.`;
+/** A copy of a Pack's Example Scenario (CONTEXT.md "Demo Scenario"). */
+export const isDemo = (scenario: Pick<Scenario, "origin">) => scenario.origin === "demo";
+
+export const REMOVE_DEMO_FAILED = "Couldn't remove the demo Scenarios. Try again.";

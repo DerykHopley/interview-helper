@@ -53,12 +53,32 @@ const packText = ({ header = HEADER, examples = [example(TURNAROUND), example(SC
 
 const user = () => userEvent.setup();
 
+/** One Scenario of the Candidate's own. */
+const OWN = {
+  Title: "Rescued the failing checkout migration",
+  "Your role": "Tech lead",
+  Situation: "The checkout rewrite was three months behind.",
+  Task: "Get it live without another big slip.",
+  Action: "Cut the scope to a staged rollout.",
+  Result: "It shipped three weeks late instead of three months.",
+  Skills: "delivery under pressure",
+};
+const OWN_LISTED = "Rescued the failing checkout migrationdelivery under pressureWritten by hand";
+
 /** Chooses a file in the Backup tab's Packs panel (the tab must be open). */
 async function importPack(text: string, name = "team-lead.pack.md") {
   await user().upload(screen.getByLabelText("Import a Pack file"), new File([text], name, { type: "text/markdown" }));
 }
 
 const preview = () => screen.findByRole("region", { name: "Pack preview" });
+
+/** Imports a Pack file from the Backup tab and adds it, which opens its Interview. Returns how many Questions it has. */
+async function addTestPack(text = packText(), questions = 2) {
+  await openTab("Backup");
+  await importPack(text);
+  await user().click(within(await preview()).getByRole("button", { name: "Add this Pack" }));
+  await screen.findByRole("article", { name: `Question 1 of ${questions}` });
+}
 
 /** Sets up and opens the Backup tab. */
 async function setUpAndOpenBackup() {
@@ -111,18 +131,6 @@ describe("importing a Pack file", () => {
     expect(await listed()).toEqual([`${SCOPE_CALL}people leadershipDemo`, `${TURNAROUND}people leadershipDemo`]);
   });
 
-  it("makes every copied Scenario a Demo Scenario, whatever origin the file gives", async () => {
-    renderApp();
-    await setUpAndOpenBackup();
-    await importPack(packText({ examples: [example(TURNAROUND, "origin: hand-written\n")] }));
-    await user().click(within(await preview()).getByRole("button", { name: "Add this Pack" }));
-    await screen.findByRole("article", { name: "Question 1 of 2" });
-
-    await user().click(screen.getByRole("button", { name: "← Interviews" }));
-    await openTab("Scenario Bank");
-    expect(await listed()).toEqual([`${TURNAROUND}people leadershipDemo`]);
-  });
-
   const withoutQuestionSkill = HEADER.replace("    skill: prioritisation\n", "");
   it.each([
     ["isn't a Pack at all", "Just some notes about my week.", "That isn't a file this app can read."],
@@ -140,6 +148,11 @@ describe("importing a Pack file", () => {
       "has text outside an Example Scenario",
       packText({ examples: ["## Example Scenario\n\nA heading one level too deep.\n"] }),
       "This Pack can't be used: only Example Scenarios, each under a “# Example Scenario” line, can follow the header.",
+    ],
+    [
+      "gives an Example Scenario an origin",
+      packText({ examples: [example(TURNAROUND, "origin: hand-written\n")] }),
+      "This Pack can't be used: Example Scenario 1 gives an origin. Leave it out: every Example Scenario becomes a Demo Scenario.",
     ],
     ["is too large", packText({ examples: [example(TURNAROUND + "x".repeat(300_000))] }), "This Pack can't be used: it's larger than 200 KB."],
   ])("rejects a file that %s, with the reason, and changes nothing", async (_, text, reason) => {
@@ -168,16 +181,16 @@ describe("importing a Pack file", () => {
 
   it("choosing the same Pack again makes a new Interview, but skips Example Scenarios already here as Demo Scenarios", async () => {
     renderApp();
-    await setUpAndOpenBackup();
-    await importPack(packText({ examples: [example(TURNAROUND)] }));
-    await user().click(within(await preview()).getByRole("button", { name: "Add this Pack" }));
-    await screen.findByRole("article", { name: "Question 1 of 2" });
+    await setUpWithoutToken();
+    await addTestPack(packText({ examples: [example(TURNAROUND)] }));
     await user().click(screen.getByRole("button", { name: "← Interviews" }));
 
     await openTab("Backup");
     await importPack(packText());
     const shown = within(await preview());
-    expect(shown.getByText("Adds 1 Interview with 2 Questions, and 1 Demo Scenario. 1 is already in your Scenario Bank, so it's skipped.")).toBeInTheDocument();
+    expect(shown.getByText("Adds 1 Interview with 2 Questions, and 1 Demo Scenario. Skips 1 Example Scenario already in your Scenario Bank.")).toBeInTheDocument();
+    const examples = within(shown.getByRole("list", { name: "Example Scenarios" })).getAllByRole("listitem").map((li) => li.textContent);
+    expect(examples).toEqual([`${TURNAROUND} · already here`, SCOPE_CALL]);
     await user().click(shown.getByRole("button", { name: "Add this Pack" }));
     await screen.findByRole("article", { name: "Question 1 of 2" });
 
@@ -206,15 +219,7 @@ describe("importing a Pack file", () => {
     await importPack(packText());
     await user().click(within(await preview()).getByRole("button", { name: "Cancel" }));
     await openTab("Scenario Bank");
-    await createScenario({
-      Title: "Rescued the failing checkout migration",
-      "Your role": "Tech lead",
-      Situation: "The checkout rewrite was three months behind.",
-      Task: "Get it live without another big slip.",
-      Action: "Cut the scope to a staged rollout.",
-      Result: "It shipped three weeks late instead of three months.",
-      Skills: "delivery under pressure",
-    });
+    await createScenario(OWN);
 
     await openTab("Interviews");
     await user().click(await screen.findByRole("button", { name: "+ New Interview" }));
@@ -238,10 +243,7 @@ describe("a Pack's Interview", () => {
     renderApp({ gateway });
     await enterAccessToken(TOKEN);
     await finishSetup();
-    await openTab("Backup");
-    await importPack(packText());
-    await user().click(within(await preview()).getByRole("button", { name: "Add this Pack" }));
-    await screen.findByRole("article", { name: "Question 1 of 2" });
+    await addTestPack();
 
     await user().click(screen.getByRole("button", { name: "Next Question" }));
     await user().click(screen.getByRole("button", { name: "Next Question" }));
@@ -253,10 +255,7 @@ describe("a Pack's Interview", () => {
     renderApp({ gateway });
     await enterAccessToken(TOKEN);
     await finishSetup();
-    await openTab("Backup");
-    await importPack(packText({ header: HEADER.replace("  jobSpec: Lead a team of six building warehouse tools.\n", "") }));
-    await user().click(within(await preview()).getByRole("button", { name: "Add this Pack" }));
-    await screen.findByRole("article", { name: "Question 1 of 2" });
+    await addTestPack(packText({ header: HEADER.replace("  jobSpec: Lead a team of six building warehouse tools.\n", "") }));
 
     await user().click(screen.getByRole("button", { name: "Next Question" }));
     await user().click(screen.getByRole("button", { name: "Next Question" }));
@@ -302,19 +301,8 @@ describe("Demo Scenarios", () => {
   async function ownAndDemo() {
     await setUpWithoutToken();
     await openTab("Scenario Bank");
-    await createScenario({
-      Title: "Rescued the failing checkout migration",
-      "Your role": "Tech lead",
-      Situation: "The checkout rewrite was three months behind.",
-      Task: "Get it live without another big slip.",
-      Action: "Cut the scope to a staged rollout.",
-      Result: "It shipped three weeks late instead of three months.",
-      Skills: "delivery under pressure",
-    });
-    await openTab("Backup");
-    await importPack(packText());
-    await user().click(within(await preview()).getByRole("button", { name: "Add this Pack" }));
-    await screen.findByRole("article", { name: "Question 1 of 2" });
+    await createScenario(OWN);
+    await addTestPack();
     await user().click(screen.getByRole("button", { name: "← Interviews" }));
   }
 
@@ -341,7 +329,7 @@ describe("Demo Scenarios", () => {
     await user().click(screen.getByRole("button", { name: "Remove all demo" }));
 
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Remove 2 demo Scenarios?"));
-    await waitFor(async () => expect(await listed()).toEqual(["Rescued the failing checkout migrationdelivery under pressureWritten by hand"]));
+    await waitFor(async () => expect(await listed()).toEqual([OWN_LISTED]));
     expect(screen.queryByText(/demo Scenario/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove all demo" })).not.toBeInTheDocument();
     confirm.mockRestore();
@@ -358,7 +346,7 @@ describe("Demo Scenarios", () => {
     await waitFor(() => expect(card.queryByRole("button", { name: "Remove demo" })).not.toBeInTheDocument());
     expect(card.getByText("1")).toBeInTheDocument();
     await openTab("Scenario Bank");
-    expect(await listed()).toEqual(["Rescued the failing checkout migrationdelivery under pressureWritten by hand"]);
+    expect(await listed()).toEqual([OWN_LISTED]);
     confirm.mockRestore();
   });
 

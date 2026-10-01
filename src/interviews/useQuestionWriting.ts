@@ -5,7 +5,7 @@ import type { InterviewStore } from "./interviewStore";
 import { writeQuestions, type Batch } from "./questionGenerator";
 
 /** Why Questions couldn't be written or kept just now. */
-export type WriteProblem = CallProblem | "not-saved";
+export type WriteProblem = CallProblem | "not-saved" | "no-job-spec";
 
 /** Where writing one Interview's Questions is: under way, or why it last failed. */
 export type Writing = { active: boolean; problem: WriteProblem | null };
@@ -24,7 +24,7 @@ export function useQuestionWriting(store: InterviewStore, onTokenExpired: () => 
     try {
       const interview = await store.get(id);
       if (!interview) return set(id, { active: false, problem: "not-saved" });
-      if (!interview.jobSpec) return set(id, { active: false, problem: "failed" }); // a Pack's, without one: not offered
+      if (!interview.jobSpec) return set(id, { active: false, problem: "no-job-spec" }); // a Pack's, without one; not offered
       added = await writeQuestions(gateway, { jobSpec: interview.jobSpec, existing: interview.questions.map((q) => q.text), batch });
     } catch (e) {
       const problem = callProblemOf(e); // including a reply that fails its schema
