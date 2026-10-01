@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCancellableEffect } from "../hooks";
+import { removeDemoScenarios } from "../scenarios/removeScenarios";
 import { isDemo, REMOVE_DEMO_FAILED, scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import { wordFor } from "../text";
 import type { UnlockedVault } from "../vault/vault";
@@ -26,7 +27,7 @@ export function ScenarioBankCard({ vault, onOpen, onDemoRemoved = () => {} }: { 
   async function removeDemo(count: number) {
     setFailure(false);
     try {
-      if (!(await bank.removeDemo(count))) return;
+      if (!(await removeDemoScenarios(vault, count))) return;
       setCounts(countsOf(await bank.list()));
       onDemoRemoved(); // their picks were cleared, so the Interviews list beside the card is out of date
     } catch {

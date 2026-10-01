@@ -397,13 +397,15 @@ function DealtMatches({ question, matches, onNeedToken, onOpenScenarioBank, onWr
           onNeedToken={onNeedToken}
           onOpenScenarioBank={onOpenScenarioBank}
           onWriteScenario={onWriteScenario}
-          pickedScenarioId={question.pickedScenarioId}
-          onPick={(scenarioId) => {
-            matches.clearDroppedPick(question.id);
-            onPick(scenarioId);
+          picking={{
+            pickedScenarioId: question.pickedScenarioId,
+            onPick: (scenarioId) => {
+              matches.clearDroppedPick(question.id);
+              onPick(scenarioId);
+            },
+            usedFor,
+            droppedPick,
           }}
-          usedFor={usedFor}
-          droppedPick={droppedPick}
         />
       )}
     </>

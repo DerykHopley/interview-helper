@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CoWriting, type FromGap } from "../cowriting/CoWriting";
 import type { Seed } from "../cowriting/coWriter";
 import { useCancellableEffect } from "../hooks";
@@ -8,7 +8,8 @@ import { ScenarioForm } from "./ScenarioForm";
 import { OriginBadge, ScenarioReader, SkillTags } from "./ScenarioReader";
 import type { Scenario } from "./scenarioFormat";
 import { interviewStore, type SavedInterview } from "../interviews/interviewStore";
-import { picksOf } from "../interviews/picks";
+import { picksOf, questionList } from "../interviews/picks";
+import { deleteScenario, removeDemoScenarios } from "./removeScenarios";
 import type { AccessHandlers } from "../model-gateway/callProblems";
 import { countOf, unreadableNotice } from "../text";
 import { hasSkill, skillCounts } from "./skills";
@@ -64,6 +65,11 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
     [bank, interviews],
   );
   const picksOfScenario = (id: string) => picksOf(picksIn, id);
+  const open = useRef(false); // still on screen, for reads that finish later
+  useEffect(() => {
+    open.current = true;
+    return () => void (open.current = false);
+  }, []);
 
   /** Reloads the list after a change, dropping a skill filter that no Scenario matches any more. */
   async function reload() {
@@ -71,7 +77,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
     setLoaded(result);
     // "Picked in" follows in the background, so saving or deleting doesn't wait for it.
     interviews.list().then(
-      (result) => setPicksIn(result.interviews),
+      (result) => open.current && setPicksIn(result.interviews),
       () => {},
     );
     setSkillFilter((key) => (key && result.scenarios.some((s) => hasSkill(s.skills, key)) ? key : null));
@@ -99,11 +105,8 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
   }
 
   async function remove(scenario: SavedScenario) {
-    const picked = picksOfScenario(scenario.id).length;
-    const warning = picked > 0 ? ` It's the picked Scenario in ${countOf(picked, "Interview")}; those Questions will need a new pick.` : "";
-    if (!confirm(`Delete "${scenario.title}"? This can't be undone.${warning}`)) return;
     try {
-      await bank.delete(scenario.id);
+      if (!(await deleteScenario(vault, scenario))) return;
       await reload();
       setPane({ mode: "none" });
     } catch {
@@ -113,7 +116,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
 
   async function removeDemo(count: number) {
     try {
-      if (!(await bank.removeDemo(count))) return;
+      if (!(await removeDemoScenarios(vault, count))) return;
       await reload();
       setPane({ mode: "none" });
     } catch {
@@ -232,7 +235,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
                 <span className="bank-item-title">{scenario.title}</span>
                 <SkillTags skills={scenario.skills} />
                 <OriginBadge origin={scenario.origin} />
-                {picksOfScenario(scenario.id).length > 0 && <span className="bank-picked">picked in {picksOfScenario(scenario.id).length}</span>}
+                <PickedIn count={picksOfScenario(scenario.id).length} />
               </button>
             </li>
           ))}
@@ -288,7 +291,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
         {selected && pane.mode === "read" && (
           <ScenarioReader
             scenario={selected}
-            pickedIn={picksOfScenario(selected.id).map(({ interview, numbers }) => `${interview.role} (${numbers.map((n) => `Q${n}`).join(", ")})`)}
+            pickedIn={picksOfScenario(selected.id).map(({ interview, numbers }) => `${interview.role} (${questionList(numbers)})`)}
             actions={
               <div className="actions">
                 <button type="button" className="button-secondary" onClick={() => setPane({ mode: "edit", id: selected.id })}>
@@ -304,4 +307,9 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null, startCoWr
       </div>
     </div>
   );
+}
+
+/** "picked in N" on a list row: how many Interviews pick this Scenario (#11). */
+function PickedIn({ count }: { count: number }) {
+  return count > 0 ? <span className="bank-picked">picked in {count}</span> : null;
 }

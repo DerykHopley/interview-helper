@@ -222,8 +222,8 @@ textarea.field { resize: vertical; font-family: inherit; }
 .match-fan > :nth-child(1) { order: 2; z-index: 2; transform: translateY(-6px); }
 .match-fan > :nth-child(2) { order: 1; transform: rotate(-4deg); }
 .match-fan > :nth-child(3) { order: 3; transform: rotate(4deg); }
-.match-card { display: flex; flex-direction: column; gap: 6px; width: 220px; min-height: 200px; padding: 16px; border: 2px solid #4b5563; border-radius: 14px; background: var(--panel-dark); color: var(--on-table); box-shadow: 0 14px 30px var(--shadow-color); font: inherit; text-align: left; cursor: pointer; }
-.match-fan > li:first-child > .match-card:not(.is-picked) { border-color: var(--accent); }
+.match-card { display: flex; flex-direction: column; gap: 6px; width: 220px; min-height: 200px; padding: 16px; border: 2px solid var(--match-edge); border-radius: 14px; background: var(--panel-dark); color: var(--on-table); box-shadow: 0 14px 30px var(--shadow-color); font: inherit; text-align: left; cursor: pointer; }
+.match-fan > li:first-child > .match-card:not(.is-picked), .match-fan > .match-card.is-placeholder:first-child { border-color: var(--accent); }
 .match-card.is-picked { border-color: var(--ok); background: var(--picked-card); }
 .match-card:hover:not(.is-picked) { border-color: var(--on-table-muted); }
 .match-used { font-size: 13px; font-weight: 700; color: var(--accent); }

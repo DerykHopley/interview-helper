@@ -17,10 +17,12 @@ type Props = {
   onTokenExpired: () => void;
   /** A new Interview was saved; `generate` asks for its first Questions. */
   onCreated: (id: string, generate: boolean) => void;
+  /** Changes when the list should be read again, e.g. after Remove demo cleared picks beside it. */
+  refresh?: number;
 };
 
 /** The Interviews tab, the dashboard's home (D2): the Candidate's Interviews, and creating one. */
-export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, onCreated }: Props) {
+export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, onCreated, refresh = 0 }: Props) {
   const [interviews, setInterviews] = useState<SavedInterview[] | null>(null);
   const [unreadable, setUnreadable] = useState(0);
   const [creating, setCreating] = useState(false);
@@ -42,7 +44,7 @@ export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, on
         () => isCurrent() && setFailure("Couldn't open your Interviews. Lock the app and unlock it again."),
       );
     },
-    [store],
+    [store, refresh],
   );
 
   async function create(interview: Interview, generate: boolean) {

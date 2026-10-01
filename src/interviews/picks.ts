@@ -5,9 +5,16 @@ import type { InterviewStore } from "./interviewStore";
 
 export const pickedCount = (interview: Interview) => interview.questions.filter((q) => q.pickedScenarioId).length;
 
-/** The numbers (Q1 = 1) of the other Questions in the Interview this Scenario is picked for. */
-export const usedFor = (interview: Interview, scenarioId: string, exceptQuestionId: string) =>
-  interview.questions.flatMap((q, i) => (q.id !== exceptQuestionId && q.pickedScenarioId === scenarioId ? [i + 1] : []));
+/** The numbers (Q1 = 1) of the Questions in the Interview this Scenario is picked for, leaving out one if given. */
+function pickingNumbers(interview: Interview, scenarioId: string, exceptQuestionId?: string) {
+  return interview.questions.flatMap((q, i) => (q.id !== exceptQuestionId && q.pickedScenarioId === scenarioId ? [i + 1] : []));
+}
+
+/** The numbers of the other Questions in the Interview this Scenario is picked for, for "Already used for Q<n>". */
+export const usedFor = (interview: Interview, scenarioId: string, exceptQuestionId: string) => pickingNumbers(interview, scenarioId, exceptQuestionId);
+
+/** Question numbers as the Candidate reads them: "Q1, Q3". */
+export const questionList = (numbers: number[]) => numbers.map((n) => `Q${n}`).join(", ");
 
 /** A Question with new Matches: its pick is kept if it's still one of them, and cleared otherwise. */
 export function withMatchResult(question: Question, matchResult: MatchResult): Question {
@@ -18,7 +25,7 @@ export function withMatchResult(question: Question, matchResult: MatchResult): Q
 /** Where a Scenario is picked: each Interview it's picked in, with the Question numbers. */
 export function picksOf(interviews: (Interview & { id: string })[], scenarioId: string) {
   return interviews.flatMap((interview) => {
-    const numbers = interview.questions.flatMap((q, i) => (q.pickedScenarioId === scenarioId ? [i + 1] : []));
+    const numbers = pickingNumbers(interview, scenarioId);
     return numbers.length ? [{ interview, numbers }] : [];
   });
 }

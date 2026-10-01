@@ -17,7 +17,11 @@ const sentScenarios = (user: string) => JSON.parse(user.split("Scenarios:\n")[1]
 const scores =
   (byTitle: Record<string, number>): ReplyFor =>
   ({ user }) => ({ scores: sentScenarios(user).map(({ id, title }) => ({ id, score: byTitle[title] ?? 0 })) });
-const reasons: ReplyFor = ({ user }) => ({ reasons: sentScenarios(user).map(({ id, title }) => ({ id, reason: `Shows it in ${title}.` })) });
+/** A "match-reasons" reply: a reason per Scenario, or (with none sent) a Gap's suggestion. */
+const reasons: ReplyFor = ({ user }) => {
+  const sent = sentScenarios(user);
+  return sent.length ? { reasons: sent.map(({ id, title }) => ({ id, reason: `Shows it in ${title}.` })) } : { suggestion: "A time you led an incident response." };
+};
 
 const user = () => userEvent.setup();
 
@@ -42,7 +46,8 @@ async function deal() {
 }
 
 const card = (title: string) => within(screen.getByRole("list", { name: "Matches" })).getByRole("button", { name: new RegExp(title.replace(/[.']/g, ".")) });
-const progress = () => screen.getByText(/(Questions|picked)( ·|$)/, { selector: ".top-bar-progress" });
+/** The Interview header's progress line, e.g. "1/6 picked · 2 answered". */
+const progress = () => screen.getByText(/^(6 Questions|\d\/6 picked)( · .*)?$/);
 const next = () => user().click(screen.getByRole("button", { name: "Next Question" }));
 const previous = () => user().click(screen.getByRole("button", { name: "Previous Question" }));
 
@@ -133,7 +138,7 @@ describe("when the Matches change", () => {
     await openTab("Scenario Bank");
     await user().click(await screen.findByRole("button", { name: new RegExp(`^${HIRE}`) }));
     await user().click(screen.getByRole("button", { name: "Delete" }));
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("It's the picked Scenario in 1 Interview; those Questions will need a new pick."));
+    await waitFor(() => expect(confirm).toHaveBeenCalledWith(expect.stringContaining("It's the picked Scenario in 1 Interview; those Questions will need a new pick.")));
     await waitFor(() => expect(screen.queryByRole("button", { name: new RegExp(`^${HIRE}`) })).not.toBeInTheDocument(), { timeout: 3000 });
 
     await openTab("Interviews");
@@ -150,6 +155,21 @@ describe("when the Matches change", () => {
     await user().click(screen.getByRole("button", { name: "← Interviews" }));
     await user().click(await screen.findByRole("button", { name: "Remove demo" }));
     await waitFor(() => expect(within(screen.getByRole("row", { name: /Engineering Manager/ })).getByText("0/6")).toBeInTheDocument(), { timeout: 3000 });
+  });
+});
+
+describe("when a re-match finds a Gap", () => {
+  it("clears the pick, and says so on the Gap card", async () => {
+    await inThePackInterview([USUAL, {}]);
+    await deal();
+    await user().click(card(HIRE));
+    await waitFor(() => expect(card(HIRE)).toHaveAttribute("aria-pressed", "true"));
+
+    await user().click(screen.getByRole("button", { name: "More for this Question" }));
+    await user().click(await screen.findByRole("menuitem", { name: "Re-run matching" }));
+    await screen.findByRole("region", { name: "No Scenario fits this Question yet" });
+    await waitFor(() => expect(screen.getByRole("region", { name: "No Scenario fits this Question yet" })).toHaveTextContent(`Your pick, “${HIRE}”, isn't among the new Matches.`));
+    expect(progress()).toHaveTextContent(/^6 Questions · 1 Gap$/);
   });
 });
 
@@ -173,7 +193,7 @@ describe("where picks show", () => {
     await deal();
     await user().click(card(HIRE));
 
-    expect(await screen.findByText(HIRE, { selector: ".answer-using strong" })).toBeInTheDocument();
+    expect(await screen.findByText(/^Using/)).toHaveTextContent(`Using ${HIRE}`);
   });
 
   it("on the Interviews list, as a Picked column", async () => {

@@ -194,7 +194,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
             {tab === "interviews" ? (
               <div className="home-grid">
                 <InterviewsHome
-                  key={listVersion}
+                  refresh={listVersion}
                   store={interviews}
                   onOpen={(interviewId) => setView({ interviewId })}
                   accessActive={accessActive}

@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import type { Interview, MatchResult, Question } from "../interviews/interview";
+import { withMatchResult } from "../interviews/picks";
 import { useModelGateway } from "../model-gateway/context";
 import { callProblemOf } from "../model-gateway/callProblems";
 import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
 import { scenariosFingerprint } from "./findMatches";
 import type { MatchProblem, Staleness } from "./MatchesPanel";
-import { withMatchResult } from "../interviews/picks";
 import { findShippedMatches, shippedMatcher } from "./shippedMatching";
 
 /** Where one Question's Matches are on screen: dealt or not, being found, or why they couldn't be. */
@@ -53,11 +53,8 @@ export function useQuestionMatches(
       setScenarios(current);
       if (current.length === 0) return set(question.id, { problem: "no-scenarios" });
       const result = await findShippedMatches(gateway, question, current);
-      const { pickedScenarioId } = question;
-      if (pickedScenarioId && !withMatchResult(question, result).pickedScenarioId) {
-        set(question.id, { droppedPick: current.find((s) => s.id === pickedScenarioId)?.title ?? null });
-      }
-      await save(question.id, result);
+      const dropped = await save(question.id, result);
+      if (dropped) set(question.id, { droppedPick: current.find((s) => s.id === dropped)?.title ?? null });
     } catch (e) {
       const problem = callProblemOf(e); // including a reply that didn't cover every Scenario
       if (problem === "expired-token") onTokenExpired();
@@ -67,11 +64,24 @@ export function useQuestionMatches(
     }
   }
 
-  async function save(questionId: string, matchResult: MatchResult) {
+  /** Saves new Matches on the Question, keeping its pick if it's still one of them. Resolves to the pick it cleared,
+   * if any, once saved (from the latest saved Question, not the one on screen). */
+  async function save(questionId: string, matchResult: MatchResult): Promise<string | null> {
+    let dropped: string | null = null;
     try {
-      await update((interview) => ({ ...interview, questions: interview.questions.map((q) => (q.id === questionId ? withMatchResult(q, matchResult) : q)) }));
+      await update((interview) => ({
+        ...interview,
+        questions: interview.questions.map((q) => {
+          if (q.id !== questionId) return q;
+          const next = withMatchResult(q, matchResult);
+          dropped = q.pickedScenarioId && !next.pickedScenarioId ? q.pickedScenarioId : null;
+          return next;
+        }),
+      }));
+      return dropped;
     } catch {
       set(questionId, { problem: "not-saved" }); // the Vault locked meanwhile, or storage is full
+      return null;
     }
   }
 
