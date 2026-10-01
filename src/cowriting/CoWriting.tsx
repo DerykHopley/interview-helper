@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { callProblemOf, SHARED_PROBLEM_TEXT, type CallProblem } from "../model-gateway/callProblems";
+import { callProblemOf, SHARED_PROBLEM_TEXT, type AccessHandlers, type CallProblem } from "../model-gateway/callProblems";
 import { useModelGateway } from "../model-gateway/context";
 import { ScenarioForm } from "../scenarios/ScenarioForm";
 import type { Scenario } from "../scenarios/scenarioFormat";
@@ -17,15 +17,17 @@ const PROBLEMS: Record<CallProblem, { text: string; needsToken?: boolean }> = {
 type Props = {
   /** Saves the approved draft as a co-written Scenario. */
   onSave: (scenario: Scenario) => Promise<void>;
-  /** The draft was discarded: nothing is saved. */
+  /** The chat or its draft was discarded: nothing is saved. */
   onDiscard: () => void;
-  onNeedToken: () => void;
-  onTokenExpired: () => void;
+  access: AccessHandlers;
 };
+
+/** Asked before a chat is thrown away, here or by leaving it (the dashboard asks the same). */
+export const LEAVE_CHAT = "Leave and lose this chat? Nothing from it has been saved.";
 
 /** Co-writing a Scenario (W5 design): part chips above a chat, a reply box fixed to the bottom of the screen, then a
  * review of the draft at the top of the page. The chat lives in memory only, so discarding it leaves no trace. */
-export function CoWriting({ onSave, onDiscard, onNeedToken, onTokenExpired }: Props) {
+export function CoWriting({ onSave, onDiscard, access }: Props) {
   const gateway = useModelGateway();
   const [chat, setChat] = useState<Exchange[]>([{ from: "co-writer", text: OPENER }]);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
@@ -33,6 +35,7 @@ export function CoWriting({ onSave, onDiscard, onNeedToken, onTokenExpired }: Pr
   const [text, setText] = useState("");
   const [waiting, setWaiting] = useState(false);
   const [problem, setProblem] = useState<CallProblem | null>(null);
+  const [shownPart, setShownPart] = useState<string | null>(null); // a done chip's name, to show its words
   const newest = useRef<HTMLLIElement>(null);
 
   // The page follows each new message, and the review starts at the top.
@@ -53,7 +56,7 @@ export function CoWriting({ onSave, onDiscard, onNeedToken, onTokenExpired }: Pr
       if (turn.ready || answers >= MAX_ANSWERS) setReview({ capped: !turn.ready });
     } catch (e) {
       const found = callProblemOf(e); // including a reply that fails its schema
-      if (found === "expired-token") onTokenExpired();
+      if (found === "expired-token") access.onTokenExpired();
       setProblem(found);
     } finally {
       setWaiting(false);
@@ -88,17 +91,31 @@ export function CoWriting({ onSave, onDiscard, onNeedToken, onTokenExpired }: Pr
   return (
     <div className="cowrite has-reply-box">
       <h2 className="page-title">Co-write a Scenario</h2>
-      <ol className="part-chips" aria-label="Parts of the Scenario">
-        {PARTS.map((p, i) => {
-          const done = p.done(draft);
-          return (
-            <li key={p.name} className={`part-chip${done ? " is-done" : i === current ? " is-current" : ""}`} aria-current={i === current ? "step" : undefined}>
-              {done ? "✓ " : i === current ? "▸ " : ""}
-              {p.name}
-            </li>
-          );
-        })}
-      </ol>
+      {/* Pinned to the top while the chat scrolls, with a done part's words when its chip is clicked. */}
+      <div className="part-bar">
+        <ol className="part-chips" aria-label="Parts of the Scenario">
+          {PARTS.map((p, i) => {
+            const done = p.done(draft);
+            return (
+              <li key={p.name} className={`part-chip${done ? " is-done" : i === current ? " is-current" : ""}`} aria-current={i === current ? "step" : undefined}>
+                {done ? (
+                  <button type="button" className="part-chip-button" aria-expanded={shownPart === p.name} onClick={() => setShownPart((n) => (n === p.name ? null : p.name))}>
+                    ✓ {p.name}
+                  </button>
+                ) : (
+                  `${i === current ? "▸ " : ""}${p.name}`
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        {shownPart && (
+          <section className="part-words" aria-label={`${shownPart} so far`}>
+            <p className="label-caps">{shownPart}</p>
+            <p className="part-words-text">{PARTS.find((p) => p.name === shownPart)!.words(draft)}</p>
+          </section>
+        )}
+      </div>
       <p className="cowrite-promise">
         The AI only asks questions and arranges your answers. It never adds facts, figures or achievements you didn't give
         it.
@@ -120,7 +137,7 @@ export function CoWriting({ onSave, onDiscard, onNeedToken, onTokenExpired }: Pr
           <p>{problemText}</p>
           <div className="actions">
             {needsToken && (
-              <button type="button" className="button-secondary" onClick={onNeedToken}>
+              <button type="button" className="button-secondary" onClick={access.onNeedToken}>
                 Enter a new token
               </button>
             )}
@@ -147,7 +164,7 @@ export function CoWriting({ onSave, onDiscard, onNeedToken, onTokenExpired }: Pr
           }}
         />
         <div className="reply-box-actions">
-          <button type="button" className="button-link" onClick={onDiscard}>
+          <button type="button" className="button-link" onClick={() => confirm(LEAVE_CHAT) && onDiscard()}>
             Discard chat
           </button>
           <button type="submit" className="button-primary" disabled={!text.trim() || waiting || problem !== null}>

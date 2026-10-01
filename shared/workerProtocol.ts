@@ -50,7 +50,9 @@ export const GenerateRequest = z.object({
   messages: z.array(ChatTurn).max(40).optional(),
   user: z.string(),
   schema: z.record(z.string(), z.unknown()),
-});
+})
+  // In a chat, the newest message is bounded like the turns before it.
+  .refine((r) => !r.messages || r.user.length <= 4000);
 export type GenerateRequest = z.infer<typeof GenerateRequest>;
 
 /** POST /v1/generate → 200. `model` is the one that ran and `cost` what OpenRouter charged in USD (null if it

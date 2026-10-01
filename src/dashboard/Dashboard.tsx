@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { AccessChip } from "../access/AccessChip";
 import { BackupPage } from "../backup/BackupPage";
+import { LEAVE_CHAT } from "../cowriting/CoWriting";
 import { gapCount, gapsBySkill, NO_SKILL, type SkillGaps } from "../interviews/gaps";
 import { interviewStore } from "../interviews/interviewStore";
 import { InterviewScreen } from "../interviews/InterviewScreen";
@@ -38,15 +39,15 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   useAutoLock(onLock);
   const interviews = useMemo(() => interviewStore(vault), [vault]);
   const [view, setViewState] = useState<View>(startInterviewId ? { interviewId: startInterviewId } : { tab: "interviews" });
+  const coWritingOpen = useRef(false); // a co-writing chat lives in memory only, so leaving it asks first
   /** Shows a tab or an Interview; `newScenarioSkill` opens the Scenario Bank on a new Scenario with that skill. */
-  const coWriting = useRef(false); // a co-writing chat is open: it lives in memory only
   const setView = (next: View, newScenarioSkill: string | null = null) => {
-    if (coWriting.current && !confirm("Leave and lose this chat? Nothing from it has been saved.")) return;
-    coWriting.current = false;
+    if (coWritingOpen.current && !confirm(LEAVE_CHAT)) return;
+    coWritingOpen.current = false;
     setNewScenarioSkill(newScenarioSkill);
     setViewState(next);
   };
-  const onCoWritingChange = useCallback((open: boolean) => void (coWriting.current = open), []);
+  const onCoWritingChange = useCallback((open: boolean) => void (coWritingOpen.current = open), []);
   const tab = "tab" in view ? view.tab : null;
   const openInterview = useOpenInterview(interviews, "interviewId" in view ? view.interviewId : null);
   const ready = openInterview?.status === "ready" ? openInterview : null;
@@ -170,10 +171,8 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
                 vault={vault}
                 gapSkills={gaps.map((g) => g.skill).filter((s) => s !== NO_SKILL)}
                 startNew={newScenarioSkill}
-                accessActive={accessActive}
+                access={{ active: accessActive, onNeedToken: () => setAccessRequests((n) => n + 1), onTokenExpired: reportTokenExpired }}
                 onCoWritingChange={onCoWritingChange}
-                onNeedToken={() => setAccessRequests((n) => n + 1)}
-                onTokenExpired={reportTokenExpired}
               />
             ) : (
               <BackupPage vault={vault} onPackAdded={(interviewId) => setView({ interviewId })} />

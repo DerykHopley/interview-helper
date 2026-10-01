@@ -53,10 +53,11 @@ describe("structured generation", () => {
     ["a turn without text", [{ role: "user" }]],
     ["more than 40 turns", Array.from({ length: 41 }, (_, i) => ({ role: i % 2 ? "assistant" : "user", content: "ok" }))],
     ["a turn longer than 4,000 characters", [{ role: "user", content: "x".repeat(4001) }]],
-  ])("refuses a chat with %s, without calling OpenRouter", async (_, messages) => {
+    ["a newest message longer than 4,000 characters", [{ role: "assistant", content: "What was your role?" }], "x".repeat(4001)],
+  ])("refuses a chat with %s, without calling OpenRouter", async (_, messages, user = "u") => {
     openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
 
-    const response = await generate({ job: "co-writing", system: "s", messages, user: "u", schema: QUESTIONS_SCHEMA });
+    const response = await generate({ job: "co-writing", system: "s", messages, user, schema: QUESTIONS_SCHEMA });
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "bad_request" });
