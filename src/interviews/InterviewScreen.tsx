@@ -191,7 +191,7 @@ export function InterviewScreen({
       ) : writing.active && questions.length === 0 ? (
         <WritingCard />
       ) : (
-        <EndCard count={questions.length} onAdd={add} busy={writing.active} accessActive={accessActive} onWrite={onWrite} />
+        <EndCard count={questions.length} onAdd={add} busy={writing.active} accessActive={accessActive} onWrite={interview.jobSpec ? onWrite : null} />
       )}
       <button type="button" className="deck-arrow is-next" aria-label="Next Question" disabled={at === questions.length} onClick={() => go(at + 1)}>
         ›
@@ -252,7 +252,8 @@ type EndCardProps = {
   /** Whether Questions are being written now. */
   busy: boolean;
   accessActive: boolean;
-  onWrite: (batch: Batch) => void;
+  /** Null when there's no Job Spec to write Questions from (a Pack's Interview without one). */
+  onWrite: ((batch: Batch) => void) | null;
 };
 
 /** The end of the deck: how many Questions there are, asking for more (or the first ones), and a box to add your
@@ -281,12 +282,14 @@ function EndCard({ count, onAdd, busy, accessActive, onWrite }: EndCardProps) {
       <h2 id={`${id}-title`} className="end-card-title">
         {title}
       </h2>
-      <div className="actions">
-        <button type="button" className="button-secondary" disabled={!accessActive || busy} onClick={() => onWrite(count === 0 ? FIRST_BATCH : MORE_BATCH)}>
-          {busy ? "Writing more Questions…" : count === 0 ? `Write ~${FIRST_BATCH.ask} Questions` : `Ask for ${MORE_BATCH.ask} more Questions`}
-        </button>
-        {!accessActive && <span className="form-hint">Needs an active Access Token</span>}
-      </div>
+      {onWrite && (
+        <div className="actions">
+          <button type="button" className="button-secondary" disabled={!accessActive || busy} onClick={() => onWrite(count === 0 ? FIRST_BATCH : MORE_BATCH)}>
+            {busy ? "Writing more Questions…" : count === 0 ? `Write ~${FIRST_BATCH.ask} Questions` : `Ask for ${MORE_BATCH.ask} more Questions`}
+          </button>
+          {!accessActive && <span className="form-hint">Needs an active Access Token</span>}
+        </div>
+      )}
       <form className="form" onSubmit={(e) => void submit(e)}>
         <p className="label-caps question-skill">{count === 0 ? "Add your first" : "Or add your own"}</p>
         <label htmlFor={`${id}-text`} className="visually-hidden">

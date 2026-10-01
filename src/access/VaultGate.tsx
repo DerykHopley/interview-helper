@@ -1,6 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useVault } from "../vault/useVault";
 import { Dashboard } from "../dashboard/Dashboard";
+import { addPack } from "../packs/choosePack";
 import { dropAccessTokenFromMemory, keptAccessToken } from "./keptAccessToken";
 import { Setup } from "./Setup";
 import { Unlock } from "./Unlock";
@@ -8,12 +9,13 @@ import { Unlock } from "./Unlock";
 /** Chooses what the Candidate sees from the state of their Vault: first-visit setup, unlock, or the dashboard. */
 export function VaultGate() {
   const { state, create, unlock, lock, startOver } = useVault();
+  const [startInterviewId, setStartInterviewId] = useState<string | null>(null); // made by setup from a Pack
   const lockApp = useCallback(() => {
     dropAccessTokenFromMemory();
     lock();
   }, [lock]);
 
-  if (state.status === "unlocked") return <Dashboard vault={state.unlocked} onLock={lockApp} />;
+  if (state.status === "unlocked") return <Dashboard vault={state.unlocked} onLock={lockApp} startInterviewId={startInterviewId} />;
   return (
     <main className="page">
       <h1 className="brand">Interview Helper</h1>
@@ -25,9 +27,10 @@ export function VaultGate() {
       )}
       {state.status === "new" && (
         <Setup
-          onComplete={(unlockKey, accessToken) =>
+          onComplete={(unlockKey, accessToken, pack) =>
             create(unlockKey, async (unlocked) => {
               if (accessToken) await keptAccessToken(unlocked).keep(accessToken);
+              if (pack) setStartInterviewId(await addPack(pack, unlocked));
             })
           }
         />

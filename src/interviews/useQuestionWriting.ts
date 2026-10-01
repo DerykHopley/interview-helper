@@ -24,6 +24,7 @@ export function useQuestionWriting(store: InterviewStore, onTokenExpired: () => 
     try {
       const interview = await store.get(id);
       if (!interview) return set(id, { active: false, problem: "not-saved" });
+      if (!interview.jobSpec) return set(id, { active: false, problem: "failed" }); // a Pack's, without one: not offered
       added = await writeQuestions(gateway, { jobSpec: interview.jobSpec, existing: interview.questions.map((q) => q.text), batch });
     } catch (e) {
       const problem = callProblemOf(e); // including a reply that fails its schema

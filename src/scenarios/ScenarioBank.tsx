@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import type { UnlockedVault } from "../vault/vault";
-import { scenarioBank, type SavedScenario } from "./scenarioBank";
+import { removeDemoQuestion, scenarioBank, type SavedScenario } from "./scenarioBank";
 import { ScenarioForm } from "./ScenarioForm";
 import { OriginBadge, ScenarioReader, SkillTags } from "./ScenarioReader";
 import type { Scenario } from "./scenarioFormat";
-import { unreadableNotice } from "../text";
+import { countOf, unreadableNotice } from "../text";
 import { hasSkill, skillCounts } from "./skills";
 import { SkillsOverview } from "./SkillsOverview";
 
@@ -67,6 +67,17 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) 
     }
   }
 
+  async function removeDemo(count: number) {
+    if (!confirm(removeDemoQuestion(count))) return;
+    try {
+      await bank.removeDemo();
+      await reload();
+      setPane({ mode: "none" });
+    } catch {
+      setFailure("Couldn't remove the demo Scenarios. Try again.");
+    }
+  }
+
   if (!loaded) return failure ? <p role="alert" className="notice-blocking">{failure}</p> : null;
   const { scenarios, unreadable } = loaded;
   const search = query.trim().toLowerCase();
@@ -74,6 +85,7 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) 
   const shown = scenarios.filter((scenario) => (!skillFilter || hasSkill(scenario.skills, skillFilter)) && (!search || matchesSearch(scenario)));
   const selected = pane.mode === "read" || pane.mode === "edit" ? scenarios.find((s) => s.id === pane.id) : undefined;
   const filterName = skillCounts(scenarios).find((c) => c.key === skillFilter)?.skill;
+  const demoCount = scenarios.filter((s) => s.origin === "demo").length;
 
   return (
     <div className={`bank${pane.mode === "none" ? "" : " has-pane"}`}>
@@ -125,6 +137,14 @@ export function ScenarioBank({ vault, gapSkills = [], startNew = null }: Props) 
         {unreadable > 0 && (
           <p role="alert" className="notice-warn">
             {unreadableNotice(unreadable, "Scenario")}
+          </p>
+        )}
+        {demoCount > 0 && (
+          <p className="demo-bar">
+            <span>{countOf(demoCount, "demo Scenario")}</span>
+            <button type="button" className="button-link" onClick={() => void removeDemo(demoCount)}>
+              Remove all demo
+            </button>
           </p>
         )}
         <input

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import type { Pack } from "../packs/packFormat";
+import { SHIPPED_PACKS } from "../packs/shippedPacks";
 import { generateUnlockKey } from "../vault/unlockKey";
 import { AccessTokenPanel, type Active } from "./AccessTokenPanel";
 import { ChecklistStep } from "./ChecklistStep";
@@ -8,16 +10,17 @@ type Step = (typeof STEPS)[number];
 
 /** First-visit setup, the A2 checklist: Access Token → Unlock Key → how to start. The Access Token is held here, in
  * memory, until the Vault exists to keep it. */
-export function Setup({ onComplete }: { onComplete: (unlockKey: string, accessToken: string | null) => Promise<void> }) {
+export function Setup({ onComplete }: { onComplete: (unlockKey: string, accessToken: string | null, pack: Pack | null) => Promise<void> }) {
   const [step, setStep] = useState<Step>("token");
   const [token, setToken] = useState<{ value: string; active: Active } | null>(null);
   const [unlockKey] = useState(generateUnlockKey);
   const [starting, setStarting] = useState(false);
   const stateOf = (s: Step) => (STEPS.indexOf(s) < STEPS.indexOf(step) ? "done" : s === step ? "current" : "upcoming");
 
-  async function start() {
+  /** Creates the Vault, then opens the app: on a new Interview from the Pack, if one was chosen. */
+  async function start(pack: Pack | null) {
     setStarting(true); // creating the Vault twice would give it two different keys
-    await onComplete(unlockKey, token?.value ?? null);
+    await onComplete(unlockKey, token?.value ?? null, pack);
   }
 
   return (
@@ -40,16 +43,26 @@ export function Setup({ onComplete }: { onComplete: (unlockKey: string, accessTo
         <ChecklistStep n={2} title="Your Unlock Key" why="Made for you now. Locks your Scenarios on this device. Never expires." state={stateOf("key")} summary="saved">
           <UnlockKeyReveal unlockKey={unlockKey} onSaved={() => setStep("start")} />
         </ChecklistStep>
-        <ChecklistStep n={3} title="Choose how to start" why="Your own Scenarios, written by hand or with help." state={stateOf("start")}>
+        <ChecklistStep n={3} title="Choose how to start" why="Your own Scenarios, or a Pack to try the app with first." state={stateOf("start")}>
           {/* Starting asks the browser for persistent storage (ADR 0001); Firefox shows a prompt at that moment. */}
           <p className="notice-info">
             Your browser may ask to let this site keep its data. Choose Allow: otherwise it can delete your Scenarios when
             space runs low, or after 7 days away (Safari).
           </p>
-          <button type="button" className="choice" disabled={starting} onClick={() => void start()}>
+          <button type="button" className="choice" disabled={starting} onClick={() => void start(null)}>
             <strong>Start with my own Scenarios</strong>
             <span className="choice-detail">Write your first Scenario, by hand or with help.</span>
           </button>
+          <p className="label-caps">Or start from a Pack</p>
+          {SHIPPED_PACKS.map((pack) => (
+            <button key={pack.name} type="button" className="choice" disabled={starting} onClick={() => void start(pack)}>
+              <strong>Start from the {pack.name} Pack</strong>
+              <span className="choice-detail">
+                A ready Interview with {pack.questions.length} Questions, and {pack.exampleScenarios.length} Demo Scenarios to see matching work.
+                Remove them in one step when you add your own.
+              </span>
+            </button>
+          ))}
         </ChecklistStep>
       </ol>
     </section>

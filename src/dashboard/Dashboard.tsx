@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { AccessChip } from "../access/AccessChip";
+import { BackupPage } from "../backup/BackupPage";
 import { gapCount, gapsBySkill, NO_SKILL, type SkillGaps } from "../interviews/gaps";
 import { interviewStore } from "../interviews/interviewStore";
 import { InterviewScreen } from "../interviews/InterviewScreen";
@@ -19,16 +20,24 @@ import { ScenarioBankCard } from "./ScenarioBankCard";
 const TABS = [
   { key: "interviews", label: "Interviews" },
   { key: "scenario-bank", label: "Scenario Bank" },
+  { key: "backup", label: "Backup" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 type View = { tab: Tab } | { interviewId: string };
 
-/** The unlocked app: the D2 dashboard (Interviews · Scenario Bank; #6 adds Backup), or one Interview's S3 screen.
- * Both keep the same header end, so the Access chip stays mounted across them. */
-export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () => void }) {
+type Props = {
+  vault: UnlockedVault;
+  onLock: () => void;
+  /** An Interview to open first, e.g. the one setup just made from a Pack; otherwise the Interviews tab. */
+  startInterviewId?: string | null;
+};
+
+/** The unlocked app: the D2 dashboard (Interviews · Scenario Bank · Backup), or one Interview's S3 screen. Both keep
+ * the same header end, so the Access chip stays mounted across them. */
+export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   useAutoLock(onLock);
   const interviews = useMemo(() => interviewStore(vault), [vault]);
-  const [view, setViewState] = useState<View>({ tab: "interviews" });
+  const [view, setViewState] = useState<View>(startInterviewId ? { interviewId: startInterviewId } : { tab: "interviews" });
   /** Shows a tab or an Interview; `newScenarioSkill` opens the Scenario Bank on a new Scenario with that skill. */
   const setView = (next: View, newScenarioSkill: string | null = null) => {
     setNewScenarioSkill(newScenarioSkill);
@@ -152,8 +161,10 @@ export function Dashboard({ vault, onLock }: { vault: UnlockedVault; onLock: () 
                   <GapsCard gaps={gaps} />
                 </aside>
               </div>
-            ) : (
+            ) : tab === "scenario-bank" ? (
               <ScenarioBank vault={vault} gapSkills={gaps.map((g) => g.skill).filter((s) => s !== NO_SKILL)} startNew={newScenarioSkill} />
+            ) : (
+              <BackupPage vault={vault} onPackAdded={(interviewId) => setView({ interviewId })} />
             )}
           </div>
         )}

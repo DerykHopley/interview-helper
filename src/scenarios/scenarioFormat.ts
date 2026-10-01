@@ -60,8 +60,9 @@ export function toMarkdown(scenario: Scenario): string {
   return `---\n${stringify(header)}---\n\n${body.join("\n")}`;
 }
 
-/** Throws when the text isn't a valid Scenario. Windows line endings are accepted. */
-export function parseScenario(markdown: string): Scenario {
+/** Throws when the text isn't a valid Scenario. Windows line endings are accepted. `fixed` overrides header fields,
+ * e.g. a Pack's Example Scenario always becomes a Demo Scenario. */
+export function parseScenario(markdown: string, fixed: Partial<Scenario> = {}): Scenario {
   const match = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(markdown.replace(/\r\n/g, "\n"));
   if (!match) throw new Error("A Scenario starts with a YAML header between --- lines");
   const lines: Partial<Record<SectionField, string[]>> = {};
@@ -72,7 +73,7 @@ export function parseScenario(markdown: string): Scenario {
     else if (current) (lines[current] ??= []).push(line);
   }
   const sections = Object.fromEntries(SECTIONS.map(([field]) => [field, unescapeHeadings((lines[field] ?? []).join("\n"))]));
-  return scenarioSchema.parse({ ...(parse(match[1]) as object), ...sections });
+  return scenarioSchema.parse({ ...(parse(match[1]) as object), ...fixed, ...sections });
 }
 
 const escapeHeadings = (section: string) => section.replace(/^(\\*)##/gm, "\\$1##");
