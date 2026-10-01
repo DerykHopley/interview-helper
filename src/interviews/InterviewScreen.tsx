@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useLatest } from "../hooks";
+import { AnswerBar, type OnSaveNow } from "./AnswerBar";
 import { MatchesPanel } from "../matching/MatchesPanel";
 import { useQuestionMatches } from "../matching/useQuestionMatches";
 import { SHARED_PROBLEM_TEXT } from "../model-gateway/callProblems";
@@ -27,6 +28,8 @@ type Props = {
   onWriteScenario: (question: Question) => void;
   /** A Question whose Matches are dealt as the screen opens (back from its Gap). */
   dealtOnOpen?: string | null;
+  /** Given a way to save the answer being typed now (the Lock button uses it). */
+  onAnswerSaveNow?: OnSaveNow;
   /** Whether this Interview's Questions are being written, or why they last couldn't be (#9). */
   writing: Writing;
   /** Whether an Access Token is active, so Questions can be written. */
@@ -73,6 +76,7 @@ export function InterviewScreen({
   onOpenScenarioBank,
   onWriteScenario,
   dealtOnOpen = null,
+  onAnswerSaveNow,
   writing,
   accessActive,
   onTokenExpired,
@@ -129,6 +133,13 @@ export function InterviewScreen({
     if (await save((current) => ({ ...current, questions: [...current.questions, question] }), "Couldn't add the Question. Try again.")) onMove(questions.length);
   }
 
+  /** Saves the Answer on its Question (the answer bar says whether it worked); empty text clears it. */
+  const saveAnswer = (questionId: string, text: string) =>
+    onChange((current) => ({
+      ...current,
+      questions: current.questions.map((q) => (q.id === questionId ? { ...q, answer: text.trim() ? { text, savedAt: new Date().toISOString() } : undefined } : q)),
+    }));
+
   /** Saves a change, and says so if it failed (the Vault locked meanwhile, or storage is full). */
   async function save(change: (current: Interview) => Interview, onFailure: string) {
     setFailure(null);
@@ -184,6 +195,7 @@ export function InterviewScreen({
             onDelete={() => void remove(questions[at])}
             onRematch={() => matches.match(questions[at])}
           />
+          <AnswerBar key={questions[at].id} question={questions[at]} onSave={(text) => saveAnswer(questions[at].id, text)} onSaveNow={onAnswerSaveNow} />
           <DealtMatches
             question={questions[at]}
             matches={matches}

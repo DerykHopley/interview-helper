@@ -29,6 +29,8 @@ export const questionSchema = z.object({
   skill: text.optional(),
   origin: z.enum(["typed", "generated", "pack"]),
   matchResult: matchResultSchema.optional(),
+  /** The Candidate's latest Answer, as typed in the answer bar (#31); absent until they answer. */
+  answer: z.object({ text, savedAt: z.string() }).optional(),
 });
 export type Question = z.infer<typeof questionSchema>;
 

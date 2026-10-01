@@ -1,3 +1,4 @@
+import { lastPractised, practisedLabel } from "./answers";
 import { useRef, useState } from "react";
 import { useCancellableEffect } from "../hooks";
 import type { Interview } from "./interview";
@@ -84,6 +85,7 @@ export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, on
             <th scope="col">Role</th>
             <th scope="col">Questions</th>
             <th scope="col">Gaps</th>
+            <th scope="col">Last practised</th>
             <th scope="col">
               <span className="visually-hidden">Actions</span>
             </th>
@@ -100,6 +102,7 @@ export function InterviewsHome({ store, onOpen, accessActive, onTokenExpired, on
                 </th>
                 <td>{interview.questions.length}</td>
                 <td className={gaps > 0 ? "has-gaps" : undefined}>{gaps > 0 ? countOf(gaps, "Gap") : "—"}</td>
+                <td className="last-practised">{practisedLabel(lastPractised(interview))}</td>
                 <td>
                   <div className="actions">
                     <button type="button" className="button-secondary" onClick={() => onOpen(interview.id)}>

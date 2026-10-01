@@ -142,7 +142,7 @@ describe("writing Questions for a new Interview", () => {
     await act(() => Promise.resolve(writing.control.release!()));
 
     expect(await screen.findByText("8 Questions")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("8 new Questions added");
+    expect(screen.getByText("8 new Questions added")).toHaveAttribute("role", "status"); // beside the answer bar's own status
     const card = screen.getByRole("article", { name: "Question 1 of 8" });
     expect(within(card).getByText("1/8")).toBeInTheDocument();
     expect(card).toHaveTextContent("skill 1");
@@ -318,7 +318,7 @@ describe("asking for more Questions", () => {
     await user.click(screen.getByRole("button", { name: "Ask for 4 more Questions" }));
     expect(await screen.findByText("12 Questions")).toBeInTheDocument();
     // It says what happened, and shows the first new one, whose card gives its place in the deck.
-    expect(screen.getByRole("status")).toHaveTextContent("4 new Questions added");
+    expect(screen.getByText("4 new Questions added")).toHaveAttribute("role", "status");
     expect(within(screen.getByRole("article", { name: "Question 9 of 12" })).getByText("9/12")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Next Question" }));
     expect(screen.queryByText("4 new Questions added")).not.toBeInTheDocument();
@@ -347,7 +347,7 @@ describe("asking for more Questions", () => {
     await waitFor(() => expect(more.control.release).toBeDefined());
     await act(() => Promise.resolve(more.control.release!()));
 
-    expect(await screen.findByRole("status")).toHaveTextContent("4 new Questions added at the end of the deck");
+    expect(await screen.findByText("4 new Questions added at the end of the deck")).toHaveAttribute("role", "status");
     expect(screen.getByRole("article", { name: "Question 8 of 12" })).toBeInTheDocument();
   });
 

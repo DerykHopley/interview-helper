@@ -252,6 +252,7 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
   .interviews tr { padding: 12px 14px; border-bottom: 1px solid var(--faint-line); }
   .interviews th, .interviews td { padding: 2px 0; border: 0; }
   .interviews td:nth-child(2)::after { content: " Questions"; color: var(--on-table-muted); }
+  .interviews td.last-practised::before { content: "Last practised "; color: var(--on-table-muted); }
   .deck { grid-template-columns: 1fr 1fr; grid-template-areas: "card card" "back next"; gap: 10px; padding: 12px 0; }
   .deck.has-notices { grid-template-areas: "notices notices" "card card" "back next"; }
   .deck-notices { grid-area: notices; }
@@ -285,6 +286,17 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
 .import-summary { margin: 0; padding: 10px 12px; border-radius: 6px; background: var(--note-bg); font-weight: 700; }
 .demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: var(--radius-field); background: var(--accent-tint); color: var(--on-table); font-size: 14px; }
 .side-card-demo { margin: 0; color: var(--accent); font-size: 14px; }
+
+/* ---------- Answer bar (K1, #31) ---------- */
+.deck:has(.answer-bar) { padding-bottom: var(--answer-bar-space, 170px); } /* room for the fixed bar, kept as tall as it (AnswerBar) */
+.answer-bar { position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 10; display: flex; flex-direction: column; gap: 6px; width: min(640px, calc(100% - 2 * var(--gutter))); padding: 10px 12px; transform: translateX(-50%); border: 1px solid var(--accent); border-radius: var(--radius-card); background: var(--panel-dark); box-shadow: 0 -8px 24px var(--shadow-color); }
+.answer-box { width: 100%; min-height: 48px; padding: 4px 2px; border: 0; background: transparent; color: var(--on-table); font: inherit; font-size: 16px; line-height: 1.5; resize: none; overflow-y: auto; }
+.answer-box:focus { outline: none; }
+.answer-box::placeholder { color: var(--on-table-muted); }
+.answer-bar:focus-within { box-shadow: 0 0 0 2px var(--accent), 0 -8px 24px var(--shadow-color); }
+.answer-bar-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 12px; color: var(--on-table-muted); font-variant-numeric: tabular-nums; }
+.answer-status.is-saved { color: var(--ok-soft); }
+.answer-status.is-failed { color: var(--gap); }
 
 /* ---------- Co-writing (W5) ---------- */
 .cowrite { max-width: 760px; margin: 0 auto; }
