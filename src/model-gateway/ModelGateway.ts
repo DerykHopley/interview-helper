@@ -1,8 +1,8 @@
 import type { z } from "zod";
 
-import type { AccessRefusal, ModelJob, ReasoningEffort, WorkerError } from "../../shared/workerProtocol";
+import type { AccessRefusal, ChatTurn, ModelJob, ReasoningEffort, WorkerError } from "../../shared/workerProtocol";
 
-export type { ModelJob } from "../../shared/workerProtocol";
+export type { ChatTurn, ModelJob } from "../../shared/workerProtocol";
 
 export type StructuredRequest<Schema extends z.ZodType> = {
   job: ModelJob;
@@ -11,7 +11,9 @@ export type StructuredRequest<Schema extends z.ZodType> = {
   /** A reasoning effort other than the job's default in the Worker. */
   reasoningEffort?: ReasoningEffort;
   system: string;
-  /** Untrusted text (Job Specs, Scenarios, typed Questions) goes here, delimited as data. */
+  /** A chat's earlier turns (co-writing), sent as real user and assistant roles before `user`. */
+  messages?: ChatTurn[];
+  /** Untrusted text (Job Specs, Scenarios, typed Questions) goes here, delimited as data. In a chat, the newest turn. */
   user: string;
   /**
    * Every reply must match this schema; a reply that doesn't is rejected with "invalid_model_reply". It's sent to the

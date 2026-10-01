@@ -48,7 +48,7 @@ async function generate(request: Request, env: Env, access: Access) {
   const body = parseJson(await request.text());
   const parsed = body.ok ? GenerateRequest.safeParse(body.value) : null;
   if (!parsed?.success) return error("bad_request", 400);
-  const { job, model: requested, maxTokens, reasoningEffort, system, user, schema } = parsed.data;
+  const { job, model: requested, maxTokens, reasoningEffort, system, messages = [], user, schema } = parsed.data;
   if (!Object.hasOwn(env.JOB_MODELS, job)) return error("unknown_job", 400);
   // The job's default model, or one the request picks (the Developer panel), if it's on the allowed list.
   const model = requested ?? env.JOB_MODELS[job as Job];
@@ -62,10 +62,7 @@ async function generate(request: Request, env: Env, access: Access) {
     headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
+      messages: [{ role: "system", content: system }, ...messages, { role: "user", content: user }],
       response_format: { type: "json_schema", json_schema: { name: "reply", strict: true, schema } },
       // Only providers that don't store or train on prompts (spec #1, story 80).
       provider: { data_collection: "deny" },

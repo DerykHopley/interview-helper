@@ -75,6 +75,7 @@ describe("creating a Scenario by hand", () => {
     renderApp();
     await setUpAndOpenBank();
     await userEvent.setup().click(await screen.findByRole("button", { name: "+ New Scenario" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: /^Write it myself/ }));
 
     expect(screen.getByLabelText("Measurable results")).toHaveAccessibleDescription(/If you can, add a number or what changed/);
 
@@ -271,6 +272,7 @@ describe("when things go wrong", () => {
     renderApp();
     await setUpAndOpenBank();
     await user.click(await screen.findByRole("button", { name: "+ New Scenario" }));
+    await user.click(screen.getByRole("button", { name: /^Write it myself/ }));
     await fillScenario(CHECKOUT);
 
     await user.dblClick(screen.getByRole("button", { name: "Save Scenario" }));

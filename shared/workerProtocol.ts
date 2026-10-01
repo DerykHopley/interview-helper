@@ -34,17 +34,25 @@ export type AccessResponse = { label: string; expiresAt: string };
 export const REASONING_EFFORTS = ["none", "minimal", "low", "medium", "high"] as const;
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
+/** One earlier turn of a chat (co-writing, #12). Bounded, so a long chat can't run up the cost. */
+export const ChatTurn = z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) });
+export type ChatTurn = z.infer<typeof ChatTurn>;
+
 /** POST /v1/generate body. `schema` is the reply's JSON Schema; `model` may pick another allowed model, `maxTokens`
- * a lower cap than the job's own (the cap is a ceiling), and `reasoningEffort` another allowed effort. */
+ * a lower cap than the job's own (the cap is a ceiling), and `reasoningEffort` another allowed effort. `messages` are a
+ * chat's earlier turns, sent between `system` and `user` (the newest message). */
 export const GenerateRequest = z.object({
   job: z.string(),
   model: z.string().optional(),
   maxTokens: z.number().int().positive().optional(),
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
   system: z.string(),
+  messages: z.array(ChatTurn).max(40).optional(),
   user: z.string(),
   schema: z.record(z.string(), z.unknown()),
-});
+})
+  // In a chat, the newest message is bounded like the turns before it.
+  .refine((r) => !r.messages || r.user.length <= 4000);
 export type GenerateRequest = z.infer<typeof GenerateRequest>;
 
 /** POST /v1/generate → 200. `model` is the one that ran and `cost` what OpenRouter charged in USD (null if it

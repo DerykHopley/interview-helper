@@ -13,6 +13,10 @@ export function callProblemOf(e: unknown): CallProblem {
   return e.code === "worker_unreachable" ? "unreachable" : "failed";
 }
 
+/** What a screen that calls a model knows and tells about the Access Token: whether one is active, and how to ask for a
+ * new one or report that it's expired. */
+export type AccessHandlers = { active: boolean; onNeedToken: () => void; onTokenExpired: () => void };
+
 /** The words for problems that read the same whatever the call was for. */
 export const SHARED_PROBLEM_TEXT = {
   unreachable: "Couldn't reach the app's server. Check your connection and try again.",

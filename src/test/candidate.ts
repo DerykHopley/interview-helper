@@ -49,6 +49,7 @@ export async function fillScenario(fields: Record<string, string>) {
  * closed, or it's showing what's missing. */
 export async function createScenario(fields: Record<string, string>) {
   await user().click(await screen.findByRole("button", { name: "+ New Scenario" }));
+  await user().click(screen.getByRole("button", { name: /^Write it myself/ }));
   await fillScenario(fields);
   await user().click(screen.getByRole("button", { name: "Save Scenario" }));
   await waitFor(() => expect(!screen.queryByRole("button", { name: "Save Scenario" }) || screen.queryByText(/^Still missing/)).toBeTruthy());

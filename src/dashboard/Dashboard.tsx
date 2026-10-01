@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { AccessChip } from "../access/AccessChip";
 import { BackupPage } from "../backup/BackupPage";
+import { LEAVE_CHAT } from "../cowriting/CoWriting";
 import { gapCount, gapsBySkill, NO_SKILL, type SkillGaps } from "../interviews/gaps";
 import { interviewStore } from "../interviews/interviewStore";
 import { InterviewScreen } from "../interviews/InterviewScreen";
@@ -38,11 +39,15 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   useAutoLock(onLock);
   const interviews = useMemo(() => interviewStore(vault), [vault]);
   const [view, setViewState] = useState<View>(startInterviewId ? { interviewId: startInterviewId } : { tab: "interviews" });
+  const coWritingOpen = useRef(false); // a co-writing chat lives in memory only, so leaving it asks first
   /** Shows a tab or an Interview; `newScenarioSkill` opens the Scenario Bank on a new Scenario with that skill. */
   const setView = (next: View, newScenarioSkill: string | null = null) => {
+    if (coWritingOpen.current && !confirm(LEAVE_CHAT)) return;
+    coWritingOpen.current = false;
     setNewScenarioSkill(newScenarioSkill);
     setViewState(next);
   };
+  const onCoWritingChange = useCallback((open: boolean) => void (coWritingOpen.current = open), []);
   const tab = "tab" in view ? view.tab : null;
   const openInterview = useOpenInterview(interviews, "interviewId" in view ? view.interviewId : null);
   const ready = openInterview?.status === "ready" ? openInterview : null;
@@ -162,7 +167,13 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
                 </aside>
               </div>
             ) : tab === "scenario-bank" ? (
-              <ScenarioBank vault={vault} gapSkills={gaps.map((g) => g.skill).filter((s) => s !== NO_SKILL)} startNew={newScenarioSkill} />
+              <ScenarioBank
+                vault={vault}
+                gapSkills={gaps.map((g) => g.skill).filter((s) => s !== NO_SKILL)}
+                startNew={newScenarioSkill}
+                access={{ active: accessActive, onNeedToken: () => setAccessRequests((n) => n + 1), onTokenExpired: reportTokenExpired }}
+                onCoWritingChange={onCoWritingChange}
+              />
             ) : (
               <BackupPage vault={vault} onPackAdded={(interviewId) => setView({ interviewId })} />
             )}
