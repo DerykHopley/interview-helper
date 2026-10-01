@@ -38,7 +38,7 @@ flowchart LR
   T30["#30 Deploy app & Worker (human)"]
   T31["#31 Answer bar: typed answers"]
   T32["#32 Feedback on an answer"]
-  T33["#33 Voice input (in-browser Whisper)"]
+  T33["#33 Voice input (in-browser speech model)"]
 
   %% critical path (thick arrows)
   T2 ==> T4 ==> T5 ==> T10 ==> T14

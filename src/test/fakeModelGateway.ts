@@ -23,7 +23,7 @@ export function createFakeModelGateway({
   embeddings = [],
   accessTokens = {},
   transcripts = [],
-  speechModelDownloaded = false,
+  transcriberDownloaded: downloadedAtStart = false,
 }: {
   generate?: Script;
   decide?: DecisionScript;
@@ -33,10 +33,10 @@ export function createFakeModelGateway({
   /** What each transcription returns, in order: the text, or an error to fail with. */
   transcripts?: (string | Error)[];
   /** Whether the speech model is already in this browser; the first transcription downloads it otherwise. */
-  speechModelDownloaded?: boolean;
+  transcriberDownloaded?: boolean;
 } = {}): FakeModelGateway {
   const queuedTranscripts = [...transcripts];
-  let downloaded = speechModelDownloaded;
+  let downloaded = downloadedAtStart;
   const queues = Object.fromEntries(Object.entries(generate).map(([job, replies]) => [job, [...replies]])) as Script;
   const decisions = structuredClone(decide);
   let getAccessToken = (): string | null => null;
@@ -67,6 +67,7 @@ export function createFakeModelGateway({
       return next instanceof Error ? Promise.reject(next) : Promise.resolve(next);
     },
     transcriberDownloaded: () => Promise.resolve(downloaded),
+    prepareTranscriber: () => Promise.resolve(),
     checkAccess(token) {
       return Promise.resolve(accessTokens[token.trim()] ?? { ok: false, reason: "invalid" });
     },

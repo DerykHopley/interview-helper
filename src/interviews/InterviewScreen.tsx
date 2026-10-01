@@ -9,6 +9,7 @@ import { NO_SKILL } from "./gaps";
 import { PopupMenu } from "../PopupMenu";
 import { countOf } from "../text";
 import { AnswerBar, type OnSaveNow } from "./AnswerBar";
+import { withSpoken } from "./answers";
 import { FeedbackCard } from "./FeedbackCard";
 import { usedFor } from "./picks";
 import type { Interview, Question } from "./interview";
@@ -138,6 +139,18 @@ export function InterviewScreen({
     if (await save((current) => ({ ...current, questions: [...current.questions, question] }), "Couldn't add the Question. Try again.")) onMove(questions.length);
   }
 
+  /** Adds what was said to a Question's saved Answer, when the Candidate left its card mid-recording (#33). If the app
+   * has locked meanwhile it can't be saved, and is let go: nothing is on screen to report it. */
+  const addSpoken = (questionId: string, spoken: string) =>
+    void onChange((current) => {
+      const savedAt = new Date().toISOString();
+      return {
+        ...current,
+        questions: current.questions.map((q) => (q.id === questionId ? { ...q, answer: { ...q.answer, text: withSpoken(q.answer?.text ?? "", spoken), savedAt } } : q)),
+        lastPractisedAt: savedAt,
+      };
+    }).catch(() => {});
+
   /** Picks a Scenario for the Question from its Matches, or un-picks (null). */
   const pick = (questionId: string, scenarioId: string | null) =>
     save(
@@ -218,6 +231,7 @@ export function InterviewScreen({
             question={questions[at]}
             using={matches.scenarios?.find((s) => s.id === questions[at].pickedScenarioId)?.title}
             onSave={(text) => saveAnswer(questions[at].id, text)}
+            onSpokenAfterLeaving={(spoken) => addSpoken(questions[at].id, spoken)}
             onSaveNow={onAnswerSaveNow}
             feedback={{
               blockedBy: (text) => feedback.blockedBy(questions[at], text),

@@ -28,3 +28,6 @@ export function spokenTime(words: number): string {
   const seconds = Math.round((words / WORDS_PER_MINUTE) * 60);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
+
+/** An Answer with what was said added to the end, after a space (#33). */
+export const withSpoken = (typed: string, spoken: string) => (typed.trim() ? `${typed.trimEnd()} ${spoken}` : spoken);

@@ -11,8 +11,9 @@ type Options = {
   /** Told about every model call the Worker answered: which model ran and what it cost. The Matcher Report (#14)
    * totals it, and the Developer panel (#17) can show it. */
   onCall?: (call: ModelCall) => void;
-  /** Speech to text, which runs in the browser rather than through the Worker (#33). Without it, voice isn't offered. */
-  speech?: Pick<ModelGateway, "transcribe" | "transcriberDownloaded">;
+  /** Speech to text, which runs in the browser rather than through the Worker (#33). Without it, transcribing is
+   * refused ("not_connected"), as in the Worker's own tests. */
+  speech?: Pick<ModelGateway, "transcribe" | "transcriberDownloaded" | "prepareTranscriber">;
 };
 
 export type ModelCall = { job: ModelJob; model: string; cost: number | null };
@@ -77,6 +78,7 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
     embed: () => Promise.reject(new ModelGatewayError("not_connected")),
     transcribe: (audio, onDownload) => (speech ? speech.transcribe(audio, onDownload) : Promise.reject(new ModelGatewayError("not_connected"))),
     transcriberDownloaded: () => (speech ? speech.transcriberDownloaded() : Promise.resolve(false)),
+    prepareTranscriber: (onDownload) => (speech ? speech.prepareTranscriber(onDownload) : Promise.reject(new ModelGatewayError("not_connected"))),
     decide: () => Promise.reject(new ModelGatewayError("not_connected")),
   };
 }

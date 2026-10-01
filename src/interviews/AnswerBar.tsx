@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLatest } from "../hooks";
 import { countOf } from "../text";
-import { spokenTime, wordCount } from "./answers";
+import { spokenTime, withSpoken, wordCount } from "./answers";
 import { VoiceButton } from "./VoiceButton";
 import type { Question } from "./interview";
 
@@ -29,6 +29,8 @@ type Props = {
   onSaveNow?: OnSaveNow;
   /** The title of the Scenario picked for this Question, if any (#11). */
   using?: string;
+  /** Saves what was said after the Candidate left this card mid-recording (#33). */
+  onSpokenAfterLeaving?: (spoken: string) => void;
   feedback?: FeedbackControls;
 };
 
@@ -39,7 +41,7 @@ export type FeedbackControls = { blockedBy: (text: string) => string | null; bus
 /** The K1 answer bar (#31): a box fixed to the bottom of the Interview screen for the Candidate's Answer to the Question
  * on show. It saves as they type, after a short pause, and when they move to another card or leave, so nothing typed
  * is lost. Mount it once per Question (`key`), so moving on saves what was there. */
-export function AnswerBar({ question, onSave, onSaveNow, using, feedback }: Props) {
+export function AnswerBar({ question, onSave, onSaveNow, using, feedback, onSpokenAfterLeaving = () => {} }: Props) {
   const [text, setText] = useState(question.answer?.text ?? "");
   const [status, setStatus] = useState<Status>("saved");
   const box = useRef<HTMLTextAreaElement>(null);
@@ -128,6 +130,13 @@ export function AnswerBar({ question, onSave, onSaveNow, using, feedback }: Prop
     };
   }, []);
 
+  /** The Candidate changed the text, by typing or speaking: it's saved after the pause. */
+  function change(next: (typed: string) => string) {
+    edited.current = true;
+    setText(next);
+    if (status !== "failed") setStatus("unsaved");
+  }
+
   const words = wordCount(text);
   return (
     <div className="answer-bar" ref={bar}>
@@ -147,20 +156,10 @@ export function AnswerBar({ question, onSave, onSaveNow, using, feedback }: Prop
           rows={2}
           placeholder="Type your answer, as you'd say it"
           value={text}
-          onChange={(e) => {
-            edited.current = true;
-            setText(e.target.value);
-            if (status !== "failed") setStatus("unsaved");
-          }}
+          onChange={(e) => change(() => e.target.value)}
         />
         {/* What was said goes after what's typed, and saves like typing (#33). */}
-        <VoiceButton
-          onTranscript={(spoken) => {
-            edited.current = true;
-            setText((typed) => (typed.trim() ? `${typed.trimEnd()} ${spoken}` : spoken));
-            if (status !== "failed") setStatus("unsaved");
-          }}
-        />
+        <VoiceButton onTranscript={(spoken) => change((typed) => withSpoken(typed, spoken))} onTranscriptAfterLeaving={onSpokenAfterLeaving} />
       </div>
       <div className="answer-bar-foot">
         <span className="answer-length">{words > 0 ? `${countOf(words, "word")} · ≈ ${spokenTime(words)} spoken` : "Your answer is saved as you type"}</span>

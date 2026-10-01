@@ -1,6 +1,6 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { openTab, setUpWithoutToken } from "../test/candidate";
 import { createFakeModelGateway } from "../test/fakeModelGateway";
@@ -26,18 +26,38 @@ class FakeRecorder {
   }
 }
 
-/** A microphone the Candidate allows (or refuses), and recording support, unless told otherwise. */
-function microphone({ allowed = true, recorder = true, secure = true } = {}) {
+/** The microphone's tracks, to tell whether it was turned off. */
+let micTracks: { stopped: boolean }[] = [];
+const microphoneOn = () => micTracks.some((t) => !t.stopped);
+const aStream = () => {
+  const track = { stopped: false, stop: () => void (track.stopped = true) };
+  micTracks.push(track);
+  return { getTracks: () => [track] };
+};
+
+/** A microphone the Candidate allows (or refuses), and recording support, unless told otherwise. `held` keeps the
+ * microphone from answering until the test lets it. */
+function microphone({ allowed = true, recorder = true, secure = true, held = false }: { allowed?: boolean; recorder?: boolean | "throws"; secure?: boolean; held?: boolean } = {}) {
   FakeRecorder.started = 0;
-  if (recorder) vi.stubGlobal("MediaRecorder", FakeRecorder);
-  else vi.stubGlobal("MediaRecorder", undefined);
+  micTracks = [];
+  if (recorder === "throws") vi.stubGlobal("MediaRecorder", class { constructor() { throw new DOMException("Not supported", "NotSupportedError"); } });
+  else vi.stubGlobal("MediaRecorder", recorder ? FakeRecorder : undefined);
   vi.stubGlobal("isSecureContext", secure);
-  const getUserMedia = allowed
-    ? vi.fn().mockResolvedValue({ getTracks: () => [{ stop: () => {} }] })
-    : vi.fn().mockRejectedValue(new DOMException("Permission denied", "NotAllowedError"));
+  let answer = () => {};
+  const getUserMedia = vi.fn(() =>
+    !allowed
+      ? Promise.reject(new DOMException("Permission denied", "NotAllowedError"))
+      : held
+        ? new Promise((resolve) => (answer = () => resolve(aStream())))
+        : Promise.resolve(aStream()),
+  );
   Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
-  return getUserMedia;
+  return { getUserMedia, answer: () => answer() };
 }
+
+afterEach(() => {
+  Reflect.deleteProperty(navigator, "mediaDevices");
+});
 
 const user = () => userEvent.setup();
 
@@ -56,7 +76,7 @@ const mic = () => screen.getByRole("button", { name: /^(Record your answer|Stop 
 
 describe("speaking an answer", () => {
   it("explains the one-time download before the first use, then records and adds what was said", async () => {
-    const getUserMedia = microphone();
+    const { getUserMedia } = microphone();
     await inThePackInterview();
     await user().click(mic());
 
@@ -75,7 +95,7 @@ describe("speaking an answer", () => {
 
   it("records straight away once the model is downloaded", async () => {
     microphone();
-    await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], speechModelDownloaded: true }));
+    await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], transcriberDownloaded: true }));
     await user().click(mic());
 
     await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
@@ -84,7 +104,7 @@ describe("speaking an answer", () => {
 
   it("adds what was said after what's already typed", async () => {
     microphone();
-    await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], speechModelDownloaded: true }));
+    await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], transcriberDownloaded: true }));
     await user().type(answerBox(), "The warehouse system went down.");
     await user().click(mic());
     await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
@@ -96,7 +116,7 @@ describe("speaking an answer", () => {
   it("stops by itself at 3 minutes", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     microphone();
-    await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], speechModelDownloaded: true }));
+    await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], transcriberDownloaded: true }));
     await user().click(mic());
     await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
 
@@ -108,7 +128,7 @@ describe("speaking an answer", () => {
 
   it("works without an Access Token", async () => {
     microphone();
-    await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], speechModelDownloaded: true }));
+    await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], transcriberDownloaded: true }));
     expect(screen.getByRole("button", { name: /^Access/ })).toHaveTextContent(/none/i);
 
     await user().click(mic());
@@ -118,10 +138,77 @@ describe("speaking an answer", () => {
   });
 });
 
+describe("leaving while speaking", () => {
+  it("turns the microphone off, and adds what was said to that Question when the card changes", async () => {
+    microphone();
+    await inThePackInterview(createFakeModelGateway({ transcripts: [SPOKEN], transcriberDownloaded: true }));
+    await user().click(mic());
+    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
+    await user().click(screen.getByRole("button", { name: "Next Question" }));
+
+    expect(microphoneOn()).toBe(false);
+    await screen.findByRole("article", { name: "Question 2 of 6" });
+    await waitFor(() => expect(screen.getByText(/^6 Questions · 1 answered/)).toBeInTheDocument());
+    await user().click(screen.getByRole("button", { name: "Previous Question" }));
+    expect(await screen.findByDisplayValue(SPOKEN)).toBeInTheDocument();
+  });
+
+  it("doesn't start recording if the card changed while the microphone was starting", async () => {
+    const { answer } = microphone({ held: true });
+    await inThePackInterview(createFakeModelGateway({ transcriberDownloaded: true }));
+    await user().click(mic());
+    await user().click(screen.getByRole("button", { name: "Next Question" }));
+    await act(async () => {
+      answer();
+      await Promise.resolve(); // let the microphone's answer arrive
+    });
+
+    expect(FakeRecorder.started).toBe(0);
+    expect(microphoneOn()).toBe(false);
+  });
+});
+
+describe("the speech model's download", () => {
+  it("starts as soon as the Candidate agrees, while they record", async () => {
+    microphone();
+    const gateway = createFakeModelGateway({ transcripts: [SPOKEN] });
+    const prepare = vi.spyOn(gateway, "prepareTranscriber");
+    await inThePackInterview(gateway);
+    await user().click(mic());
+    await user().click(screen.getByRole("button", { name: "Download and record" }));
+
+    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
+    expect(prepare).toHaveBeenCalled();
+  });
+});
+
 describe("when voice can't work", () => {
+  it("keeps the recording when it can't be turned into text, and tries again", async () => {
+    microphone();
+    await inThePackInterview(createFakeModelGateway({ transcripts: [new Error("download failed"), SPOKEN], transcriberDownloaded: true }));
+    await user().click(mic());
+    await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));
+    await user().click(mic());
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't turn that into text.");
+    await user().click(within(alert).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(answerBox()).toHaveValue(SPOKEN));
+  });
+
+  it("says so when the browser can't start recording, and doesn't get stuck", async () => {
+    microphone({ recorder: "throws" });
+    await inThePackInterview(createFakeModelGateway({ transcriberDownloaded: true }));
+    await user().click(mic());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("This browser couldn't start recording.");
+    expect(mic()).toBeEnabled();
+    expect(microphoneOn()).toBe(false);
+  });
+
   it("says so when the microphone is refused", async () => {
     microphone({ allowed: false });
-    await inThePackInterview(createFakeModelGateway({ speechModelDownloaded: true }));
+    await inThePackInterview(createFakeModelGateway({ transcriberDownloaded: true }));
     await user().click(mic());
 
     expect(await screen.findByRole("alert")).toHaveTextContent("The microphone was blocked. Allow it for this site in your browser's settings, then try again.");
@@ -146,7 +233,7 @@ describe("when voice can't work", () => {
 
   it("keeps what's typed when the transcription fails, and says so", async () => {
     microphone();
-    await inThePackInterview(createFakeModelGateway({ transcripts: [new ModelGatewayError("not_connected")], speechModelDownloaded: true }));
+    await inThePackInterview(createFakeModelGateway({ transcripts: [new ModelGatewayError("not_connected")], transcriberDownloaded: true }));
     await user().type(answerBox(), "Typed first.");
     await user().click(mic());
     await waitFor(() => expect(mic()).toHaveAccessibleName("Stop recording"));

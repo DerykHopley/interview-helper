@@ -69,4 +69,7 @@ export interface ModelGateway {
   transcribe(audio: Blob, onDownload?: (fraction: number) => void): Promise<string>;
   /** Whether the speech model is already in this browser, so a first use can say what it will download. */
   transcriberDownloaded(): Promise<boolean>;
+  /** Starts getting the speech model ready (downloading it the first time), e.g. while the Candidate records.
+   * `onDownload` reports progress as for `transcribe`. */
+  prepareTranscriber(onDownload?: (fraction: number) => void): Promise<void>;
 }

@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react";
+import { useLatest } from "../hooks";
 import { useModelGateway } from "../model-gateway/context";
+import { SPEECH_MODEL_MB } from "../model-gateway/speechModel";
 
 /** A long behavioural answer; recording stops itself here, so a forgotten mic doesn't record forever. */
 const MAX_RECORDING_MS = 3 * 60_000;
-/** The speech model's download, for the first-use explanation (Moonshine base, q8: docs/prototypes/voice). */
-const DOWNLOAD_MB = 63;
 
 type Phase =
   | { kind: "idle" }
   | { kind: "explaining" } // first use: what it will download, before it does
   | { kind: "starting" }
   | { kind: "recording"; startedAt: number }
-  | { kind: "transcribing"; downloaded: number | null }; // how much of the model has arrived, on first use
+  | { kind: "transcribing" };
 
 /** Why voice can't be used in this browser at all, or null when it can. */
 function unavailable(): string | null {
@@ -20,16 +20,32 @@ function unavailable(): string | null {
   return null;
 }
 
+type Props = {
+  /** What was said, while this card is still on screen. */
+  onTranscript: (text: string) => void;
+  /** What was said after the Candidate left this card mid-recording: it still belongs to this Question. */
+  onTranscriptAfterLeaving: (text: string) => void;
+};
+
 /** The answer bar's mic (#33): tap to record, tap to stop. What was said is turned into text by a speech model running
- * in this browser, so no audio leaves the device, and handed to `onTranscript`. */
-export function VoiceButton({ onTranscript }: { onTranscript: (text: string) => void }) {
+ * in this browser, so no audio leaves the device. Leaving the card turns the microphone off; what was said by then is
+ * still transcribed for this Question. */
+export function VoiceButton({ onTranscript, onTranscriptAfterLeaving }: Props) {
   const gateway = useModelGateway();
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, setProblem] = useState<{ text: string; retry?: Blob } | null>(null);
+  const [download, setDownload] = useState<number | null>(null); // how much of the model has arrived, while it does
   const [now, setNow] = useState(() => Date.now());
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
+  const onScreen = useRef(true);
+  const handlers = useLatest({ onTranscript, onTranscriptAfterLeaving });
   const reason = unavailable();
+
+  const micOff = () => {
+    stream.current?.getTracks().forEach((t) => t.stop());
+    stream.current = null;
+  };
 
   // While recording: a ticking timer, and a stop at the cap.
   useEffect(() => {
@@ -42,67 +58,106 @@ export function VoiceButton({ onTranscript }: { onTranscript: (text: string) => 
     };
   }, [phase.kind]);
 
-  // Leaving the card mid-recording turns the microphone off.
-  useEffect(() => () => stream.current?.getTracks().forEach((t) => t.stop()), []);
+  // Leaving the card: the microphone goes off at once, and a recording under way stops and is still transcribed.
+  useEffect(() => {
+    onScreen.current = true;
+    return () => {
+      onScreen.current = false;
+      if (recorder.current?.state === "recording") recorder.current.stop();
+      micOff();
+    };
+  }, []);
 
   async function press() {
     setProblem(null);
     if (phase.kind === "recording") return recorder.current?.stop();
     if (phase.kind !== "idle") return;
-    if (!(await gateway.transcriberDownloaded())) return setPhase({ kind: "explaining" });
+    try {
+      if (!(await gateway.transcriberDownloaded())) return setPhase({ kind: "explaining" });
+    } catch {
+      return setPhase({ kind: "explaining" }); // can't tell: explain, to be safe
+    }
+    await record();
+  }
+
+  /** Agreeing to the download starts it straight away, while the Candidate records. */
+  function agree() {
+    gateway.prepareTranscriber((fraction) => onScreen.current && setDownload(fraction)).then(
+      () => onScreen.current && setDownload(null),
+      () => onScreen.current && setDownload(null), // the recording is kept; transcribing will try again
+    );
     void record();
   }
 
   async function record() {
     setPhase({ kind: "starting" });
+    let mic: MediaStream;
     try {
-      stream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mic = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
+      if (!onScreen.current) return;
       setPhase({ kind: "idle" });
-      return setProblem(
-        e instanceof DOMException && e.name === "NotAllowedError"
-          ? "The microphone was blocked. Allow it for this site in your browser's settings, then try again."
-          : "No microphone could be found. Check one is connected, then try again.",
-      );
+      return setProblem({
+        text:
+          e instanceof DOMException && e.name === "NotAllowedError"
+            ? "The microphone was blocked. Allow it for this site in your browser's settings, then try again."
+            : "No microphone could be found. Check one is connected, then try again.",
+      });
     }
-    const chunks: Blob[] = [];
-    const rec = new MediaRecorder(stream.current);
-    rec.ondataavailable = (e) => chunks.push(e.data);
-    rec.onstop = () => void transcribe(new Blob(chunks, { type: rec.mimeType || "audio/webm" }));
-    recorder.current = rec;
-    rec.start();
+    stream.current = mic;
+    if (!onScreen.current) return micOff(); // the card changed while the microphone was starting
+    try {
+      const chunks: Blob[] = [];
+      const rec = new MediaRecorder(mic);
+      rec.ondataavailable = (e) => chunks.push(e.data);
+      rec.onstop = () => {
+        micOff();
+        recorder.current = null;
+        void transcribe(new Blob(chunks, { type: rec.mimeType || "audio/webm" }));
+      };
+      rec.start();
+      recorder.current = rec;
+    } catch {
+      micOff();
+      setPhase({ kind: "idle" });
+      return setProblem({ text: "This browser couldn't start recording. Try again, or type your answer." });
+    }
     const startedAt = Date.now();
     setNow(startedAt);
     setPhase({ kind: "recording", startedAt });
   }
 
   async function transcribe(audio: Blob) {
-    stream.current?.getTracks().forEach((t) => t.stop());
-    stream.current = null;
-    recorder.current = null;
-    setPhase({ kind: "transcribing", downloaded: null });
+    if (onScreen.current) setPhase({ kind: "transcribing" });
+    let text: string;
     try {
-      const text = (await gateway.transcribe(audio, (fraction) => setPhase({ kind: "transcribing", downloaded: fraction }))).trim();
-      if (text) onTranscript(text);
-      else setProblem("No speech was heard. Try again, a little closer to the microphone.");
+      text = (await gateway.transcribe(audio, (fraction) => onScreen.current && setDownload(fraction))).trim();
     } catch {
-      setProblem("Couldn't turn that into text. Try again, or type your answer.");
+      if (!onScreen.current) return; // left the card, and it couldn't be transcribed: nothing on screen to say so
+      setDownload(null);
+      setPhase({ kind: "idle" });
+      return setProblem({ text: "Couldn't turn that into text. Try again, or type your answer.", retry: audio });
     }
+    if (!onScreen.current) return void (text && handlers.current.onTranscriptAfterLeaving(text));
+    setDownload(null);
     setPhase({ kind: "idle" });
+    if (text) handlers.current.onTranscript(text);
+    else setProblem({ text: "No speech was heard. Try again, a little closer to the microphone." });
   }
 
   const recording = phase.kind === "recording";
   const elapsed = recording ? Math.min(now - phase.startedAt, MAX_RECORDING_MS) : 0;
   const clock = `${Math.floor(elapsed / 60_000)}:${String(Math.floor((elapsed % 60_000) / 1000)).padStart(2, "0")}`;
+  const downloading = download !== null && `Downloading the speech model… ${Math.round(download * 100)}%`;
   return (
     <div className="voice">
       {phase.kind === "explaining" && (
         <div className="voice-explain">
           <p>
-            Voice needs a one-time download of about {DOWNLOAD_MB} MB. It stays in this browser, and your voice never leaves it.
+            Voice needs a one-time download of about {SPEECH_MODEL_MB} MB. It stays in this browser, and your voice never leaves it.
           </p>
           <div className="actions">
-            <button type="button" className="button-primary" onClick={() => void record()}>
+            <button type="button" className="button-primary" onClick={agree}>
               Download and record
             </button>
             <button type="button" className="button-link" onClick={() => setPhase({ kind: "idle" })}>
@@ -112,18 +167,27 @@ export function VoiceButton({ onTranscript }: { onTranscript: (text: string) => 
         </div>
       )}
       {problem && (
-        <p role="alert" className="voice-problem">
-          {problem}
-        </p>
+        <div role="alert" className="voice-problem">
+          <span>{problem.text}</span>
+          {problem.retry && (
+            <button
+              type="button"
+              className="button-link"
+              onClick={() => {
+                const audio = problem.retry!;
+                setProblem(null);
+                void transcribe(audio);
+              }}
+            >
+              Try again
+            </button>
+          )}
+        </div>
       )}
       <div className="voice-row">
         {reason && <span className="form-hint">{reason}</span>}
         {recording && <span className="voice-clock">Recording {clock}</span>}
-        {phase.kind === "transcribing" && (
-          <span className="voice-clock">
-            {phase.downloaded !== null && phase.downloaded < 1 ? `Downloading the speech model… ${Math.round(phase.downloaded * 100)}%` : "Transcribing…"}
-          </span>
-        )}
+        {(downloading || phase.kind === "transcribing") && <span className="voice-clock">{downloading || "Transcribing…"}</span>}
         <button
           type="button"
           className={`voice-mic${recording ? " is-recording" : ""}`}
