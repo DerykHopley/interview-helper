@@ -34,6 +34,35 @@ export const storedChecklistSchema = z.object({
 });
 export type StoredChecklist = z.infer<typeof storedChecklistSchema>;
 
+/** A Readiness Report's levels (#56, CONTEXT.md "Readiness"). */
+export const READINESS_LEVELS = ["ready", "nearly-there", "not-yet"] as const;
+export type Readiness = (typeof READINESS_LEVELS)[number];
+
+/** How well an Answer shows its Question's skill (or, without one, answers what it asks). */
+export const SHOWS = ["yes", "partly", "no"] as const;
+export type Shows = (typeof SHOWS)[number];
+
+/** A Readiness Report as stored (#56), with every item tied to its Question by id. Kept apart from the model's reply
+ * schema (readiness.ts) for the same reason as Feedback's checklist. */
+export const storedReadinessSchema = z.object({
+  readiness: z.enum(READINESS_LEVELS),
+  /** The model said Ready, but a Question wasn't answered, so code lowered it to Nearly there. */
+  capped: z.boolean(),
+  why: z.string(),
+  /** One per answered Question the model judged. */
+  shows: z.array(z.object({ questionId: z.string(), shows: z.enum(SHOWS) })),
+  /** Answered Questions the model left out of its judgement this time. */
+  notJudged: z.array(z.string()).default([]),
+  strengths: z.array(z.object({ questionId: z.string(), point: z.string(), quote: z.string() })),
+  toWorkOn: z.array(z.object({ questionId: z.string(), point: z.string() })),
+  /** Claims in an Answer that its picked Scenario doesn't support, quoted from the Answer. */
+  notInScenario: z.array(z.object({ questionId: z.string(), quote: z.string() })),
+  /** Answered Questions with no picked Scenario, whose claims couldn't be checked. */
+  noScenarioPicked: z.array(z.string()),
+  notPractised: z.array(z.string()),
+});
+export type StoredReadiness = z.infer<typeof storedReadinessSchema>;
+
 export const questionSchema = z.object({
   id: z.string(),
   text,
@@ -66,5 +95,8 @@ export const interviewSchema = z.object({
   questions: z.array(questionSchema).default([]),
   /** When an Answer was last saved here (#31), for the Interviews list. Clearing an Answer later doesn't undo it. */
   lastPractisedAt: z.string().optional(),
+  /** The latest Readiness Report (#56), with a fingerprint of the Answers and picks it was given for, so a later change
+   * shows it's out of date. */
+  readinessReport: z.object({ report: storedReadinessSchema, forFingerprint: z.string(), gotAt: z.string() }).optional(),
 });
 export type Interview = z.infer<typeof interviewSchema>;

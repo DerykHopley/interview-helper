@@ -185,6 +185,7 @@ describe("moving through the deck", () => {
       expect.stringContaining(QUESTIONS[0]),
       expect.stringContaining(QUESTIONS[1]),
       expect.stringContaining(QUESTIONS[2]),
+      "◎ Readiness Report", // always last (#56)
     ]);
     await user.click(within(menu).getByRole("menuitem", { name: /Describe a project/ }));
 

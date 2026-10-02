@@ -351,6 +351,35 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
 .answer-feedback { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
 .answer-feedback .button-secondary { padding: 4px 12px; font-size: 13px; }
 
+/* ---------- Readiness Report (#56) ---------- */
+.readiness-page { display: flex; flex-direction: column; gap: 12px; max-width: 760px; margin: 0 auto; padding: 16px 0 32px; }
+.readiness-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.readiness-head .page-title { margin: 0; }
+.readiness-intro { margin: 0; color: var(--on-table-muted); }
+.readiness-page > .actions { align-items: center; }
+.readiness-page > .actions .form-hint, .readiness-page > .chat-waiting { color: var(--on-table-muted); }
+.readiness p { margin: 0; }
+.readiness-level { font-family: var(--font-display); font-size: 32px; line-height: 1.1; }
+.readiness-level.is-ready { color: var(--skill-on-card); }
+.readiness-level.is-nearly-there { color: var(--ink); }
+.readiness-level.is-not-yet { color: var(--missing-ink); }
+.readiness-meaning { font-weight: 700; }
+.readiness-capped { padding: 8px 10px; border-radius: 6px; background: var(--warn-bg); font-size: 14px; }
+.readiness-why { overflow-wrap: anywhere; }
+.readiness-list, .readiness-skills, .readiness-notes { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.readiness-list li { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; overflow-wrap: anywhere; }
+.readiness-list p { margin: 0; }
+.readiness-question { font-size: 14px; color: var(--ink-muted); }
+.readiness-skills li { padding: 6px 10px; border-left: 3px solid var(--line); border-radius: 4px; background: var(--note-bg); font-size: 14px; overflow-wrap: anywhere; }
+.readiness-skills .is-shown { border-left-color: var(--ok); }
+.readiness-skills .is-partly-shown { border-left-color: var(--warn-line); }
+.readiness-skills .is-not-shown, .readiness-skills .is-not-practised { border-left-color: var(--gap); }
+.readiness-skills .is-not-judged { border-left-style: dashed; }
+.readiness-notes li { font-size: 14px; color: var(--ink-muted); }
+.jump-report { font-weight: 700; }
+/* On a phone the ☰ Questions button sits at the left, so its menu spans the screen instead of hanging off its left edge. */
+@media (max-width: 760px) { .jump .popup-list { position: fixed; top: auto; left: var(--gutter); right: var(--gutter); max-width: none; } }
+
 /* ---------- Co-writing (W5) ---------- */
 .cowrite { max-width: 760px; margin: 0 auto; }
 .cowrite.has-reply-box { padding-bottom: 180px; } /* room for the fixed reply box */
