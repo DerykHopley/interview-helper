@@ -6,6 +6,21 @@ _Built for Turing College's AI Engineering course, Sprint 1: "Build an Interview
 
 ![A Question from an Interview, with its three best Matches dealt, the top one picked, an Answer typed and its Feedback](docs/images/question.png)
 
+**Contents**
+- [The idea](#the-idea)
+- [Features](#features)
+- [Your data, and what leaves your browser](#your-data-and-what-leaves-your-browser)
+- [How it works](#how-it-works)
+- [Key decisions, and why](#key-decisions-and-why)
+- [Prompts and models](#prompts-and-models)
+- [Evaluation](#evaluation)
+- [Run it locally](#run-it-locally)
+- [Tests](#tests)
+- [Access Tokens](#access-tokens)
+- [The course brief: what's met](#the-course-brief-whats-met)
+- [What's next](#whats-next)
+- [How it was built](#how-it-was-built)
+
 ## The idea
 
 Before an interview, most people have a handful of strong, real stories from their career. Then a question comes, and in the moment they can't recall which story fits best. They reuse the same one too often, and only find the stories they're missing when it's too late. Most practice tools make this worse in one of two ways. Some invent model answers, which tempts you to claim things you never did. Others need your career history on their servers.
