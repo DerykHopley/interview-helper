@@ -5,6 +5,7 @@ import { ModelGatewayError, type AccessStatus } from "../model-gateway/ModelGate
 import { createFakeModelGateway } from "../test/fakeModelGateway";
 import { enterAccessToken, finishSetup, setUpWithoutToken, unlockWith } from "../test/candidate";
 import { renderApp } from "../test/renderApp";
+import { localAccessToken } from "./localAccessToken";
 
 const ACTIVE = "IH-COHORT1-1Z3K9QT-7M2XD9PQRW4TK6BA";
 const EXPIRED = "IH-COHORT1-1A00000-0000000000000000";
@@ -137,9 +138,38 @@ describe("running it with npm run local (#63)", () => {
   });
 
   it("leaves the field empty when the app wasn't started that way", async () => {
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", undefined); // even if the shell running the tests has one
     renderApp({ gateway: gateway() });
 
     expect(await screen.findByLabelText("Access Token")).toHaveValue("");
     expect(screen.queryByText("Filled in by npm run local.")).not.toBeInTheDocument();
+  });
+
+  it("fills in a later run's new token where an expired one is asked for again", async () => {
+    const NEW = "IH-LOCAL-1Z3K9QT-NEWNEWNEWNEWNEWN";
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", ACTIVE);
+    const user = userEvent.setup();
+    const { unmount } = renderApp({ gateway: gateway() });
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+    const unlockKey = await finishSetup();
+    unmount();
+
+    // A week later: the first token has expired, and npm run local minted a new one.
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", NEW);
+    const later = createFakeModelGateway({ accessTokens: { [ACTIVE]: { ok: false, reason: "expired" }, [NEW]: { ok: true, label: "local", expiresAt: new Date("2099-01-01T08:00:00Z") } } });
+    renderApp({ gateway: later });
+    await unlockWith(unlockKey);
+
+    expect(await screen.findByText("Your Access Token has expired. Ask for a new one.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Access Token")).toHaveValue(NEW);
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("button", { name: /^Access ·/ })).not.toHaveTextContent(/none|expired/i);
+  });
+
+  it("is never read in a production build", () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", ACTIVE);
+
+    expect(localAccessToken()).toBeNull();
   });
 });

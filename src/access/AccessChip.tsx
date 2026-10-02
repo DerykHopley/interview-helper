@@ -3,6 +3,7 @@ import { useCancellableEffect, useLatest } from "../hooks";
 import type { UnlockedVault } from "../vault/vault";
 import { AccessTokenPanel, type Active, type CheckResult } from "./AccessTokenPanel";
 import { keptAccessToken } from "./keptAccessToken";
+import { localAccessToken } from "./localAccessToken";
 
 /** Keeping or forgetting the token fails only if the Vault has gone (locked, or the page closed) meanwhile. Then
  * there's nothing to update: the token is simply asked for again after the next unlock. */
@@ -102,6 +103,8 @@ export function AccessChip({
         {remembered !== undefined && (
           <AccessTokenPanel
             remembered={remembered ?? undefined}
+            // A newer token from npm run local (#63), e.g. once the remembered one has expired.
+            filledIn={localAccessToken() !== remembered ? localAccessToken() : null}
             onActive={(token, status) => {
               setActive(status);
               if (token !== remembered) void kept.keep(token).catch(ignoreClosedVault); // a confirmed kept token is already stored

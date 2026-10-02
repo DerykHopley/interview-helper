@@ -124,7 +124,9 @@ npm install
 npm run local
 ```
 
-The first time, it asks for your OpenRouter key (what you type isn't shown) and saves it in `worker/.dev.vars`, which is gitignored, with a signing secret it makes up. Then it starts the Worker and the app together and mints an Access Token for this machine. Open **http://localhost:5173**: the token is already filled in, so press **Continue**, then choose **Start from the Engineering Manager Pack**. Ctrl+C stops both.
+The first time, it asks for your OpenRouter key (what you type isn't shown) and saves it in `worker/.dev.vars`, which is gitignored, with a signing secret it makes up. Then it starts the Worker and the app together and mints an Access Token for this machine. When it says it's ready, open **http://localhost:5173**: the token is already filled in, so press **Continue**, then choose **Start from the Engineering Manager Pack**. Ctrl+C in that terminal stops both.
+
+Later runs don't ask again: they reuse `worker/.dev.vars` (filling in anything missing, if you made it by hand) and mint a new token, which lasts 7 days. If your saved token has expired, the app asks for it again with the new one filled in. Without a terminal to type into, it reads the key from `OPENROUTER_API_KEY`.
 
 <details>
 <summary>Running the two parts yourself</summary>
@@ -147,19 +149,20 @@ npm run typecheck
 npm run lint
 ```
 
-CI runs the same three checks (typecheck, lint, test) on every push. **Tests never call a real model.** There are three Vitest projects:
+CI runs the same three checks (typecheck, lint, test) on every push. **Tests never call a real model.** There are four Vitest projects:
 
 | Project | Runs in | What it covers |
 |---|---|---|
 | `app` | jsdom | The app through its screens, as a Candidate uses it: setup, the Vault, Scenarios, Interviews, matching, co-writing, Answers, voice, Feedback, the Readiness Report. **Only the Model Gateway is faked.** The encryption and storage code run as they do in a browser, on an in-memory IndexedDB. |
 | `worker` | the Workers runtime | The Worker's endpoints, token checks, CORS, limits and logging, with OpenRouter faked. |
 | `eval` | Node | The Matcher Report's scoring, thresholds and report-writing, with the gateway faked. |
+| `scripts` | Node | `npm run local`'s setup: the secrets file and the hidden key prompt. |
 
 Most features were built test-first. Key tests were then checked by undoing their fix and watching them fail. Features are checked by hand in Firefox at desktop and phone widths, and feature PRs carry a manual test record for the owner.
 
 ## Access Tokens
 
-An Access Token lets a group use the AI features for a limited time (8 hours by default, 7 days at most). The app owner mints them on their own machine:
+An Access Token lets a group use the AI features for a limited time (8 hours by default, 7 days at most). `npm run local` mints one for you. For a group, the app owner mints them on their own machine:
 
 ```sh
 npm run token -- --label cohort1
@@ -198,7 +201,7 @@ npm run token -- --label cohort1
 
 ## How it was built
 
-Built ticket by ticket from [the spec (#1)](https://github.com/DerykHopley/interview-helper/issues/1), each ticket a PR with its decisions recorded on the ticket. [`docs/workflow.md`](docs/workflow.md) describes the workflow: Claude Code with Matt Pocock's skills, and the checks each ticket went through. Greyed-out tickets are done. Thick arrows are the critical path.
+Built ticket by ticket from [the spec (#1)](https://github.com/DerykHopley/interview-helper/issues/1), each ticket a PR with its decisions recorded on the ticket. [`docs/workflow.md`](docs/workflow.md) describes the workflow: Claude Code with Matt Pocock's skills, and the checks each ticket went through. Greyed-out tickets are done. Thick arrows are the critical path. Dashed boxes are Coulds, the optional ones.
 
 ```mermaid
 flowchart LR
@@ -253,6 +256,7 @@ flowchart LR
   T15 --> T17
   T31 --> T32 & T33
   T12 & T33 --> T54
+  T3 --> T63
   T32 --> T56
   T11 --> T32
   T30 & T9 & T10 --> T23
