@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { fingerprintOf, scenariosFingerprint } from "../matching/findMatches";
 import { delimited } from "../model-gateway/delimited";
-import { ModelGatewayError, type ModelGateway } from "../model-gateway/ModelGateway";
+import type { ModelGateway } from "../model-gateway/ModelGateway";
 import type { SavedScenario } from "../scenarios/scenarioBank";
 import { countOf } from "../text";
 import { answeredCount } from "./answers";
@@ -36,7 +36,7 @@ The message holds three things as data, each in its own tags: <interview> (the j
 Judge the answers:
 1. questions: for every answered Question, and only those, whether the answer shows the skill the Question tests (or, with no skill, answers what it asks): "yes", "partly" or "no".
 2. readiness: "ready" if the answers cover what this job asks for, with clear actions and results; "nearly-there" if mostly covered, with a few weak or missing areas; "not-yet" if important skills aren't shown yet. Unanswered Questions count as not shown.
-3. why: two or three plain sentences on why, speaking to the Candidate as "you".
+3. why: two or three plain sentences on why, speaking to the Candidate as "you". Talk about how ready the answers are, never about being hired, recommended or rejected.
 4. strengths: two or three things the answers do well. Each has the id of the Question it's from, the point in one plain sentence, and quote: the words that show it, copied word for word from that answer, as short as they can be.
 5. toWorkOn: two or three things to practise next, most important first. Each has the id of the Question to work on and the point in one plain sentence. Say what kind of thing is missing (for example "the outcome" or "what you did yourself"), never a specific fact, figure, name or achievement that isn't in the answer.
 6. notInScenario: for answers with a picked Scenario only, every claim the Scenario doesn't support, with the Question's id and the claim copied word for word from the answer, as short as it can be. Use an empty list if there are none.`;
@@ -59,9 +59,9 @@ export function readinessFingerprint(interview: Interview, scenarios: SavedScena
   );
 }
 
-/** Asks for a Readiness Report on the Interview's Answers as saved. A reply that leaves out an answered Question is
- * refused. Quotes not found word for word in their Answer are dropped, and claims are kept only for Answers with a
- * picked Scenario. Readiness is lowered to Nearly there while any Question is unanswered. */
+/** Asks for a Readiness Report on the Interview's Answers as saved. An answered Question the reply leaves out is shown
+ * as not judged, never guessed at. Quotes not found word for word in their Answer are dropped, and claims are kept only
+ * for Answers with a picked Scenario. Readiness is lowered to Nearly there while any Question is unanswered. */
 export async function getReadinessReport(gateway: ModelGateway, interview: Interview, scenarios: SavedScenario[]): Promise<StoredReadiness> {
   const ids = interview.questions.map((q, i) => ({ short: `Q${i + 1}`, question: q, picked: scenarios.find((s) => s.id === q.pickedScenarioId) }));
   const sent = ids.map(({ short, question, picked }) => ({
@@ -81,11 +81,7 @@ export async function getReadinessReport(gateway: ModelGateway, interview: Inter
 
   const byShort = new Map(ids.map((entry) => [entry.short, entry]));
   const answered = ids.filter(({ question }) => question.answer);
-  const shows = answered.map(({ short, question }) => {
-    const rating = reply.questions.find((r) => r.id === short);
-    if (!rating) throw new ModelGatewayError("invalid_model_reply"); // judged on only some Answers: refused, not guessed at
-    return { questionId: question.id, shows: rating.shows };
-  });
+  const rated = answered.map(({ short, question }) => ({ questionId: question.id, rating: reply.questions.find((r) => r.id === short) }));
   /** Whether a quote is word for word in the Answer to the Question with that short id. */
   const inAnswer = (short: string, quote: string) => contains(byShort.get(short)?.question.answer?.text ?? "", quote);
   const unanswered = ids.length - answered.length;
@@ -94,7 +90,8 @@ export async function getReadinessReport(gateway: ModelGateway, interview: Inter
     readiness: capped ? "nearly-there" : reply.readiness,
     capped,
     why: reply.why,
-    shows,
+    shows: rated.flatMap(({ questionId, rating }) => (rating ? [{ questionId, shows: rating.shows }] : [])),
+    notJudged: rated.filter(({ rating }) => !rating).map(({ questionId }) => questionId),
     strengths: reply.strengths
       .filter((s) => inAnswer(s.id, s.quote))
       .slice(0, 3)

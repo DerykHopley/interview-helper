@@ -48,8 +48,10 @@ export const storedReadinessSchema = z.object({
   /** The model said Ready, but a Question wasn't answered, so code lowered it to Nearly there. */
   capped: z.boolean(),
   why: z.string(),
-  /** One per answered Question. */
+  /** One per answered Question the model judged. */
   shows: z.array(z.object({ questionId: z.string(), shows: z.enum(SHOWS) })),
+  /** Answered Questions the model left out of its judgement this time. */
+  notJudged: z.array(z.string()).default([]),
   strengths: z.array(z.object({ questionId: z.string(), point: z.string(), quote: z.string() })),
   toWorkOn: z.array(z.object({ questionId: z.string(), point: z.string() })),
   /** Claims in an Answer that its picked Scenario doesn't support, quoted from the Answer. */

@@ -178,21 +178,25 @@ const countOfNotPractised = (n: number) => (n === 1 ? "1 Question isn't" : `${n}
 /** Each skill the report's Questions test, with how it comes across, then the Questions without a skill. */
 function SkillsSection({ report, questions }: { report: StoredReadiness; questions: Question[] }) {
   const rated = new Map(report.shows.map((s) => [s.questionId, s.shows]));
-  const inReport = questions.map((q, i) => ({ q, n: i + 1 })).filter(({ q }) => rated.has(q.id) || report.notPractised.includes(q.id));
-  const bySkill = new Map<string, { skill: string; numbers: number[]; ratings: ("yes" | "partly" | "no")[] }>();
+  const notJudged = new Set(report.notJudged);
+  const inReport = questions.map((q, i) => ({ q, n: i + 1 })).filter(({ q }) => rated.has(q.id) || notJudged.has(q.id) || report.notPractised.includes(q.id));
+  const bySkill = new Map<string, { skill: string; numbers: number[]; ratings: ("yes" | "partly" | "no")[]; unjudged: boolean }>();
   for (const { q, n } of inReport) {
     if (!q.skill) continue;
-    const entry = bySkill.get(skillKey(q.skill)) ?? { skill: q.skill, numbers: [], ratings: [] };
+    const entry = bySkill.get(skillKey(q.skill)) ?? { skill: q.skill, numbers: [], ratings: [], unjudged: false };
     entry.numbers.push(n);
     const rating = rated.get(q.id);
     if (rating) entry.ratings.push(rating);
+    if (notJudged.has(q.id)) entry.unjudged = true;
     bySkill.set(skillKey(q.skill), entry);
   }
   const others = inReport.filter(({ q }) => !q.skill);
-  const shownAs = (ratings: ("yes" | "partly" | "no")[]) => {
+  /** The best rating, else not judged (answered, but left out by the model), else not practised. */
+  const shownAs = (ratings: ("yes" | "partly" | "no")[], unjudged: boolean) => {
     const best = BEST_FIRST.find((r) => ratings.includes(r));
-    return best ? SHOWN_TEXT[best] : "not practised";
+    return best ? SHOWN_TEXT[best] : unjudged ? "not judged this time" : "not practised";
   };
+  const unjudgedNumbers = inReport.filter(({ q }) => notJudged.has(q.id)).map(({ n }) => n);
   const refs = (numbers: number[]) => (numbers.length === 1 ? `Question ${numbers[0]}` : `Questions ${numbers.join(", ")}`);
 
   return (
@@ -201,9 +205,9 @@ function SkillsSection({ report, questions }: { report: StoredReadiness; questio
         Skills
       </h3>
       <ul className="readiness-skills" aria-label="Skills">
-        {[...bySkill.values()].map(({ skill, numbers, ratings }) => (
-          <li key={skillKey(skill)} className={`is-${shownAs(ratings).replace(/ /g, "-")}`}>
-            {skill}: {shownAs(ratings)} · {refs(numbers)}
+        {[...bySkill.values()].map(({ skill, numbers, ratings, unjudged }) => (
+          <li key={skillKey(skill)} className={`is-${shownAs(ratings, unjudged).replace(/ /g, "-")}`}>
+            {skill}: {shownAs(ratings, unjudged)} · {refs(numbers)}
           </li>
         ))}
       </ul>
@@ -212,12 +216,18 @@ function SkillsSection({ report, questions }: { report: StoredReadiness; questio
           <p className="label-caps feedback-heading">Other Questions</p>
           <ul className="readiness-skills" aria-label="Other Questions">
             {others.map(({ q, n }) => (
-              <li key={q.id} className={`is-${shownAs(rated.has(q.id) ? [rated.get(q.id)!] : []).replace(/ /g, "-")}`}>
-                Question {n}: {rated.has(q.id) ? SHOWN_TEXT[rated.get(q.id)!] : "not practised"}
+              <li key={q.id} className={`is-${shownAs(rated.has(q.id) ? [rated.get(q.id)!] : [], notJudged.has(q.id)).replace(/ /g, "-")}`}>
+                Question {n}: {shownAs(rated.has(q.id) ? [rated.get(q.id)!] : [], notJudged.has(q.id))}
               </li>
             ))}
           </ul>
         </>
+      )}
+      {unjudgedNumbers.length > 0 && (
+        <p className="readiness-notes">
+          {unjudgedNumbers.length === 1 ? `Question ${unjudgedNumbers[0]} wasn't` : `Questions ${unjudgedNumbers.join(", ")} weren't`} judged this time. Get it
+          again to include {unjudgedNumbers.length === 1 ? "it" : "them"}.
+        </p>
       )}
     </section>
   );
