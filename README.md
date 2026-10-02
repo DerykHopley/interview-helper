@@ -189,7 +189,7 @@ npm run token -- --label cohort1
 
 ## How it was built
 
-Built ticket by ticket from [the spec (#1)](https://github.com/DerykHopley/interview-helper/issues/1), each ticket a PR with its decisions recorded on the ticket. Greyed-out tickets are done. Thick arrows are the critical path.
+Built ticket by ticket from [the spec (#1)](https://github.com/DerykHopley/interview-helper/issues/1), each ticket a PR with its decisions recorded on the ticket. [`docs/workflow.md`](docs/workflow.md) describes the workflow: Claude Code with Matt Pocock's skills, and the checks each ticket went through. Greyed-out tickets are done. Thick arrows are the critical path.
 
 ```mermaid
 flowchart LR
