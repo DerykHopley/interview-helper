@@ -156,7 +156,13 @@ function SettingsTab({ accessActive }: { accessActive: boolean }) {
           </button>
         ))}
       </div>
-      {job === "matching" ? <MatchingSettings allowed={allowed} /> : <JobSettings key={job} job={job} allowed={allowed} />}
+      {!(job in allowed.jobs) ? (
+        <p className="dev-problem">The Worker has no settings for this job. Restart it, so it reads the current wrangler.jsonc.</p>
+      ) : job === "matching" ? (
+        <MatchingSettings allowed={allowed} />
+      ) : (
+        <JobSettings key={job} job={job} allowed={allowed} />
+      )}
       <p className="dev-note">
         {allowed.pricesAt ? `Prices from OpenRouter's models endpoint, fetched at ${time(new Date(allowed.pricesAt))}.` : "OpenRouter's prices couldn't be read just now."}
       </p>

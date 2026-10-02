@@ -48,7 +48,7 @@ const panel = () => within(screen.getByRole("complementary", { name: "Developer"
 /** Opens the panel's Settings on a job. */
 async function settingsFor(job: string) {
   await user().click(screen.getByRole("button", { name: "Developer panel" }));
-  await user().click(panel().getByRole("button", { name: job }));
+  await user().click(await panel().findByRole("button", { name: job })); // once the token is checked and the models load
 }
 
 async function findMatches() {
@@ -236,6 +236,17 @@ describe("what the Worker allows", () => {
 
     expect(await panel().findByRole("alert")).toHaveTextContent("Couldn't load the Worker's models and limits.");
     await user().click(panel().getByRole("button", { name: "Try again" }));
+  });
+
+  it("says so when the Worker has no settings for a job, e.g. one started before the job was added", async () => {
+    const { ALLOWED } = await import("../test/fakeModelGateway");
+    const jobs = Object.fromEntries(Object.entries(ALLOWED.jobs).filter(([job]) => job !== "readiness-report"));
+    await inThePackInterview({ gateway: createFakeModelGateway({ accessTokens: ACTIVE, allowed: { ...ALLOWED, jobs } }) });
+    await devMode();
+    await settingsFor("Readiness Report");
+
+    expect(panel().getByText("The Worker has no settings for this job. Restart it, so it reads the current wrangler.jsonc.")).toBeInTheDocument();
+    expect(panel().queryByLabelText("Model")).not.toBeInTheDocument();
   });
 
   it("shows when prices couldn't be read from OpenRouter", async () => {
