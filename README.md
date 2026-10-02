@@ -117,17 +117,26 @@ These results are **provisional**: the starter set is small and easy, and the th
 
 ## Run it locally
 
-You need Node 24 or later, and **your own OpenRouter API key** for the AI features. Everything else (the Vault, Scenarios, Packs, Answers, voice) works without one.
+You need Node 24 or later, and **your own OpenRouter API key** ([openrouter.ai/keys](https://openrouter.ai/keys)) for the AI features. Everything else (the Vault, Scenarios, Packs, Answers, voice) works without one.
 
 ```sh
 npm install
+npm run local
+```
+
+The first time, it asks for your OpenRouter key (what you type isn't shown) and saves it in `worker/.dev.vars`, which is gitignored, with a signing secret it makes up. Then it starts the Worker and the app together and mints an Access Token for this machine. Open **http://localhost:5173**: the token is already filled in, so press **Continue**, then choose **Start from the Engineering Manager Pack**. Ctrl+C stops both.
+
+<details>
+<summary>Running the two parts yourself</summary>
+
+```sh
 cp worker/dev.vars.example worker/.dev.vars   # then fill in both values (the file says what they are)
 npm run dev:worker                            # the Worker, on http://localhost:8787
 npm run dev                                   # the app, on http://localhost:5173
-npm run token -- --label demo                 # an Access Token for the AI features
+npm run token -- --label demo                 # an Access Token, to paste into the app
 ```
 
-`worker/.dev.vars` holds the Worker's two secrets, your OpenRouter key and a signing secret for Access Tokens. It's gitignored: never commit it. To try the app, open it, enter the token, and choose **Start from the Engineering Manager Pack**.
+</details>
 
 ## Tests
 
@@ -167,7 +176,7 @@ npm run token -- --label cohort1
 - local and embedding Matchers ([#21](https://github.com/DerykHopley/interview-helper/issues/21))
 - an LLM-judge honesty check for co-writing ([#22](https://github.com/DerykHopley/interview-helper/issues/22))
 - the harder Evaluation Set ([#16](https://github.com/DerykHopley/interview-helper/issues/16))
-- deploying ([#30](https://github.com/DerykHopley/interview-helper/issues/30), [#23](https://github.com/DerykHopley/interview-helper/issues/23))
+- deploying, now optional since reviewers run it locally ([#30](https://github.com/DerykHopley/interview-helper/issues/30), [#23](https://github.com/DerykHopley/interview-helper/issues/23))
 
 **Nice to have, later:**
 - an interview date and application status on Interviews ([#25](https://github.com/DerykHopley/interview-helper/issues/25))
@@ -214,15 +223,16 @@ flowchart LR
   T20["#20 Jev Matcher"]
   T21["#21 Local & embedding Matchers"]
   T22["#22 Honesty check & real-data run"]
-  T23["#23 Deployed end-to-end check"]
+  T23["#23 Deployed end-to-end check (optional)"]
   T24["#24 Reflection document (human)"]
-  T30["#30 Deploy app & Worker (human)"]
+  T30["#30 Deploy app & Worker (human, optional)"]
   T31["#31 Answer bar: typed answers"]
   T32["#32 Feedback on an answer"]
   T33["#33 Voice input (in-browser speech model)"]
   T54["#54 Voice in co-writing"]
   T56["#56 Readiness Report"]
   T58["#58 README for a first-time reviewer"]
+  T63["#63 One-command local run"]
 
   %% critical path (thick arrows)
   T2 ==> T4 ==> T5 ==> T10 ==> T14
@@ -253,10 +263,9 @@ flowchart LR
   classDef should fill:#E2F2EF,color:#0B4F49,stroke:#0F7B72,stroke-width:2px
   classDef could fill:#fff,color:#4A5263,stroke:#8A93A6,stroke-width:2px,stroke-dasharray:5 4
 
-  class T2,T3,T4,T5,T7,T8,T9,T10,T11,T12,T13,T14,T15,T18,T31,T32,T33,T17,T54,T56,T58 done
+  class T2,T3,T4,T5,T7,T8,T9,T10,T11,T12,T13,T14,T15,T18,T31,T32,T33,T17,T54,T56,T58,T63 done
   class T16,T24 mustcrit
-  class T23,T30 must
   class T6,T19,T20 should
-  class T21,T22 could
+  class T21,T22,T23,T30 could
 ```
 

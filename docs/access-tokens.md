@@ -4,6 +4,8 @@ An Access Token lets a group use the app's AI features for a limited time. Your 
 
 Minting one is a **manual step for the app owner**, on their own machine, so only someone who knows the Worker's `ACCESS_TOKEN_SECRET` can create tokens. There's no web page for it.
 
+`npm run local` mints one for you, labelled `local` and lasting 7 days, and fills it in on the app's setup screen. Mint one yourself only when running the parts separately, or for a group.
+
 ## Minting a token
 
 ```sh
