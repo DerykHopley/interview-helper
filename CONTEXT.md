@@ -56,6 +56,14 @@ _Avoid_: Response, reply, attempt
 Short points on an Answer, checked against the Scenario picked for that Question: missing parts, a missing measurable result, claims not in the Scenario, and whether it addresses the Question's skill. It never suggests facts the Candidate didn't supply.
 _Avoid_: Critique, score, review
 
+**Readiness Report**:
+An evaluation of a whole Interview, asked for once at least half its Questions are answered: the Candidate's Readiness, how each skill the Questions test is shown across their Answers, strengths and things to work on (each quoting or pointing to their own Answers), and the Questions not yet practised. Like Feedback, it never suggests facts the Candidate didn't supply. The latest one is kept with the Interview and shows as out of date once its Answers change.
+_Avoid_: Interview Report, scorecard, assessment, hiring decision
+
+**Readiness**:
+A Readiness Report's practice estimate of how prepared the Candidate is for this Interview: Ready, Nearly there or Not yet. It is never a prediction of whether they would be hired.
+_Avoid_: Score, grade, hire / no hire
+
 **Match reason**:
 One sentence shown with a Match, saying which part of the Scenario answers the Question, using only facts written in that Scenario. Written by a cheap text model separately from scoring, so every Matcher's Matches get one.
 _Avoid_: Explanation, justification, rationale
