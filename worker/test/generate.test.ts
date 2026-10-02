@@ -12,8 +12,8 @@ describe("structured generation", () => {
     const response = await generate({ job: "question-generation", system: "You write interview Questions.", user: "<job_spec>Lead engineer</job_spec>", schema: QUESTIONS_SCHEMA });
 
     expect(response.status).toBe(200);
-    // The model that ran and what the call cost come back too, for the Matcher Report and the Developer panel.
-    expect(await response.json()).toEqual({ output: { questions: ["Tell me about a time you led a team."] }, model: "openai/gpt-5-mini", cost: 0.00123 });
+    // The model that ran, what the call cost and its tokens come back too, for the Matcher Report and the Developer panel.
+    expect(await response.json()).toEqual({ output: { questions: ["Tell me about a time you led a team."] }, model: "openai/gpt-5-mini", cost: 0.00123, tokens: { input: 120, output: 40 } });
 
     const [sent] = openRouter.requests;
     expect(sent.url).toBe("https://openrouter.ai/api/v1/chat/completions");
@@ -99,6 +99,25 @@ describe("structured generation", () => {
     expect(openRouter.requests[0].json()).toMatchObject({ model: "openai/gpt-5-mini", max_tokens: 8000, reasoning: { effort: "medium" } });
   });
 
+  it("forwards a temperature when the request gives one (the Developer panel, #17)", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
+
+    const response = await generate({ job: "feedback", model: "anthropic/claude-haiku-4.5", temperature: 0.4, system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(200);
+    expect(openRouter.requests[0].json()).toMatchObject({ model: "anthropic/claude-haiku-4.5", temperature: 0.4 });
+  });
+
+  it("refuses a temperature outside 0 to 2", async () => {
+    openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
+
+    const response = await generate({ job: "feedback", temperature: 2.5, system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "bad_request" });
+    expect(openRouter.requests).toHaveLength(0);
+  });
+
   it("lets a request ask for fewer tokens than the job's cap, but never more", async () => {
     openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
 
@@ -141,15 +160,16 @@ describe("structured generation", () => {
     const response = await generate({ job: "matching", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
 
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ error: "reply_cut_off" });
+    // It was still billed, so what it cost comes back too, for the Developer panel's total (#17).
+    expect(await response.json()).toEqual({ error: "reply_cut_off", model: "openai/gpt-5-mini", cost: 0.002, tokens: null });
   });
 
-  it("returns a null cost when OpenRouter doesn't report one", async () => {
+  it("returns a null cost and tokens when OpenRouter doesn't report them", async () => {
     openRouter = fakeOpenRouter(() => Response.json({ id: "gen-1", choices: [{ message: { role: "assistant", content: '{"questions":[]}' } }] }));
 
     const response = await generate({ job: "question-generation", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
 
-    expect(await response.json()).toEqual({ output: { questions: [] }, model: "openai/gpt-5-mini", cost: null });
+    expect(await response.json()).toEqual({ output: { questions: [] }, model: "openai/gpt-5-mini", cost: null, tokens: null });
   });
 
   it("uses a model the request picks, if it's on the allowed list", async () => {
@@ -214,6 +234,6 @@ describe("structured generation", () => {
     const response = await generate({ job: "question-generation", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
 
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ error: "invalid_model_reply" });
+    expect(await response.json()).toEqual({ error: "invalid_model_reply", model: "openai/gpt-5-mini", cost: 0.00123, tokens: { input: 120, output: 40 } });
   });
 });

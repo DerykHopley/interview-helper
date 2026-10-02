@@ -59,6 +59,17 @@
   --font-display: Georgia, serif;
   --font-mono: ui-monospace, monospace;
 
+  /* The Developer panel (#17): slate and magenta, so it's never mistaken for the Candidate's screens. */
+  --dev-bg: #0f172a;
+  --dev-raised: #1e293b;
+  --dev-line: #334155;
+  --dev-ink: #e2e8f0;
+  --dev-muted: #94a3b8;
+  --dev-accent: #e879f9;
+  --dev-accent-strong: #d946ef;
+  --dev-on-accent: #0f172a;
+  --dev-warn: #fbbf24;
+
   /* Shape */
   --radius-card: 14px;
   --radius-field: 10px;

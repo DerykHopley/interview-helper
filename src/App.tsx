@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { VaultGate } from "./access/VaultGate";
 import { accessTokenInUse } from "./access/keptAccessToken";
+import { withDevSettings } from "./dev/devSettings";
 import { ModelGatewayProvider } from "./model-gateway/context";
 import type { ModelGateway } from "./model-gateway/ModelGateway";
 
@@ -8,7 +9,7 @@ import type { ModelGateway } from "./model-gateway/ModelGateway";
 export type CreateGateway = (getAccessToken: () => string | null) => ModelGateway;
 
 export function App({ createGateway }: { createGateway: CreateGateway }) {
-  const [gateway] = useState(() => createGateway(accessTokenInUse));
+  const [gateway] = useState(() => withDevSettings(createGateway(accessTokenInUse))); // the Developer panel's settings (#17)
   return (
     <ModelGatewayProvider gateway={gateway}>
       <VaultGate />

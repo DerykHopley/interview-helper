@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useDevSettings } from "../dev/devSettings";
 import { useCancellableEffect } from "../hooks";
 import type { Interview, MatchResult, Question } from "../interviews/interview";
 import { withMatchResult } from "../interviews/picks";
@@ -8,7 +9,7 @@ import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
 import { scenariosFingerprint } from "./findMatches";
 import type { MatchProblem, Staleness } from "./MatchesPanel";
-import { findShippedMatches, shippedMatcher } from "./shippedMatching";
+import { findShippedMatches, pickedMatchingSetup, shippedMatcher } from "./shippedMatching";
 
 /** Where one Question's Matches are on screen: dealt or not, being found, or why they couldn't be. */
 /** `droppedPick` names a pick that re-matching cleared, because it's no longer one of the Matches (#11). */
@@ -27,7 +28,8 @@ export function useQuestionMatches(
 ) {
   const gateway = useModelGateway();
   const bank = useMemo(() => scenarioBank(vault), [vault]);
-  const { matcher } = useMemo(() => shippedMatcher(gateway), [gateway]);
+  const picked = pickedMatchingSetup(useDevSettings()); // a Setup picked in the Developer panel (#17) makes a new Matcher
+  const { matcher } = useMemo(() => shippedMatcher(gateway, picked), [gateway, picked]);
   const [scenarios, setScenarios] = useState<SavedScenario[] | null>(null); // null until read
   const [states, setStates] = useState<Map<string, QuestionState>>(() => new Map(dealtOnOpen ? [[dealtOnOpen, { ...IDLE, dealt: true }]] : []));
 

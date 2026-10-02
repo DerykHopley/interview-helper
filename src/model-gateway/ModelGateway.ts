@@ -1,8 +1,8 @@
 import type { z } from "zod";
 
-import type { AccessRefusal, ChatTurn, ModelJob, ReasoningEffort, WorkerError } from "../../shared/workerProtocol";
+import type { AccessRefusal, CallTokens, ChatTurn, ModelJob, ModelsResponse, ReasoningEffort, WorkerError } from "../../shared/workerProtocol";
 
-export type { ChatTurn, ModelJob } from "../../shared/workerProtocol";
+export type { AllowedModel, ChatTurn, ModelJob, ModelsResponse } from "../../shared/workerProtocol";
 
 export type StructuredRequest<Schema extends z.ZodType> = {
   job: ModelJob;
@@ -10,6 +10,10 @@ export type StructuredRequest<Schema extends z.ZodType> = {
   model?: string;
   /** A reasoning effort other than the job's default in the Worker. */
   reasoningEffort?: ReasoningEffort;
+  /** A lower token cap than the job's own in the Worker, which is a ceiling. */
+  maxTokens?: number;
+  /** A temperature (0–2), for a model that takes one. */
+  temperature?: number;
   system: string;
   /** A chat's earlier turns (co-writing), sent as real user and assistant roles before `user`. */
   messages?: ChatTurn[];
@@ -40,6 +44,10 @@ export type DecisionRequest<Keys extends string> = {
   questions: Record<Keys, DecisionQuestion>;
 };
 
+/** One model call the Worker answered: which model ran, what it cost (US$) and its tokens (each null if OpenRouter
+ * didn't say), how long it took and when. Never the prompt or reply. */
+export type ModelCall = { job: ModelJob; model: string; cost: number | null; tokens: CallTokens | null; durationMs: number; at: Date; failed?: WorkerError };
+
 /** Whether an Access Token lets the app use LLM features right now. */
 export type AccessStatus = { ok: true; label: string; expiresAt: Date } | { ok: false; reason: AccessRefusal };
 
@@ -47,7 +55,11 @@ export type AccessStatus = { ok: true; label: string; expiresAt: Date } | { ok: 
 export type ModelGatewayErrorCode = WorkerError | "worker_unreachable" | "request_refused" | "not_connected";
 
 export class ModelGatewayError extends Error {
-  constructor(readonly code: ModelGatewayErrorCode) {
+  constructor(
+    readonly code: ModelGatewayErrorCode,
+    /** For a call OpenRouter billed though it failed: which model ran, and what it cost. */
+    readonly billed?: { model: string; cost: number | null; tokens: CallTokens | null },
+  ) {
     super(`Model call failed: ${code}`);
     this.name = "ModelGatewayError";
   }
@@ -64,6 +76,10 @@ export interface ModelGateway {
   decide<Keys extends string>(request: DecisionRequest<Keys>): Promise<Record<Keys, DecisionAnswer>>;
   /** Checks an Access Token with the Worker, before it's used. */
   checkAccess(token: string): Promise<AccessStatus>;
+  /** The models the Worker allows, with their live prices and settings, and each job's defaults and caps (#17). */
+  allowedModels(): Promise<ModelsResponse>;
+  /** Tells `listener` about each model call from now on, until the returned function is called (#17). */
+  onCall(listener: (call: ModelCall) => void): () => void;
   /** A spoken Answer as text (#33), by a speech model running in this browser: no audio leaves the device. The first use
    * downloads the model; `onDownload` reports how much of it has arrived (0 to 1). */
   transcribe(audio: Blob, onDownload?: (fraction: number) => void): Promise<string>;
