@@ -1,13 +1,10 @@
 import { useId } from "react";
 import { ProblemAlert } from "../model-gateway/ProblemAlert";
 import { skillKey } from "../scenarios/skills";
+import { countOf, wordFor } from "../text";
 import type { Interview, Question, StoredReadiness } from "./interview";
-import { READINESS_TEXT } from "./readiness";
+import { READINESS_TEXT, skillLines, STANDING_TEXT } from "./readiness";
 import { READINESS_PROBLEMS, type ReadinessRequest } from "./useReadinessReport";
-
-/** How a skill comes across in the Answers to its Questions: the best of them, or not practised if none is answered. */
-const SHOWN_TEXT = { yes: "shown", partly: "partly shown", no: "not shown" } as const;
-const BEST_FIRST = ["yes", "partly", "no"] as const;
 
 type Props = {
   interview: Interview;
@@ -58,15 +55,17 @@ export function ReadinessReport({ interview, request, accessActive, onBack, onGo
   );
 }
 
+/** A saved report's sections, numbered as the Questions are now. */
 function ReportBody({ report, interview, accessActive, onGoTo, onWriteScenario }: { report: StoredReadiness } & Pick<Props, "interview" | "accessActive" | "onGoTo" | "onWriteScenario">) {
   const { questions } = interview;
   const indexOf = (questionId: string) => questions.findIndex((q) => q.id === questionId);
-  /** Items about Questions deleted since are left out. */
-  const present = <T extends { questionId: string }>(items: T[]) => items.filter((item) => indexOf(item.questionId) >= 0);
+  // Items about Questions deleted since are left out.
+  const isPresent = (questionId: string) => indexOf(questionId) >= 0;
+  const present = <T extends { questionId: string }>(items: T[]) => items.filter((item) => isPresent(item.questionId));
   const number = (questionId: string) => indexOf(questionId) + 1;
   const level = READINESS_TEXT[report.readiness];
-  const notPractised = report.notPractised.filter((id) => indexOf(id) >= 0);
-  const noPick = report.noScenarioPicked.filter((id) => indexOf(id) >= 0);
+  const notPractised = report.notPractised.filter(isPresent);
+  const noPick = report.noScenarioPicked.filter(isPresent);
   const strengths = present(report.strengths);
   const toWorkOn = present(report.toWorkOn);
   const notInScenario = present(report.notInScenario);
@@ -77,7 +76,11 @@ function ReportBody({ report, interview, accessActive, onGoTo, onWriteScenario }
         <p className="label-caps">Readiness</p>
         <p className={`readiness-level is-${report.readiness}`}>{level.name}</p>
         <p className="readiness-meaning">{level.meaning}</p>
-        {report.capped && <p className="readiness-capped">Capped at Nearly there while {countOfNotPractised(notPractised.length)} practised yet.</p>}
+        {report.capped && (
+          <p className="readiness-capped">
+            Capped at Nearly there while {countOf(notPractised.length, "Question")} {notPractised.length === 1 ? "isn't" : "aren't"} practised yet.
+          </p>
+        )}
         <p className="readiness-why">{report.why}</p>
         <p className="form-hint">A practice estimate from your Answers, not a hiring decision.</p>
       </section>
@@ -172,42 +175,24 @@ function ReportBody({ report, interview, accessActive, onGoTo, onWriteScenario }
   );
 }
 
-/** "1 Question isn't" or "3 Questions aren't". */
-const countOfNotPractised = (n: number) => (n === 1 ? "1 Question isn't" : `${n} Questions aren't`);
+/** "Question 3", or "Questions 3, 5". */
+const questionRefs = (numbers: number[]) => `${wordFor(numbers.length, "Question")} ${numbers.join(", ")}`;
 
-/** Each skill the report's Questions test, with how it comes across, then the Questions without a skill. */
+/** Each skill the report's Questions test, with how it comes across (and each Question's, when it has several), then
+ * the Questions without a skill. */
 function SkillsSection({ report, questions }: { report: StoredReadiness; questions: Question[] }) {
-  const rated = new Map(report.shows.map((s) => [s.questionId, s.shows]));
-  const notJudged = new Set(report.notJudged);
-  const inReport = questions.map((q, i) => ({ q, n: i + 1 })).filter(({ q }) => rated.has(q.id) || notJudged.has(q.id) || report.notPractised.includes(q.id));
-  const bySkill = new Map<string, { skill: string; numbers: number[]; ratings: ("yes" | "partly" | "no")[]; unjudged: boolean }>();
-  for (const { q, n } of inReport) {
-    if (!q.skill) continue;
-    const entry = bySkill.get(skillKey(q.skill)) ?? { skill: q.skill, numbers: [], ratings: [], unjudged: false };
-    entry.numbers.push(n);
-    const rating = rated.get(q.id);
-    if (rating) entry.ratings.push(rating);
-    if (notJudged.has(q.id)) entry.unjudged = true;
-    bySkill.set(skillKey(q.skill), entry);
-  }
-  const others = inReport.filter(({ q }) => !q.skill);
-  /** The best rating, else not judged (answered, but left out by the model), else not practised. */
-  const shownAs = (ratings: ("yes" | "partly" | "no")[], unjudged: boolean) => {
-    const best = BEST_FIRST.find((r) => ratings.includes(r));
-    return best ? SHOWN_TEXT[best] : unjudged ? "not judged this time" : "not practised";
-  };
-  const unjudgedNumbers = inReport.filter(({ q }) => notJudged.has(q.id)).map(({ n }) => n);
-  const refs = (numbers: number[]) => (numbers.length === 1 ? `Question ${numbers[0]}` : `Questions ${numbers.join(", ")}`);
-
+  const { skills, others } = skillLines(report, questions);
+  const unjudged = [...skills.flatMap((line) => line.questions), ...others].filter((q) => q.standing === "not-judged").map((q) => q.n);
   return (
     <section className="card readiness-section" aria-labelledby="readiness-skills">
       <h3 id="readiness-skills" className="card-title">
         Skills
       </h3>
       <ul className="readiness-skills" aria-label="Skills">
-        {[...bySkill.values()].map(({ skill, numbers, ratings, unjudged }) => (
-          <li key={skillKey(skill)} className={`is-${shownAs(ratings, unjudged).replace(/ /g, "-")}`}>
-            {skill}: {shownAs(ratings, unjudged)} · {refs(numbers)}
+        {skills.map(({ skill, standing, questions: asked }) => (
+          <li key={skillKey(skill)} className={`is-${standing}`}>
+            {skill}: {STANDING_TEXT[standing]} ·{" "}
+            {asked.length === 1 ? `Question ${asked[0].n}` : asked.map((q) => `Question ${q.n}: ${STANDING_TEXT[q.standing]}`).join(", ")}
           </li>
         ))}
       </ul>
@@ -215,18 +200,17 @@ function SkillsSection({ report, questions }: { report: StoredReadiness; questio
         <>
           <p className="label-caps feedback-heading">Other Questions</p>
           <ul className="readiness-skills" aria-label="Other Questions">
-            {others.map(({ q, n }) => (
-              <li key={q.id} className={`is-${shownAs(rated.has(q.id) ? [rated.get(q.id)!] : [], notJudged.has(q.id)).replace(/ /g, "-")}`}>
-                Question {n}: {shownAs(rated.has(q.id) ? [rated.get(q.id)!] : [], notJudged.has(q.id))}
+            {others.map(({ n, standing }) => (
+              <li key={n} className={`is-${standing}`}>
+                Question {n}: {STANDING_TEXT[standing]}
               </li>
             ))}
           </ul>
         </>
       )}
-      {unjudgedNumbers.length > 0 && (
+      {unjudged.length > 0 && (
         <p className="readiness-notes">
-          {unjudgedNumbers.length === 1 ? `Question ${unjudgedNumbers[0]} wasn't` : `Questions ${unjudgedNumbers.join(", ")} weren't`} judged this time. Get it
-          again to include {unjudgedNumbers.length === 1 ? "it" : "them"}.
+          {questionRefs(unjudged)} {unjudged.length === 1 ? "wasn't" : "weren't"} judged this time. Get it again to include {unjudged.length === 1 ? "it" : "them"}.
         </p>
       )}
     </section>

@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { enterAccessToken } from "../test/candidate";
 import { createFakeModelGateway, type ReplyFor } from "../test/fakeModelGateway";
 import { renderApp } from "../test/renderApp";
+import { getReadinessReport } from "./readiness";
 
 const TOKEN = "group-token";
 const ACTIVE = { [TOKEN]: { ok: true as const, label: "Cohort 7", expiresAt: new Date("2099-01-01T00:00:00.000Z") } };
@@ -47,7 +48,7 @@ async function inThePackInterview({ gateway = createFakeModelGateway({ accessTok
   if (token) await screen.findByRole("button", { name: /^Access ·/ });
 }
 
-const withReports = (...interviewReport: unknown[]) => createFakeModelGateway({ accessTokens: ACTIVE, generate: { "interview-report": interviewReport } });
+const withReports = (...interviewReport: unknown[]) => createFakeModelGateway({ accessTokens: ACTIVE, generate: { "readiness-report": interviewReport } });
 
 /** Types an answer on the Question showing, and waits until the bar says it's saved. */
 async function answer(text: string) {
@@ -61,6 +62,16 @@ async function answerFirst(texts: string[]) {
     await answer(text);
     await user().click(screen.getByRole("button", { name: "Next Question" }));
   }
+}
+
+/** Adds a typed Question from the end card, which must be showing. */
+async function addQuestion(text: string, skill = "") {
+  await user().type(screen.getByLabelText("Your Question"), text);
+  if (skill) await user().type(screen.getByLabelText("Skill it tests (optional)"), skill);
+  await user().click(screen.getByRole("button", { name: "Add Question" }));
+  await screen.findByRole("article", { name: new RegExp(`^Question \\d+ of \\d+$`) });
+  if (screen.queryByRole("heading", { name: /^That's all/ })) return;
+  await user().click(screen.getByRole("button", { name: "Next Question" }));
 }
 
 /** Moves through the deck to its end card. */
@@ -159,7 +170,7 @@ describe("the Readiness Report", () => {
     await getTheReport();
 
     const [request] = requests;
-    expect(request.job).toBe("interview-report");
+    expect(request.job).toBe("readiness-report");
     expect(request.system).toMatch(/never suggest facts, figures, names or achievements/i);
     expect(request.system).toMatch(/hiring decision/);
     expect(request.system).toMatch(/never about being hired, recommended or rejected/);
@@ -207,7 +218,7 @@ describe("the Readiness Report", () => {
     const scores: ReplyFor = ({ user }) => ({ scores: sent(user).map(({ id, title }) => ({ id, score: title === TURNAROUND ? 95 : 40 })) });
     const reasons: ReplyFor = ({ user }) => ({ reasons: sent(user).map(({ id }) => ({ id, reason: "It fits." })) });
     const reply = report({ notInScenario: [{ id: "Q1", quote: "we shipped on time" }] });
-    const gateway = createFakeModelGateway({ accessTokens: ACTIVE, generate: { matching: [scores], "match-reasons": [reasons], "interview-report": [reply] } });
+    const gateway = createFakeModelGateway({ accessTokens: ACTIVE, generate: { matching: [scores], "match-reasons": [reasons], "readiness-report": [reply] } });
     await inThePackInterview({ gateway });
     await user().click(screen.getByRole("button", { name: "Find my Matches" }));
     await user().click(within(await screen.findByRole("list", { name: "Matches" })).getByRole("button", { name: TURNAROUND }));
@@ -230,7 +241,7 @@ describe("the Readiness Report", () => {
       generate: {
         matching: [low],
         "match-reasons": [{ suggestion: "A time you grew someone into a bigger role." }],
-        "interview-report": [report({ toWorkOn: [{ id: "Q2", point: "Say what the plan was." }, { id: "Q3", point: "Say what changed for the person you grew." }] })],
+        "readiness-report": [report({ toWorkOn: [{ id: "Q2", point: "Say what the plan was." }, { id: "Q3", point: "Say what changed for the person you grew." }] })],
         "co-writing": [],
       },
     });
@@ -271,6 +282,82 @@ describe("the Readiness Report", () => {
     await waitFor(() => expect(within(screen.getByRole("region", { name: "Readiness" })).getByText("Not yet")).toBeInTheDocument());
     expect(screen.getByText("Your newest Answers are vague.")).toBeInTheDocument();
     expect(screen.queryByText(/earlier version of your Answers/)).not.toBeInTheDocument();
+  });
+});
+
+describe("the Readiness Report's skills", () => {
+  it("shows each Question's standing when a skill has several, and Questions without a skill under Other Questions", async () => {
+    await inThePackInterview({ gateway: withReports(report({ questions: [...REPORT.questions, { id: "Q8", shows: "partly" }] })) });
+    await toTheEnd();
+    await addQuestion("Tell me about a time you led a team through a reorganisation.", "People Leadership"); // Question 7
+    await addQuestion("Why do you want this job?"); // Question 8, no skill
+    await user().click(screen.getByRole("button", { name: "☰ Questions" }));
+    await user().click(screen.getByRole("menuitem", { name: /Tell me about a time you turned around/ }));
+    await answerFirst(ANSWERS);
+    await user().click(screen.getByRole("button", { name: "☰ Questions" }));
+    await user().click(screen.getByRole("menuitem", { name: /Why do you want this job/ }));
+    await answer("The warehouse tools matter to people every day.");
+    await getTheReport();
+
+    expect(listItems("Skills")[0]).toBe("people leadership: shown · Question 1: shown, Question 7: not practised");
+    expect(listItems("Other Questions")).toEqual(["Question 8: partly shown"]);
+  });
+});
+
+describe("going out of date", () => {
+  it("when a Question is added or deleted, or a pick changes", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const sent = (user: string) => JSON.parse(user.split("Scenarios:\n")[1]) as { id: string; title: string }[];
+    const scores: ReplyFor = ({ user }) => ({ scores: sent(user).map(({ id, title }) => ({ id, score: title === TURNAROUND ? 95 : 40 })) });
+    const reasons: ReplyFor = ({ user }) => ({ reasons: sent(user).map(({ id }) => ({ id, reason: "It fits." })) });
+    const gateway = createFakeModelGateway({ accessTokens: ACTIVE, generate: { matching: [scores], "match-reasons": [reasons], "readiness-report": [report(), report(), report()] } });
+    await inThePackInterview({ gateway });
+    await answerFirst([...ANSWERS, "I showed the director our estimate and proposed launching two regions first."]); // 4 of 7 once one is added
+    await getTheReport();
+    const stale = () => screen.queryByText("This report is on an earlier version of your Answers.");
+    expect(stale()).not.toBeInTheDocument();
+
+    await user().click(screen.getByRole("button", { name: "Back to Questions" }));
+    await addQuestion("Tell me about a time you changed your mind.");
+    await openFromTheMenu();
+    await waitFor(() => expect(stale()).toBeInTheDocument()); // once the change is saved
+
+    await user().click(screen.getByRole("button", { name: "Get it again" }));
+    await waitFor(() => expect(stale()).not.toBeInTheDocument());
+    await user().click(screen.getByRole("button", { name: "Back to Questions" }));
+    await user().click(screen.getByRole("button", { name: "Previous Question" }));
+    await screen.findByRole("article", { name: "Question 7 of 7" }); // the one added
+    await user().click(screen.getByRole("button", { name: "More for this Question" }));
+    await user().click(screen.getByRole("menuitem", { name: "Delete this Question" }));
+    await openFromTheMenu();
+    await waitFor(() => expect(stale()).toBeInTheDocument()); // once the change is saved
+
+    await user().click(screen.getByRole("button", { name: "Get it again" }));
+    await waitFor(() => expect(stale()).not.toBeInTheDocument());
+    await user().click(screen.getByRole("button", { name: "☰ Questions" }));
+    await user().click(screen.getByRole("menuitem", { name: /Tell me about a time you turned around/ }));
+    await user().click(screen.getByRole("button", { name: "Find my Matches" }));
+    await user().click(within(await screen.findByRole("list", { name: "Matches" })).getByRole("button", { name: TURNAROUND }));
+    await screen.findByText(/^Using/);
+    await openFromTheMenu();
+    await waitFor(() => expect(stale()).toBeInTheDocument()); // once the change is saved
+    confirm.mockRestore();
+  });
+});
+
+describe("an Interview without a Job Spec", () => {
+  it("is judged against its Questions, and says it has no Job Spec", async () => {
+    let sentUser = "";
+    const gateway = createFakeModelGateway({ generate: { "readiness-report": [({ user }: { user: string }) => ((sentUser = user), report({ questions: [{ id: "Q1", shows: "yes" }] }))] } });
+    const interview = {
+      role: "Engineering Manager",
+      questions: [{ id: "a", text: "Tell me about a time you led a team.", skill: "leadership", origin: "typed" as const, answer: { text: ANSWERS[0], savedAt: "2026-10-02T09:00:00.000Z" } }],
+    };
+
+    const result = await getReadinessReport(gateway, interview, []);
+
+    expect(sentUser).toContain("<job_spec>none</job_spec>");
+    expect(result.shows).toEqual([{ questionId: "a", shows: "yes" }]);
   });
 });
 

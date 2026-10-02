@@ -37,19 +37,22 @@ export function useReadinessReport({ interview, onChange, onTokenExpired, access
     if (busy || blockedBy || !scenarios) return;
     setBusy(true);
     setProblem(null);
-    const forFingerprint = readinessFingerprint(interview, scenarios);
+    const forFingerprint = readinessFingerprint(interview, scenarios); // of what's sent, so a change meanwhile shows
+    let report;
     try {
-      const report = await getReadinessReport(gateway, interview, scenarios);
-      await onChange((current) => ({ ...current, readinessReport: { report, forFingerprint, gotAt: new Date().toISOString() } })).catch(() => {
-        throw new NotSaved(); // the Vault locked meanwhile, or storage failed
-      });
+      report = await getReadinessReport(gateway, interview, scenarios);
     } catch (e) {
-      const found = e instanceof NotSaved ? "not-saved" : callProblemOf(e); // including a reply that fails its schema
+      const found = callProblemOf(e); // including a reply that fails its schema
       if (found === "expired-token") onTokenExpired();
       setProblem(found);
-    } finally {
-      setBusy(false);
+      return setBusy(false);
     }
+    try {
+      await onChange((current) => ({ ...current, readinessReport: { report, forFingerprint, gotAt: new Date().toISOString() } }));
+    } catch {
+      setProblem("not-saved"); // the Vault locked meanwhile, or storage failed
+    }
+    setBusy(false);
   }
 
   const saved = interview.readinessReport;
@@ -63,5 +66,3 @@ export function useReadinessReport({ interview, onChange, onTokenExpired, access
   };
 }
 export type ReadinessRequest = ReturnType<typeof useReadinessReport>;
-
-class NotSaved extends Error {}

@@ -93,7 +93,7 @@ describe("structured generation", () => {
   it("runs the Readiness Report as its own job, at medium effort", async () => {
     openRouter = fakeOpenRouter(() => completion('{"questions":[]}'));
 
-    const response = await generate({ job: "interview-report", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
+    const response = await generate({ job: "readiness-report", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
 
     expect(response.status).toBe(200);
     expect(openRouter.requests[0].json()).toMatchObject({ model: "openai/gpt-5-mini", max_tokens: 8000, reasoning: { effort: "medium" } });

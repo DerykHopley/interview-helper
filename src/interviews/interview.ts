@@ -40,6 +40,7 @@ export type Readiness = (typeof READINESS_LEVELS)[number];
 
 /** How well an Answer shows its Question's skill (or, without one, answers what it asks). */
 export const SHOWS = ["yes", "partly", "no"] as const;
+export type Shows = (typeof SHOWS)[number];
 
 /** A Readiness Report as stored (#56), with every item tied to its Question by id. Kept apart from the model's reply
  * schema (readiness.ts) for the same reason as Feedback's checklist. */

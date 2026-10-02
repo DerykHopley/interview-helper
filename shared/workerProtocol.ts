@@ -2,7 +2,7 @@
 import { z } from "zod";
 
 /** The LLM jobs the app runs; each maps to a configured model in the Worker. */
-export const MODEL_JOBS = ["question-generation", "matching", "match-reasons", "co-writing", "feedback", "interview-report", "reason-judging"] as const;
+export const MODEL_JOBS = ["question-generation", "matching", "match-reasons", "co-writing", "feedback", "readiness-report", "reason-judging"] as const;
 export type ModelJob = (typeof MODEL_JOBS)[number];
 
 /** Every error the Worker replies with, as `{ "error": <code> }`. */

@@ -49,6 +49,10 @@ export const scenarioSchema = z.object({
   result: text,
 });
 export type Scenario = z.infer<typeof scenarioSchema>;
+
+/** A Scenario's own account, as a model is given it to check an Answer against (Feedback, the Readiness Report):
+ * its words and results, without its skills, origin or dates. */
+export const scenarioAccount = ({ title, role, situation, task, action, result, measurableResults }: Scenario) => ({ title, role, situation, task, action, result, measurableResults });
 export type { Origin };
 
 const HEADING = new RegExp(`^## (${SECTIONS.map(([, heading]) => heading).join("|")})$`);

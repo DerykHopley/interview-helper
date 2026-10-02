@@ -4,7 +4,8 @@
 import { z } from "zod";
 import { delimited } from "../model-gateway/delimited";
 import type { ModelGateway } from "../model-gateway/ModelGateway";
-import type { Scenario } from "../scenarios/scenarioFormat";
+import { scenarioAccount, type Scenario } from "../scenarios/scenarioFormat";
+import { contains } from "../text";
 import type { Question, StoredChecklist } from "./interview";
 
 const coverage = z.enum(["said", "missing"]);
@@ -33,14 +34,15 @@ Check the answer:
  * the Answer word for word (ignoring case and spacing) is dropped, so it can't put words in the Candidate's mouth, and
  * what it says the Scenario says is kept only if it's in the Scenario. Without a skill, the skill check is left out. */
 export async function getFeedback(gateway: ModelGateway, question: Question, scenario: Scenario, answer: string): Promise<Checklist> {
-  const { title, role, situation, task, action, result, measurableResults } = scenario;
+  const account = scenarioAccount(scenario);
   const user = [
     delimited("question", JSON.stringify({ question: question.text, skill: question.skill ?? null })),
-    delimited("scenario", JSON.stringify({ title, role, situation, task, action, result, measurableResults })),
+    delimited("scenario", JSON.stringify(account)),
     delimited("answer", answer),
   ].join("\n");
   const checklist = await gateway.generate({ job: "feedback", system: SYSTEM, user, schema: checklistSchema });
-  const scenarioText = [title, role, situation, task, action, result, ...measurableResults].join("\n");
+  const { measurableResults, ...words } = account;
+  const scenarioText = [...Object.values(words), ...measurableResults].join("\n");
   return {
     ...checklist,
     notInScenario: checklist.notInScenario
@@ -48,10 +50,4 @@ export async function getFeedback(gateway: ModelGateway, question: Question, sce
       .map((claim) => ({ ...claim, scenarioSays: claim.scenarioSays && contains(scenarioText, claim.scenarioSays) ? claim.scenarioSays : null })),
     skill: question.skill ? checklist.skill : null,
   };
-}
-
-/** Whether `quote` is in `text` word for word, ignoring case and spacing (also the Readiness Report's check). */
-export function contains(text: string, quote: string) {
-  const normalise = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
-  return normalise(quote) !== "" && normalise(text).includes(normalise(quote));
 }

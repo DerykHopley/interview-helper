@@ -374,6 +374,7 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
 .readiness-skills .is-shown { border-left-color: var(--ok); }
 .readiness-skills .is-partly-shown { border-left-color: var(--warn-line); }
 .readiness-skills .is-not-shown, .readiness-skills .is-not-practised { border-left-color: var(--gap); }
+.readiness-skills .is-not-judged { border-left-style: dashed; }
 .readiness-notes li { font-size: 14px; color: var(--ink-muted); }
 .jump-report { font-weight: 700; }
 /* On a phone the ☰ Questions button sits at the left, so its menu spans the screen instead of hanging off its left edge. */

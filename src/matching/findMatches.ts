@@ -3,6 +3,7 @@
 import type { ModelGateway } from "../model-gateway/ModelGateway";
 import type { SavedScenario } from "../scenarios/scenarioBank";
 import type { MatchResult } from "../interviews/interview";
+import { fingerprintOf } from "../text";
 import type { Matcher, QuestionText, ScenarioText } from "./Matcher";
 import { gapSuggestion, matchReasons } from "./matchReasons";
 
@@ -11,13 +12,6 @@ type Settings = { gapThreshold: number; shown: number };
 /** A short digest of the Scenarios' text (FNV-1a): differs if any Scenario was added, edited or removed. */
 export function scenariosFingerprint(scenarios: SavedScenario[]) {
   return fingerprintOf(JSON.stringify(scenarios.map(asScenarioText).sort((a, b) => a.id.localeCompare(b.id))));
-}
-
-/** A short hash of some text (FNV-1a), to tell later whether it has changed. */
-export function fingerprintOf(text: string) {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193) >>> 0;
-  return hash.toString(16).padStart(8, "0");
 }
 
 export const asScenarioText = (s: SavedScenario): ScenarioText => ({
