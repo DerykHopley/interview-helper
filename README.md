@@ -2,7 +2,7 @@
 
 **Practise for a job interview with your own real career stories, matched to the questions you're likely to be asked, and stored only in your browser.**
 
-_Built for Turing College's AI Engineering course, Sprint 1: "Build an Interview Practice App"._
+_Built for Turing College's AI Engineering course, Sprint 1: "Build an Interview Practice App". Ticket and PR numbers like #56 refer to [github.com/DerykHopley/interview-helper](https://github.com/DerykHopley/interview-helper), where the spec, tickets, decisions, reviews and manual test records are._
 
 ![A Question from an Interview, with its three best Matches dealt, the top one picked, an Answer typed and its Feedback](docs/images/question.png)
 
