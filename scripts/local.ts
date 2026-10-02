@@ -3,7 +3,7 @@
 // and starts the Worker and the app together, with the token filled in on the app's setup screen. Ctrl+C stops both.
 // `npm run dev` and `npm run dev:worker` still run each on its own.
 import { spawn, type ChildProcess } from "node:child_process";
-import { createServer } from "node:net";
+import { connect } from "node:net";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { MAX_LIFETIME_HOURS, mintAccessToken } from "../worker/src/accessToken";
@@ -38,14 +38,17 @@ function askHidden(question: string): Promise<string> {
   });
 }
 
-/** Whether something is already listening on a port, e.g. a dev server started earlier. */
-const portInUse = (port: number) =>
-  new Promise<boolean>((resolve) => {
-    const server = createServer()
-      .once("error", () => resolve(true))
-      .once("listening", () => server.close(() => resolve(false)))
-      .listen(port, "localhost");
-  });
+/** Whether something is already listening on a port, e.g. a dev server started earlier: on IPv4 or IPv6 localhost,
+ * since a server may listen on only one of them. */
+async function portInUse(port: number) {
+  const answers = (host: string) =>
+    new Promise<boolean>((resolve) => {
+      const socket = connect({ port, host })
+        .once("connect", () => (socket.destroy(), resolve(true)))
+        .once("error", () => resolve(false));
+    });
+  return (await Promise.all([answers("127.0.0.1"), answers("::1")])).some(Boolean);
+}
 
 /** Runs one of the two servers, with each line of its output labelled. */
 function run(name: string, args: string[], env: NodeJS.ProcessEnv = {}): ChildProcess {
