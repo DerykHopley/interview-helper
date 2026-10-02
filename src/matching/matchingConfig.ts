@@ -3,6 +3,7 @@
 // effort are set here so each setup has its own recorded threshold; other jobs use the Worker's defaults
 // (worker/wrangler.jsonc JOB_MODELS, JOB_SETTINGS). Each Matcher's Gap threshold is on its own scale,
 // recorded in gapThresholds.json by the Matcher Report (#14).
+import { REASONING_EFFORTS } from "../../shared/workerProtocol";
 import type { ModelGateway } from "../model-gateway/ModelGateway";
 import gapThresholds from "./gapThresholds.json";
 import { createLlmMatcher, type LlmSetup } from "./llmMatcher";
@@ -38,4 +39,18 @@ export function gapThresholdFor(matcherName: string): number {
   const recorded = (gapThresholds as RecordedThresholds)[matcherName];
   if (!recorded) throw new Error(`No Gap threshold is recorded for "${matcherName}"; run the Matcher Report for it`);
   return recorded.gapThreshold;
+}
+
+/** A Setup the Matcher Report has measured, so it has a Gap threshold: what the Developer panel (#17) may pick. */
+export type MeasuredSetup = { name: string; setup: MatcherSetup; gapThreshold: number };
+
+/** Every measured Setup, read back from its Matcher name in gapThresholds.json ("LLM (<variant>) · <model> · <effort>
+ * effort"). A name that no longer reads as a current Prompt Variant and effort is left out. */
+export function measuredSetups(): MeasuredSetup[] {
+  return Object.entries(gapThresholds as RecordedThresholds).flatMap(([name, { gapThreshold }]) => {
+    const parts = /^LLM \((.+)\) · (.+) · (\w+) effort$/.exec(name);
+    const promptVariant = (Object.keys(PROMPT_VARIANTS) as PromptVariantId[]).find((id) => PROMPT_VARIANTS[id].name === parts?.[1]);
+    const reasoningEffort = REASONING_EFFORTS.find((e) => e === parts?.[3]);
+    return parts && promptVariant && reasoningEffort ? [{ name, setup: { promptVariant, model: parts[2], reasoningEffort }, gapThreshold }] : [];
+  });
 }

@@ -39,13 +39,15 @@ export const ChatTurn = z.object({ role: z.enum(["user", "assistant"]), content:
 export type ChatTurn = z.infer<typeof ChatTurn>;
 
 /** POST /v1/generate body. `schema` is the reply's JSON Schema; `model` may pick another allowed model, `maxTokens`
- * a lower cap than the job's own (the cap is a ceiling), and `reasoningEffort` another allowed effort. `messages` are a
- * chat's earlier turns, sent between `system` and `user` (the newest message). */
+ * a lower cap than the job's own (the cap is a ceiling), `reasoningEffort` another allowed effort, and `temperature` one
+ * for a model that takes it (the Developer panel, #17). `messages` are a chat's earlier turns, sent between `system`
+ * and `user` (the newest message). */
 export const GenerateRequest = z.object({
   job: z.string(),
   model: z.string().optional(),
   maxTokens: z.number().int().positive().optional(),
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
+  temperature: z.number().min(0).max(2).optional(),
   system: z.string(),
   messages: z.array(ChatTurn).max(40).optional(),
   user: z.string(),
@@ -55,6 +57,19 @@ export const GenerateRequest = z.object({
   .refine((r) => !r.messages || r.user.length <= 4000);
 export type GenerateRequest = z.infer<typeof GenerateRequest>;
 
-/** POST /v1/generate → 200. `model` is the one that ran and `cost` what OpenRouter charged in USD (null if it
- * didn't say), for the Matcher Report and the Developer panel. */
-export type GenerateResponse = { output: unknown; model: string; cost: number | null };
+/** POST /v1/generate → 200. `model` is the one that ran, `cost` what OpenRouter charged in USD and `tokens` what the
+ * call used (each null if it didn't say), for the Matcher Report and the Developer panel. */
+export type GenerateResponse = { output: unknown; model: string; cost: number | null; tokens: CallTokens | null };
+export type CallTokens = { input: number; output: number };
+
+/** One allowed model, as the Developer panel (#17) shows it: its live price in US$ per million tokens and whether it
+ * takes a temperature or a reasoning effort, from OpenRouter's models endpoint (null and false if that's unknown). */
+export type AllowedModel = { id: string; price: { inputPerMillion: number; outputPerMillion: number } | null; temperature: boolean; reasoning: boolean };
+
+/** GET /v1/models → 200: the allowed models, and each job's default model and limits (the token cap is a ceiling).
+ * `pricesAt` is when the prices were fetched, or null if OpenRouter's models endpoint couldn't be read. */
+export type ModelsResponse = {
+  models: AllowedModel[];
+  jobs: Record<string, { model: string; maxTokens: number; reasoningEffort: ReasoningEffort }>;
+  pricesAt: string | null;
+};

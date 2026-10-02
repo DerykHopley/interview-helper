@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { AccessChip } from "../access/AccessChip";
 import { BackupPage } from "../backup/BackupPage";
 import { LEAVE_CHAT } from "../cowriting/CoWriting";
+import { DevMode } from "../dev/DevPanel";
 import { gapCount, gapsBySkill, NO_SKILL, type SkillGaps } from "../interviews/gaps";
 import { interviewStore } from "../interviews/interviewStore";
 import { InterviewScreen } from "../interviews/InterviewScreen";
@@ -239,6 +240,8 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
           </div>
         )}
       </main>
+      {/* The owner's Developer panel (#17), on every unlocked screen once developer mode is on. */}
+      <DevMode accessActive={accessActive} />
     </>
   );
 }

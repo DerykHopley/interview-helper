@@ -6,12 +6,20 @@ import { withMatchResult } from "../interviews/picks";
 import type { ModelGateway } from "../model-gateway/ModelGateway";
 import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
+import { devSettings, type DevSettings } from "../dev/devSettings";
 import { findMatches } from "./findMatches";
-import { gapThresholdFor, MATCHERS, MATCHING_CONFIG } from "./matchingConfig";
+import { gapThresholdFor, MATCHERS, MATCHING_CONFIG, measuredSetups, type MatcherSetup } from "./matchingConfig";
 
-/** The shipped Matcher, and the settings its Matches are found with. */
-export function shippedMatcher(gateway: ModelGateway) {
-  const matcher = MATCHERS[MATCHING_CONFIG.matcher].create(gateway, MATCHING_CONFIG);
+/** The measured Setup picked in the Developer panel (#17), by its Matcher name, while the panel is on; else null. */
+export const pickedMatchingSetup = ({ on, matchingSetup }: DevSettings = devSettings.get()) => (on ? matchingSetup : null);
+
+/** The Setup matching uses: the measured one picked, or the config's. */
+const setupNamed = (name: string | null): MatcherSetup => measuredSetups().find((m) => m.name === name)?.setup ?? MATCHING_CONFIG;
+
+/** The shipped Matcher, with the Setup picked in the Developer panel or the config's, and the settings its Matches are
+ * found with. */
+export function shippedMatcher(gateway: ModelGateway, picked = pickedMatchingSetup()) {
+  const matcher = MATCHERS[MATCHING_CONFIG.matcher].create(gateway, setupNamed(picked));
   return { matcher, settings: { gapThreshold: gapThresholdFor(matcher.name), shown: MATCHING_CONFIG.shown } };
 }
 
