@@ -181,10 +181,10 @@ npm run token -- --label cohort1
 **Out of scope for v1** (from the [spec](https://github.com/DerykHopley/interview-helper/issues/1)):
 - user accounts, cross-device sync, and any server-side storage of your data
 - teacher visibility into a Candidate's work
-- CV upload, a Candidate profile, and Job Specs from a file or URL
+- CV upload, a Candidate profile, or scoring your experience against a job
+- Job Specs from a file or URL
 - "Remember this browser", so you don't type the Unlock Key each time
 - live voice interviews and adaptive follow-up questions
-- a hire / no-hire verdict, and fit scoring of your experience against a Job Spec
 - LangChain, a vector database, image generation, and end-to-end browser tests in CI
 
 ## How it was built
