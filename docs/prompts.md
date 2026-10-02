@@ -19,14 +19,14 @@ Every place Interview Helper prompts a model: which model and settings it uses, 
 | `matching` | [`promptVariants.ts`](../src/matching/promptVariants.ts) | gpt-5-mini · low | **Five Prompt Variants**; rubric, zero-shot ships | The Matcher Report |
 | `match-reasons`: reasons | [`matchReasons.ts`](../src/matching/matchReasons.ts) | gpt-5-mini · low | Zero-shot, constrained writing | The reason judge |
 | `match-reasons`: Gap suggestion | same | gpt-5-mini · low | Zero-shot, constrained | App tests |
-| `co-writing` | [`coWriter.ts`](../src/cowriting/coWriter.ts) | gpt-5-mini · low | Multi-turn chat, numbered rules, state in the system prompt | App tests, real chats (#12) |
-| `feedback` | [`feedback.ts`](../src/interviews/feedback.ts) | gpt-5-mini · low | Checklist judge, quotes checked in code | App tests, a real check (#32) |
+| `co-writing` | [`coWriter.ts`](../src/cowriting/coWriter.ts) | gpt-5-mini · low | Multi-turn chat, numbered rules, state in the system prompt | App tests, real chats ([PR #46](https://github.com/DerykHopley/interview-helper/pull/46)) |
+| `feedback` | [`feedback.ts`](../src/interviews/feedback.ts) | gpt-5-mini · low | Checklist judge, quotes checked in code | App tests, a real check ([PR #52](https://github.com/DerykHopley/interview-helper/pull/52)) |
 | `readiness-report` | [`readiness.ts`](../src/interviews/readiness.ts) | gpt-5-mini · **medium** | Rubric judge, quotes checked and level capped in code | App tests, a real check (#56) |
 | `reason-judging` (eval only) | [`eval/src/reasons.ts`](../eval/src/reasons.ts) | **gemini-3.8-flash** · low | LLM-as-a-judge, calibrated | Its calibration set |
 
 ### Question generation
 
-Two calls, both zero-shot. The first pulls the role and company out of a pasted Job Spec, or null for either; this is plain extraction, so instructions are enough. The second writes about 8 behavioural Questions, each tagged with the skill it tests. The rules are "Tell me about a time…" framing only, no technical or hypothetical Questions, and none that repeat the existing ones, which are sent along. The reply's schema bounds the count (5–10 for a new Interview), so a far-off reply is refused.
+Two calls, both zero-shot. The first pulls the role and company out of a pasted Job Spec, or null for either; this is plain extraction, so instructions are enough. The second writes about 8 behavioural Questions, each tagged with the skill it tests. The rules: every Question asks about something the Candidate did in the past ("Tell me about a time…", "Describe a situation where…"), never technical or hypothetical Questions, and none that repeat the existing ones, which are sent along. The reply's schema bounds the count (5–10 for a new Interview), so a far-off reply is refused.
 
 **Why zero-shot:** the task is well described by rules, and examples would pull every Interview's Questions towards the examples' wording.
 
@@ -44,7 +44,7 @@ The LLM Matcher scores every Scenario 0–100 against one Question. It's the one
 | Persona | "You are an experienced interviewer…" |
 | **Rubric, zero-shot** (ships) | Score bands: 80–100 strong and direct, 50–79 partial, 0–49 doesn't answer |
 
-**Why the rubric ships:** in the Matcher Report all five ranked every Question right on the starter set. The rubric was the only cheap variant to resist **all six** prompt-injection attacks; zero-shot and persona resisted 4 of 6, and few-shot 5 of 6. Chain-of-thought also resisted all six but cost about twice as much and was slower. The bands also give the Gap threshold a stable meaning.
+**Why the rubric ships:** in the Matcher Report all five ranked every Question right on the starter set. The set has two **adversarial cases** (a Question run again with hidden instructions in it, or in one Scenario), each run 3 times. The rubric was the only cheap variant that neither case steered in any of the 6 attacked runs; zero-shot and persona were steered in 2 of 6, and few-shot in 1. Chain-of-thought also held in all 6, but cost about twice as much and was slower. The bands also give the Gap threshold a stable meaning.
 
 **To improve:**
 - Revisit with the owner's harder Evaluation Set ([#16](https://github.com/DerykHopley/interview-helper/issues/16)), especially **minimal** effort. On the starter set it cost a third as much and was about 4× faster, but had the narrowest margin between real Matches and Gaps.
@@ -86,9 +86,9 @@ A checklist judge, run against the Scenario the Candidate picked for that Questi
 - every claim the Scenario doesn't support, quoted from the Answer
 - whether the Answer shows the Question's skill
 
-It never writes a better Answer. **Code checks its quotes:** a claim not found word for word in the Answer is dropped, and what it says the Scenario says is kept only if it's in the Scenario.
+It never writes a better Answer. **Code checks its quotes:** a claim not found word for word in the Answer (ignoring case and spacing) is dropped, and what it says the Scenario says is kept only if it's in the Scenario.
 
-**Why a checklist:** fixed points are easy to show, compare between attempts and test, and a checklist has no room to rewrite the Answer. In a real check on #32, honest Answers weren't flagged and invented claims were.
+**Why a checklist:** fixed points are easy to show, compare between attempts and test, and a checklist has no room to rewrite the Answer. In a real check ([PR #52](https://github.com/DerykHopley/interview-helper/pull/52)), an honest Answer wasn't flagged and invented claims were.
 
 **To improve:** few-shot examples of claims that are and aren't in a Scenario, for borderline paraphrases. Feedback on delivery (pace, filler words) from the voice recording, on the device.
 
@@ -151,10 +151,12 @@ A worked example of how a prompting technique is tried, measured and shipped.
 
 2. **Run the tests.** `npm test`. The eval tests send every variant through a fake gateway and check its prompt.
 
-3. **Compare it.** With the Worker running (`npm run dev:worker`), run `npm run eval -- --all-setups --runs 3`. This runs every Prompt Variant (and every reasoning effort) on the shipped model, 3 times each, and writes a dated report to `eval/reports/`. It spends real money: about 30–60 cents on the starter set. The new variant gets a row in the **Prompt Variants** table, ranked by top-1, then Gap mistakes, then attacks that reached their goal, then margin, then cost. Its **Gap threshold** is recorded in `src/matching/gapThresholds.json` under its own name.
+3. **Compare it.** With the Worker running (`npm run dev:worker`), run `npm run eval -- --all-setups --runs 3`. This runs every Prompt Variant (and every reasoning effort) on the shipped model, 3 times each, and writes a dated report to `eval/reports/`. It spends real money: about 30–60 cents on the starter set. The new variant gets a row in the **Prompt Variants** table, ranked by top-1, then Gap mistakes, then adversarial runs that reached their goal, then margin, then cost. Its **Gap threshold** is recorded in `src/matching/gapThresholds.json` under its own name.
 
    To change only the layout of a report later, use `npm run eval -- --render eval/reports/<report>.json`. It rebuilds the report from saved scores, with no calls.
 
-4. **Ship it.** If it wins, set `promptVariant: "rubric-chain-of-thought"` in `MATCHING_CONFIG` (`src/matching/matchingConfig.ts`). That's one line. The Matcher's name includes its variant, model and effort, so the app picks up the threshold measured for exactly that Setup; an app test fails if none is recorded.
+4. **Ship it.** If it wins, set `promptVariant: "rubric-chain-of-thought"` in `MATCHING_CONFIG` (`src/matching/matchingConfig.ts`). The Matcher's name includes its variant, model and effort, so the app picks up the threshold measured for exactly that Setup. Without a recorded threshold it refuses to match (`gapThresholdFor` throws), and the matching tests fail.
+
+   Two tests in `src/matching/Matching.test.tsx` name the shipped Setup, so update them in the same change. `SHIPPED` is its Matcher name, and the Prompt Variant test changes `PROMPT_VARIANTS["rubric-zero-shot"]` to stand in for a switch.
 
 The same pattern (one technique at a time, the same schema, measured on the same set) would give the other jobs Prompt Variants too. For now only matching has them; the rest are tuned by real checks recorded on their tickets.

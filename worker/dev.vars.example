@@ -1,2 +1,9 @@
+# The Worker's two secrets for local development. Copy this file to worker/.dev.vars (gitignored) and fill both in.
+# Keep this file's name as it is: Wrangler reads any file named .dev.vars.<something> as an environment's settings,
+# and its empty values would override your real ones.
+#
+# Your OpenRouter API key. Only the Worker sees it; it never reaches the browser.
 OPENROUTER_API_KEY=
+# Any long random string, e.g. from `openssl rand -hex 32`. The Worker checks Access Tokens with it, and
+# `npm run token` mints them with it.
 ACCESS_TOKEN_SECRET=
