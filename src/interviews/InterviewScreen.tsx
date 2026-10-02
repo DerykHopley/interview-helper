@@ -15,6 +15,8 @@ import { usedFor } from "./picks";
 import type { Interview, Question } from "./interview";
 import type { SavedInterview } from "./interviewStore";
 import { FIRST_BATCH, MORE_BATCH, type Batch } from "./questionGenerator";
+import { ReadinessReport } from "./ReadinessReport";
+import { useReadinessReport } from "./useReadinessReport";
 import { FEEDBACK_PROBLEMS, useAnswerFeedback, type FeedbackRequest, type FeedbackStaleness } from "./useAnswerFeedback";
 import type { Writing, WriteProblem } from "./useQuestionWriting";
 
@@ -43,6 +45,9 @@ type Props = {
   onTokenExpired: () => void;
   /** Writes a batch of Questions, added to the end. */
   onWrite: (batch: Batch) => void;
+  /** Whether the Readiness Report page shows in place of the deck (#56), and showing or leaving it. */
+  reportOpen: boolean;
+  onReportOpen: (open: boolean) => void;
 };
 
 /** What each problem writing Questions says, and whether its fix is a new Access Token (otherwise: try again). */
@@ -86,10 +91,14 @@ export function InterviewScreen({
   accessActive,
   onTokenExpired,
   onWrite,
+  reportOpen,
+  onReportOpen,
 }: Props) {
   const { questions } = interview;
   const matches = useQuestionMatches(vault, onChange, onTokenExpired, dealtOnOpen);
   const feedback = useAnswerFeedback({ onChange, onTokenExpired, accessActive, scenarios: matches.scenarios });
+  const readiness = useReadinessReport({ interview, onChange, onTokenExpired, accessActive, scenarios: matches.scenarios });
+  const latestReportOpen = useLatest(reportOpen);
   const at = Math.min(position, questions.length);
   const go = (to: number) => onMove(Math.max(0, Math.min(to, questions.length)));
   const latestGo = useLatest((by: number) => go(at + by));
@@ -120,13 +129,13 @@ export function InterviewScreen({
   // ← and → move through the deck, except while typing in a box.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target) || menuOpen() || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (isTyping(e.target) || menuOpen() || latestReportOpen.current || e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === "ArrowLeft") latestGo.current(-1);
       if (e.key === "ArrowRight") latestGo.current(1);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [latestGo]);
+  }, [latestGo, latestReportOpen]);
 
   async function remove(question: Question) {
     if (!confirm(`Delete this Question? This can't be undone.\n\n"${question.text}"`)) return;
@@ -181,6 +190,23 @@ export function InterviewScreen({
       setFailure(onFailure);
       return false;
     }
+  }
+
+  if (reportOpen) {
+    return (
+      <ReadinessReport
+        interview={interview}
+        request={readiness}
+        accessActive={accessActive}
+        onBack={() => onReportOpen(false)}
+        onGoTo={(index) => {
+          onReportOpen(false);
+          onMove(index);
+        }}
+        onWriteScenario={onWriteScenario}
+        onNeedToken={onNeedToken}
+      />
+    );
   }
 
   return (
@@ -261,7 +287,20 @@ export function InterviewScreen({
       ) : writing.active && questions.length === 0 ? (
         <WritingCard />
       ) : (
-        <EndCard count={questions.length} onAdd={add} busy={writing.active} accessActive={accessActive} onWrite={interview.jobSpec ? onWrite : null} />
+        <EndCard
+          count={questions.length}
+          onAdd={add}
+          busy={writing.active}
+          accessActive={accessActive}
+          onWrite={interview.jobSpec ? onWrite : null}
+          report={{
+            blockedBy: readiness.blockedBy,
+            onGet: () => {
+              onReportOpen(true);
+              void readiness.ask();
+            },
+          }}
+        />
       )}
       <button type="button" className="deck-arrow is-next" aria-label="Next Question" disabled={at === questions.length} onClick={() => go(at + 1)}>
         ›
@@ -324,11 +363,13 @@ type EndCardProps = {
   accessActive: boolean;
   /** Null when there's no Job Spec to write Questions from (a Pack's Interview without one). */
   onWrite: ((batch: Batch) => void) | null;
+  /** Getting the Readiness Report (#56): why it can't be had yet, or null, and asking for it. */
+  report: { blockedBy: string | null; onGet: () => void };
 };
 
-/** The end of the deck: how many Questions there are, asking for more (or the first ones), and a box to add your
- * own. */
-function EndCard({ count, onAdd, busy, accessActive, onWrite }: EndCardProps) {
+/** The end of the deck: how many Questions there are, the Readiness Report, asking for more (or the first ones), and
+ * a box to add your own. */
+function EndCard({ count, onAdd, busy, accessActive, onWrite, report }: EndCardProps) {
   const id = useId();
   const [text, setText] = useState("");
   const [skill, setSkill] = useState("");
@@ -352,6 +393,18 @@ function EndCard({ count, onAdd, busy, accessActive, onWrite }: EndCardProps) {
       <h2 id={`${id}-title`} className="end-card-title">
         {title}
       </h2>
+      {count > 0 && (
+        <div className="actions">
+          <button type="button" className="button-primary" disabled={report.blockedBy !== null} aria-describedby={report.blockedBy ? `${id}-report-why` : undefined} onClick={report.onGet}>
+            Get Readiness Report
+          </button>
+          {report.blockedBy && (
+            <span id={`${id}-report-why`} className="form-hint">
+              {report.blockedBy}
+            </span>
+          )}
+        </div>
+      )}
       {onWrite && (
         <div className="actions">
           <button type="button" className="button-secondary" disabled={!accessActive || busy} onClick={() => onWrite(count === 0 ? FIRST_BATCH : MORE_BATCH)}>

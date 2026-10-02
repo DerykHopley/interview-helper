@@ -50,8 +50,8 @@ export async function getFeedback(gateway: ModelGateway, question: Question, sce
   };
 }
 
-/** Whether `quote` is in `text` word for word, ignoring case and spacing. */
-function contains(text: string, quote: string) {
+/** Whether `quote` is in `text` word for word, ignoring case and spacing (also the Readiness Report's check). */
+export function contains(text: string, quote: string) {
   const normalise = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
   return normalise(quote) !== "" && normalise(text).includes(normalise(quote));
 }

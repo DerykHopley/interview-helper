@@ -62,6 +62,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
     if (coWritingOpen.current && !confirm(LEAVE_CHAT)) return;
     coWritingOpen.current = false;
     setBankStart(start);
+    setReportOpen(false);
     setViewState(next);
   };
   const onCoWritingChange = useCallback((open: boolean) => void (coWritingOpen.current = open), []);
@@ -72,6 +73,7 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
   const [accessRequests, setAccessRequests] = useState(0); // each one opens the Access Token panel
   const [bankStart, setBankStart] = useState<BankStart | null>(null);
   const [listVersion, setListVersion] = useState(0); // bumped to read the Interviews list again, e.g. after Remove demo
+  const [reportOpen, setReportOpen] = useState(false); // the open Interview's Readiness Report page, in place of its deck
   const [gaps, setGaps] = useState<SkillGaps>([]);
   const [accessActive, setAccessActive] = useState(false);
   const [expiredReports, setExpiredReports] = useState(0); // each one tells the Access chip the token has expired
@@ -151,7 +153,18 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
           </>
         )}
         <div className="top-bar-end">
-          {ready && <JumpMenu questions={ready.interview.questions} current={ready.position} onJump={ready.move} />}
+          {ready && (
+            <JumpMenu
+              questions={ready.interview.questions}
+              current={ready.position}
+              onJump={(index) => {
+                setReportOpen(false);
+                ready.move(index);
+              }}
+              reportOpen={reportOpen}
+              onReport={() => setReportOpen(true)}
+            />
+          )}
           <AccessChip vault={vault} openRequests={accessRequests} expiredReports={expiredReports} onActiveChange={setAccessActive} />
           <button type="button" className="button-header" onClick={() => void lock()}>
             Lock
@@ -180,6 +193,8 @@ export function Dashboard({ vault, onLock, startInterviewId = null }: Props) {
             onOpenScenarioBank={() => setView({ tab: "scenario-bank" })}
             dealtOnOpen={atQuestion}
             onAnswerSaveNow={onAnswerSaveNow}
+            reportOpen={reportOpen}
+            onReportOpen={setReportOpen}
             onWriteScenario={(question) =>
               setView(
                 { tab: "scenario-bank" },
