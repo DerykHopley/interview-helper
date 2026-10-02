@@ -1,5 +1,5 @@
 // The Worker: the only server-side code (spec #1). Verifies Access Tokens and proxies model calls to OpenRouter.
-import { ACCESS_REFUSAL_ERROR, GenerateRequest, type AccessResponse, type AllowedModel, type GenerateResponse, type ModelsResponse, type WorkerError } from "../../shared/workerProtocol";
+import { ACCESS_REFUSAL_ERROR, GenerateRequest, type AccessResponse, type AllowedModel, type BilledError, type GenerateResponse, type ModelsResponse, type WorkerError } from "../../shared/workerProtocol";
 import { checkAccessToken } from "./accessToken";
 
 const OPENROUTER_CHAT = "https://openrouter.ai/api/v1/chat/completions";
@@ -89,11 +89,13 @@ async function generate(request: Request, env: Env, access: Access) {
   const usage = completion?.usage;
   const tokens = typeof usage?.prompt_tokens === "number" && typeof usage.completion_tokens === "number" ? { input: usage.prompt_tokens, output: usage.completion_tokens } : null;
   logCall(access, job, model, cost, finish === "error" ? upstreamError(upstream.status, completion?.choices?.[0]?.error) : undefined);
+  /** An error for a call that was billed anyway: it carries what it cost, when OpenRouter said. */
+  const billed = (code: WorkerError) => (cost === null ? error(code, 502) : Response.json({ error: code, model, cost, tokens } satisfies BilledError, { status: 502 }));
   // Ran out of tokens (reasoning counts too): the reply is empty or partial, so say so rather than fail to parse it.
-  if (finish === "length") return error("reply_cut_off", 502);
-  if (finish === "error") return error("model_unavailable", 502);
+  if (finish === "length") return billed("reply_cut_off");
+  if (finish === "error") return billed("model_unavailable");
   const content = parseJson(completion?.choices?.[0]?.message?.content ?? "");
-  if (!content.ok) return error("invalid_model_reply", 502);
+  if (!content.ok) return billed("invalid_model_reply");
   return Response.json({ output: content.value, model, cost, tokens } satisfies GenerateResponse);
 }
 

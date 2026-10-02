@@ -62,6 +62,10 @@ export type GenerateRequest = z.infer<typeof GenerateRequest>;
 export type GenerateResponse = { output: unknown; model: string; cost: number | null; tokens: CallTokens | null };
 export type CallTokens = { input: number; output: number };
 
+/** A /v1/generate error for a call OpenRouter still billed (a reply cut off, or one that couldn't be read): what it
+ * cost comes back with the error, so the Developer panel's total is what was spent (#17). */
+export type BilledError = { error: WorkerError; model: string; cost: number | null; tokens: CallTokens | null };
+
 /** One allowed model, as the Developer panel (#17) shows it: its live price in US$ per million tokens and whether it
  * takes a temperature or a reasoning effort, from OpenRouter's models endpoint (null and false if that's unknown). */
 export type AllowedModel = { id: string; price: { inputPerMillion: number; outputPerMillion: number } | null; temperature: boolean; reasoning: boolean };

@@ -23,6 +23,7 @@ The words are defined in [`CONTEXT.md`](CONTEXT.md).
 - **Answering:** an answer bar on each Question, saved as you type. You can speak instead: a speech model transcribes you **in your browser**, so your voice never leaves your device.
 - **Feedback:** a checklist on one Answer against the Scenario you picked: which STAR parts are said, a measurable result, claims your Scenario doesn't support (quoted), and whether it shows the Question's skill.
 - **Readiness Report:** once half the Questions are answered, a practice estimate for the whole Interview (**Ready**, **Nearly there** or **Not yet**), with each skill, strengths, what to work on and what isn't practised yet.
+- **Developer panel** (for the app owner): press **Ctrl+Shift+D**, or add `?dev=1` to the address, and a DEV tab appears. For each job you can pick the model (with OpenRouter's live prices), the temperature where the model takes one, max tokens up to the job's cap, and the reasoning effort. Matching offers only the Setups the Matcher Report measured. A Calls tab shows each call's tokens, time and billed cost. It needs an Access Token, and the settings stay in that browser.
 - **Packs:** two ready-made roles (Engineering Manager, Software Developer), each with an Interview and fictional Demo Scenarios, so the whole app can be tried in a minute.
 
 | Gaps | Co-writing | Readiness Report |
@@ -161,7 +162,6 @@ npm run token -- --label cohort1
 
 **Planned** (tickets, in the chart below):
 - Scenario Export and import, to back up or move Scenarios between browsers ([#6](https://github.com/DerykHopley/interview-helper/issues/6))
-- a Developer panel for picking models and Prompt Variants in the running app ([#17](https://github.com/DerykHopley/interview-helper/issues/17))
 - the adversarial results in a workbook for the course's jailbreak experiment ([#19](https://github.com/DerykHopley/interview-helper/issues/19))
 - a Matcher built on Jev, a different kind of model on OpenRouter, to compare ([#20](https://github.com/DerykHopley/interview-helper/issues/20))
 - local and embedding Matchers ([#21](https://github.com/DerykHopley/interview-helper/issues/21))

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isWorkerError, type AccessResponse, type GenerateRequest, type GenerateResponse, type ModelsResponse } from "../../shared/workerProtocol";
+import { isWorkerError, type AccessResponse, type BilledError, type GenerateRequest, type GenerateResponse, type ModelsResponse } from "../../shared/workerProtocol";
 import { ModelGatewayError, type AccessStatus, type ModelCall, type ModelGateway } from "./ModelGateway";
 
 type Options = {
@@ -38,8 +38,9 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
       throw new ModelGatewayError("worker_unreachable"); // offline, DNS, CORS refused, Worker down
     }
     if (response.ok) return (await response.json()) as unknown;
-    const { error } = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new ModelGatewayError(isWorkerError(error) ? error : response.status >= 500 ? "model_unavailable" : "request_refused");
+    const body = (await response.json().catch(() => ({}))) as Partial<BilledError> & { error?: string };
+    const billed = typeof body.model === "string" && body.cost !== undefined ? { model: body.model, cost: body.cost, tokens: body.tokens ?? null } : undefined;
+    throw new ModelGatewayError(isWorkerError(body.error) ? body.error : response.status >= 500 ? "model_unavailable" : "request_refused", billed);
   };
 
   return {
@@ -56,13 +57,18 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
         schema: toStrictJsonSchema(schema),
       };
       const at = new Date();
-      const { output, model, cost, tokens } = (await call("/v1/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })) as GenerateResponse;
-      const reported: ModelCall = { job, model, cost, tokens: tokens ?? null, ms: Date.now() - at.getTime(), at };
-      for (const listener of listeners) listener(reported); // before the schema check: a reply that fails it was still paid for
+      const report = (call: Omit<ModelCall, "job" | "durationMs" | "at">) => {
+        for (const listener of listeners) listener({ job, ...call, durationMs: Date.now() - at.getTime(), at });
+      };
+      let reply: GenerateResponse;
+      try {
+        reply = (await call("/v1/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })) as GenerateResponse;
+      } catch (e) {
+        if (e instanceof ModelGatewayError && e.billed && isWorkerError(e.code)) report({ ...e.billed, failed: e.code }); // billed though it failed
+        throw e;
+      }
+      const { output, model, cost, tokens } = reply;
+      report({ model, cost, tokens: tokens ?? null }); // before the schema check: a reply that fails it was still paid for
       const parsed = schema.safeParse(output);
       if (!parsed.success) throw new ModelGatewayError("invalid_model_reply");
       return parsed.data;

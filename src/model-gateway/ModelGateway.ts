@@ -46,7 +46,7 @@ export type DecisionRequest<Keys extends string> = {
 
 /** One model call the Worker answered: which model ran, what it cost (US$) and its tokens (each null if OpenRouter
  * didn't say), how long it took and when. Never the prompt or reply. */
-export type ModelCall = { job: ModelJob; model: string; cost: number | null; tokens: CallTokens | null; ms: number; at: Date };
+export type ModelCall = { job: ModelJob; model: string; cost: number | null; tokens: CallTokens | null; durationMs: number; at: Date; failed?: WorkerError };
 
 /** Whether an Access Token lets the app use LLM features right now. */
 export type AccessStatus = { ok: true; label: string; expiresAt: Date } | { ok: false; reason: AccessRefusal };
@@ -55,7 +55,11 @@ export type AccessStatus = { ok: true; label: string; expiresAt: Date } | { ok: 
 export type ModelGatewayErrorCode = WorkerError | "worker_unreachable" | "request_refused" | "not_connected";
 
 export class ModelGatewayError extends Error {
-  constructor(readonly code: ModelGatewayErrorCode) {
+  constructor(
+    readonly code: ModelGatewayErrorCode,
+    /** For a call OpenRouter billed though it failed: which model ran, and what it cost. */
+    readonly billed?: { model: string; cost: number | null; tokens: CallTokens | null },
+  ) {
     super(`Model call failed: ${code}`);
     this.name = "ModelGatewayError";
   }

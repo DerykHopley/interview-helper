@@ -62,8 +62,8 @@ describe("the app's Model Gateway, talking to the Worker", () => {
 
     const reported = expect.objectContaining({ job: "matching", model: "openai/gpt-5-mini", cost: 0.0021, tokens: { input: 120, output: 40 } }) as unknown;
     expect(calls).toEqual([reported, reported]);
-    for (const call of calls as { ms: unknown; at: unknown }[]) {
-      expect(typeof call.ms).toBe("number");
+    for (const call of calls as { durationMs: unknown; at: unknown }[]) {
+      expect(typeof call.durationMs).toBe("number");
       expect(call.at).toBeInstanceOf(Date);
     }
   });
@@ -79,6 +79,17 @@ describe("the app's Model Gateway, talking to the Worker", () => {
     await gateway.generate({ job: "feedback", system: "s", user: "u", schema: Questions });
 
     expect(heard).toEqual([expect.objectContaining({ job: "feedback", cost: 0.0021, tokens: { input: 120, output: 40 } })]);
+  });
+
+  it("reports a call that was billed but failed, with why, so the Developer panel's total is what was spent", async () => {
+    openRouter = fakeOpenRouter(() => Response.json({ id: "gen-1", choices: [{ finish_reason: "length", message: { role: "assistant", content: "" } }], usage: { cost: 0.002 } }));
+    const gateway = gatewayWith(await mint(inHours(2)));
+    const heard: { failed?: string; cost: number | null }[] = [];
+    gateway.onCall((call) => heard.push(call));
+
+    await expect(gateway.generate({ job: "matching", system: "s", user: "u", schema: Questions })).rejects.toMatchObject({ code: "reply_cut_off" });
+
+    expect(heard).toEqual([expect.objectContaining({ job: "matching", cost: 0.002, failed: "reply_cut_off" })]);
   });
 
   it("asks the Worker for the token cap and temperature a request names", async () => {

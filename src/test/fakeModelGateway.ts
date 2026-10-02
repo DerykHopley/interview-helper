@@ -86,7 +86,7 @@ export function createFakeModelGateway({
       const at = new Date();
       return Promise.resolve(next).then((value) => {
         const model = request.model ?? allowedJobs[request.job]?.model ?? "openai/gpt-5-mini";
-        for (const listener of listeners) listener({ job: request.job, model, cost: callCost, tokens: CALL_TOKENS, ms: Date.now() - at.getTime(), at });
+        for (const listener of listeners) listener({ job: request.job, model, cost: callCost, tokens: CALL_TOKENS, durationMs: Date.now() - at.getTime(), at });
         return request.schema.parse(value);
       });
     },

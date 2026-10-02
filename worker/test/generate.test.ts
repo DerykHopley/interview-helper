@@ -160,7 +160,8 @@ describe("structured generation", () => {
     const response = await generate({ job: "matching", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
 
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ error: "reply_cut_off" });
+    // It was still billed, so what it cost comes back too, for the Developer panel's total (#17).
+    expect(await response.json()).toEqual({ error: "reply_cut_off", model: "openai/gpt-5-mini", cost: 0.002, tokens: null });
   });
 
   it("returns a null cost and tokens when OpenRouter doesn't report them", async () => {
@@ -233,6 +234,6 @@ describe("structured generation", () => {
     const response = await generate({ job: "question-generation", system: "s", user: "u", schema: QUESTIONS_SCHEMA });
 
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ error: "invalid_model_reply" });
+    expect(await response.json()).toEqual({ error: "invalid_model_reply", model: "openai/gpt-5-mini", cost: 0.00123, tokens: { input: 120, output: 40 } });
   });
 });

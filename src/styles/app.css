@@ -462,4 +462,8 @@ td.has-gaps { color: var(--gap); font-weight: 700; }
 .dev-call-detail { grid-column: 1 / -1; color: var(--dev-muted); font-size: 12px; }
 .dev-total { display: flex; justify-content: space-between; margin: 8px 0 0; font-weight: 700; color: var(--dev-accent); }
 .dev-off { align-self: flex-start; margin-top: auto; color: var(--dev-muted); }
+.dev-dropped { padding: 8px 10px; border: 1px solid var(--dev-warn); border-radius: 6px; color: var(--dev-ink); }
+.dev-dropped p, .dev-dropped ul { margin: 0; }
+.dev-dropped ul { padding-left: 18px; color: var(--dev-muted); }
+.dev-calls li.is-failed .dev-call-detail { color: var(--dev-warn); }
 @media (max-width: 760px) { .dev-fields { grid-template-columns: minmax(0, 1fr); } }
