@@ -15,7 +15,6 @@ type Terminal = {
 };
 
 export function askHidden(question: string, { input, output }: Terminal): Promise<string> {
-  output.write(question);
   return new Promise((resolve, reject) => {
     let typed = "";
     const finish = (done: () => void) => {
@@ -35,8 +34,11 @@ export function askHidden(question: string, { input, output }: Terminal): Promis
         else if (key >= " ") typed += key;
       }
     }
+    // Raw first, then the question: a key typed (or pasted) the moment it appears isn't echoed, and Ctrl+C there
+    // reaches this reader rather than killing the process.
     input.setRawMode(true);
     input.resume();
     input.on("data", onData);
+    output.write(question);
   });
 }

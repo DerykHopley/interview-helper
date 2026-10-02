@@ -6,9 +6,11 @@ import { askHidden, Cancelled } from "./hiddenPrompt";
 function terminal() {
   const input = Object.assign(new EventEmitter(), { isTTY: true, rawMode: false, setRawMode(on: boolean) { this.rawMode = on; return this; }, resume() {}, pause() {} });
   const written: string[] = [];
-  const output = { write: (s: string) => (written.push(s), true) };
+  /** Whether the terminal was already raw when each thing was written: keys typed while it isn't are echoed. */
+  const rawWhenWritten: boolean[] = [];
+  const output = { write: (s: string) => (written.push(s), rawWhenWritten.push(input.rawMode), true) };
   const type = (keys: string) => input.emit("data", Buffer.from(keys));
-  return { input, output, written, type };
+  return { input, output, written, rawWhenWritten, type };
 }
 
 describe("asking for the OpenRouter key without showing it (npm run local, #63)", () => {
@@ -21,6 +23,8 @@ describe("asking for the OpenRouter key without showing it (npm run local, #63)"
     expect(await answer).toBe("sk-or-secret123");
     const shown = t.written.join("");
     expect(shown).toBe("OpenRouter API key (hidden): \n"); // the question, then a new line, and nothing else
+    // Raw before the question shows, so a key typed (or pasted) the moment it appears isn't echoed either.
+    expect(t.rawWhenWritten[0]).toBe(true);
     expect(t.input.rawMode).toBe(false); // the terminal is put back as it was
   });
 
