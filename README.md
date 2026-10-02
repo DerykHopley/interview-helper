@@ -2,7 +2,7 @@
 
 **Practise for a job interview with your own real career stories, matched to the questions you're likely to be asked, and stored only in your browser.**
 
-_Built for Turing College's AI Engineering course, Sprint 1: "Build an Interview Practice App". Ticket and PR numbers like #56 refer to [github.com/DerykHopley/interview-helper](https://github.com/DerykHopley/interview-helper), where the spec, tickets, decisions, reviews and manual test records are._
+_Built for Turing College's AI Engineering course, Sprint 1: "Build an Interview Practice App". Ticket and PR numbers like #56 refer to [github.com/DerykHopley/interview-helper](https://github.com/DerykHopley/interview-helper), where the spec, tickets, decisions, reviews and manual test records are. Where each part of the brief is met is under [The course brief: what's met](#the-course-brief-whats-met)._
 
 ![A Question from an Interview, with its three best Matches dealt, the top one picked, an Answer typed and its Feedback](docs/images/question.png)
 
@@ -169,6 +169,49 @@ npm run token -- --label cohort1
 ```
 
 [`docs/access-tokens.md`](docs/access-tokens.md) covers the options, tokens for the deployed Worker, revoking them all, and why the signature is 80 bits.
+
+## The course brief: what's met
+
+Checked against the Sprint 1 brief on 2026-10-02.
+
+**Required: all met.**
+
+| Requirement | Where it's met |
+|---|---|
+| Research the kind of interview prep | Matching your own real Scenarios to likely Questions, from [the spec (#1)](https://github.com/DerykHopley/interview-helper/issues/1) and the [prototypes](docs/prototypes/README.md) |
+| A front-end (Streamlit or Next.js) | React + Vite instead. [ADR 0003](docs/adr/0003-react-vite-instead-of-nextjs.md) records why, and that the course confirmed Next.js was optional |
+| An OpenRouter API key | Held by the Worker only, never sent to the browser |
+| A model from the list (gpt-5-mini, gpt-5-nano, gpt-5) | `openai/gpt-5-mini` for every app job. gpt-5-nano was compared in the Matcher Report; plain gpt-5 isn't on the owner's allow-list, so gpt-5.4 stood in for the full size |
+| At least 5 system prompts with different techniques, compared | Matching's five Prompt Variants (zero-shot, few-shot, chain-of-thought, persona, rubric), compared in the Matcher Report. See [Prompts and models](#prompts-and-models) |
+| At least one security guard | Access Tokens; untrusted text sent as data, with prompts told not to follow it; schema-checked replies; quotes checked in code; adversarial cases in the Matcher Report |
+
+**Optional tasks done.** The bonus asks for at least 2 medium and 1 hard.
+
+| Task | Where it's met |
+|---|---|
+| Easy 1: a critique of the solution | A two-axis review (standards and spec) on every ticket's PR, by Claude rather than ChatGPT |
+| Easy 3: input validation | Zod at every boundary: stored records, model replies, Worker requests |
+| Easy 6: structured evaluation criteria | Feedback's checklist and the Readiness Report's rubric |
+| Easy 8: tune a setting and compare | Reasoning effort, compared in the Matcher Report |
+| Medium 1: all model settings as fields | The Developer panel: model, temperature, max tokens and reasoning effort for each job. It's for the app owner, not the Candidate, as Medium 9 asks |
+| Medium 2: two or more structured JSON outputs | Every job replies as JSON checked against its own schema |
+| Medium 3: the price of the prompt | The Developer panel shows each model's live price per million tokens from OpenRouter's models endpoint, and each call's cost as billed by OpenRouter. It shows the billed cost rather than working it out from the prices |
+| Medium 4: your own improvement from the OpenRouter docs | `data_collection: "deny"`, and structured outputs with JSON Schema |
+| Medium 6: a Job Spec field | Each Interview is built from a pasted Job Spec |
+| Medium 7: choosing from a list of LLMs | The Developer panel's model list: OpenAI, Google, Anthropic and MiniMax models |
+| Medium 9: developer settings separate from the user experience | The Developer panel is hidden until Ctrl+Shift+D or `?dev=1`, and styled so it's never mistaken for the Candidate's screens |
+| Hard 1: a full chatbot | Co-writing, a multi-turn chat that builds a Scenario |
+| Hard 4: open-source LLMs | The open-weight `google/gemma-4-31b-it` was measured in the Matcher Report, and can be picked for any job in the Developer panel, matching included. It isn't the default |
+| Hard 5: LLM-as-a-judge | The Match reason judge, on another company's model, calibrated against known verdicts |
+
+**Planned:**
+- Medium 5: the jailbreak experiment as an Excel workbook ([#19](https://github.com/DerykHopley/interview-helper/issues/19))
+- Hard 4, more clearly: local and embedding Matchers ([#21](https://github.com/DerykHopley/interview-helper/issues/21))
+
+**Not planned:**
+- Easy 2, 4, 5 and 7: domain-tuned prompts, difficulty levels, concise or detailed replies, and interviewer personas. The app's Questions follow the Job Spec instead.
+- Medium 8: image generation
+- Hard 2 and 3: LangChain and a vector database. Both are out of scope in the spec, and the brief brings them in at Sprint 2.
 
 ## What's next
 
