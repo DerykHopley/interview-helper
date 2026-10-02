@@ -217,7 +217,7 @@ describe("where picks show", () => {
     await openTab("Scenario Bank");
 
     const item = await screen.findByRole("button", { name: new RegExp(`^${HIRE}`) });
-    expect(item).toHaveTextContent("picked in 1");
+    await waitFor(() => expect(item).toHaveTextContent("picked in 1")); // the picks are read apart from the Scenarios
     expect(screen.getByRole("button", { name: new RegExp(`^${TURN}`) })).not.toHaveTextContent("picked in");
     await user().click(item);
     expect(await screen.findByRole("article", { name: HIRE })).toHaveTextContent("Picked in: Engineering Manager (Q1)");
