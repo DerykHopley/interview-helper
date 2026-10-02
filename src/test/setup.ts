@@ -11,6 +11,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   sessionStorage.clear();
   localStorage.clear();
   devSettings.reload(); // the Developer panel's settings, read again from the cleared storage

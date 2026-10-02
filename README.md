@@ -117,17 +117,28 @@ These results are **provisional**: the starter set is small and easy, and the th
 
 ## Run it locally
 
-You need Node 24 or later, and **your own OpenRouter API key** for the AI features. Everything else (the Vault, Scenarios, Packs, Answers, voice) works without one.
+You need Node 24 or later, and **your own OpenRouter API key** ([openrouter.ai/keys](https://openrouter.ai/keys)) for the AI features. Everything else (the Vault, Scenarios, Packs, Answers, voice) works without one.
 
 ```sh
 npm install
+npm run local
+```
+
+The first time, it asks for your OpenRouter key (what you type isn't shown) and saves it in `worker/.dev.vars`, which is gitignored, with a signing secret it makes up. Then it starts the Worker and the app together and mints an Access Token for this machine. When it says it's ready, open **http://localhost:5173**: the token is already filled in, so press **Continue**, then choose **Start from the Engineering Manager Pack**. Ctrl+C in that terminal stops both.
+
+Later runs don't ask again: they reuse `worker/.dev.vars` (filling in anything missing, if you made it by hand) and mint a new token, which lasts 7 days. If your saved token has expired, the app asks for it again with the new one filled in. Without a terminal to type into, it reads the key from `OPENROUTER_API_KEY`.
+
+<details>
+<summary>Running the two parts yourself</summary>
+
+```sh
 cp worker/dev.vars.example worker/.dev.vars   # then fill in both values (the file says what they are)
 npm run dev:worker                            # the Worker, on http://localhost:8787
 npm run dev                                   # the app, on http://localhost:5173
-npm run token -- --label demo                 # an Access Token for the AI features
+npm run token -- --label demo                 # an Access Token, to paste into the app
 ```
 
-`worker/.dev.vars` holds the Worker's two secrets, your OpenRouter key and a signing secret for Access Tokens. It's gitignored: never commit it. To try the app, open it, enter the token, and choose **Start from the Engineering Manager Pack**.
+</details>
 
 ## Tests
 
@@ -138,19 +149,20 @@ npm run typecheck
 npm run lint
 ```
 
-CI runs the same three checks (typecheck, lint, test) on every push. **Tests never call a real model.** There are three Vitest projects:
+CI runs the same three checks (typecheck, lint, test) on every push. **Tests never call a real model.** There are four Vitest projects:
 
 | Project | Runs in | What it covers |
 |---|---|---|
 | `app` | jsdom | The app through its screens, as a Candidate uses it: setup, the Vault, Scenarios, Interviews, matching, co-writing, Answers, voice, Feedback, the Readiness Report. **Only the Model Gateway is faked.** The encryption and storage code run as they do in a browser, on an in-memory IndexedDB. |
 | `worker` | the Workers runtime | The Worker's endpoints, token checks, CORS, limits and logging, with OpenRouter faked. |
 | `eval` | Node | The Matcher Report's scoring, thresholds and report-writing, with the gateway faked. |
+| `scripts` | Node | `npm run local`'s setup: the secrets file and the hidden key prompt. |
 
 Most features were built test-first. Key tests were then checked by undoing their fix and watching them fail. Features are checked by hand in Firefox at desktop and phone widths, and feature PRs carry a manual test record for the owner.
 
 ## Access Tokens
 
-An Access Token lets a group use the AI features for a limited time (8 hours by default, 7 days at most). The app owner mints them on their own machine:
+An Access Token lets a group use the AI features for a limited time (8 hours by default, 7 days at most). `npm run local` mints one for you. For a group, the app owner mints them on their own machine:
 
 ```sh
 npm run token -- --label cohort1
@@ -167,7 +179,7 @@ npm run token -- --label cohort1
 - local and embedding Matchers ([#21](https://github.com/DerykHopley/interview-helper/issues/21))
 - an LLM-judge honesty check for co-writing ([#22](https://github.com/DerykHopley/interview-helper/issues/22))
 - the harder Evaluation Set ([#16](https://github.com/DerykHopley/interview-helper/issues/16))
-- deploying ([#30](https://github.com/DerykHopley/interview-helper/issues/30), [#23](https://github.com/DerykHopley/interview-helper/issues/23))
+- deploying, now optional since reviewers run it locally ([#30](https://github.com/DerykHopley/interview-helper/issues/30), [#23](https://github.com/DerykHopley/interview-helper/issues/23))
 
 **Nice to have, later:**
 - an interview date and application status on Interviews ([#25](https://github.com/DerykHopley/interview-helper/issues/25))
@@ -189,7 +201,7 @@ npm run token -- --label cohort1
 
 ## How it was built
 
-Built ticket by ticket from [the spec (#1)](https://github.com/DerykHopley/interview-helper/issues/1), each ticket a PR with its decisions recorded on the ticket. [`docs/workflow.md`](docs/workflow.md) describes the workflow: Claude Code with Matt Pocock's skills, and the checks each ticket went through. Greyed-out tickets are done. Thick arrows are the critical path.
+Built ticket by ticket from [the spec (#1)](https://github.com/DerykHopley/interview-helper/issues/1), each ticket a PR with its decisions recorded on the ticket. [`docs/workflow.md`](docs/workflow.md) describes the workflow: Claude Code with Matt Pocock's skills, and the checks each ticket went through. Greyed-out tickets are done. Thick arrows are the critical path. Dashed boxes are Coulds, the optional ones.
 
 ```mermaid
 flowchart LR
@@ -214,15 +226,16 @@ flowchart LR
   T20["#20 Jev Matcher"]
   T21["#21 Local & embedding Matchers"]
   T22["#22 Honesty check & real-data run"]
-  T23["#23 Deployed end-to-end check"]
+  T23["#23 Deployed end-to-end check (optional)"]
   T24["#24 Reflection document (human)"]
-  T30["#30 Deploy app & Worker (human)"]
+  T30["#30 Deploy app & Worker (human, optional)"]
   T31["#31 Answer bar: typed answers"]
   T32["#32 Feedback on an answer"]
   T33["#33 Voice input (in-browser speech model)"]
   T54["#54 Voice in co-writing"]
   T56["#56 Readiness Report"]
   T58["#58 README for a first-time reviewer"]
+  T63["#63 One-command local run"]
 
   %% critical path (thick arrows)
   T2 ==> T4 ==> T5 ==> T10 ==> T14
@@ -243,6 +256,7 @@ flowchart LR
   T15 --> T17
   T31 --> T32 & T33
   T12 & T33 --> T54
+  T3 --> T63
   T32 --> T56
   T11 --> T32
   T30 & T9 & T10 --> T23
@@ -253,10 +267,9 @@ flowchart LR
   classDef should fill:#E2F2EF,color:#0B4F49,stroke:#0F7B72,stroke-width:2px
   classDef could fill:#fff,color:#4A5263,stroke:#8A93A6,stroke-width:2px,stroke-dasharray:5 4
 
-  class T2,T3,T4,T5,T7,T8,T9,T10,T11,T12,T13,T14,T15,T18,T31,T32,T33,T17,T54,T56,T58 done
+  class T2,T3,T4,T5,T7,T8,T9,T10,T11,T12,T13,T14,T15,T18,T31,T32,T33,T17,T54,T56,T58,T63 done
   class T16,T24 mustcrit
-  class T23,T30 must
   class T6,T19,T20 should
-  class T21,T22 could
+  class T21,T22,T23,T30 could
 ```
 

@@ -1,7 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-// Three test boundaries, one per deployable part (spec #1, "Testing Decisions").
+// Test boundaries, one per deployable part (spec #1, "Testing Decisions"), plus the local scripts.
 export default defineConfig({
   test: {
     projects: [
@@ -16,6 +16,10 @@ export default defineConfig({
       {
         // Evaluation harness: scoring with fake Matchers, in Node.
         test: { name: "eval", environment: "node", include: ["eval/**/*.test.ts"] },
+      },
+      {
+        // Local scripts: npm run local's setup (#63), in Node.
+        test: { name: "scripts", environment: "node", include: ["scripts/**/*.test.ts"] },
       },
     ],
   },

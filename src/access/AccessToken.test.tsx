@@ -1,10 +1,11 @@
 import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ModelGatewayError, type AccessStatus } from "../model-gateway/ModelGateway";
 import { createFakeModelGateway } from "../test/fakeModelGateway";
 import { enterAccessToken, finishSetup, setUpWithoutToken, unlockWith } from "../test/candidate";
 import { renderApp } from "../test/renderApp";
+import { localAccessToken } from "./localAccessToken";
 
 const ACTIVE = "IH-COHORT1-1Z3K9QT-7M2XD9PQRW4TK6BA";
 const EXPIRED = "IH-COHORT1-1A00000-0000000000000000";
@@ -121,5 +122,54 @@ describe("entering an Access Token", () => {
 
     expect(await screen.findByText("Couldn't reach the app's server. Check your connection and try again.")).toBeInTheDocument();
     expect(offline.accessTokenToSend()).toBe(ACTIVE);
+  });
+});
+
+describe("running it with npm run local (#63)", () => {
+  it("fills in the token npm run local minted, so setup only needs Continue", async () => {
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", ACTIVE);
+    const user = userEvent.setup();
+    renderApp({ gateway: gateway() });
+
+    expect(await screen.findByLabelText("Access Token")).toHaveValue(ACTIVE);
+    expect(screen.getByText("Filled in by npm run local.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByText(/cohort1, active until/)).toBeInTheDocument();
+  });
+
+  it("leaves the field empty when the app wasn't started that way", async () => {
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", undefined); // even if the shell running the tests has one
+    renderApp({ gateway: gateway() });
+
+    expect(await screen.findByLabelText("Access Token")).toHaveValue("");
+    expect(screen.queryByText("Filled in by npm run local.")).not.toBeInTheDocument();
+  });
+
+  it("fills in a later run's new token where an expired one is asked for again", async () => {
+    const NEW = "IH-LOCAL-1Z3K9QT-NEWNEWNEWNEWNEWN";
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", ACTIVE);
+    const user = userEvent.setup();
+    const { unmount } = renderApp({ gateway: gateway() });
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+    const unlockKey = await finishSetup();
+    unmount();
+
+    // A week later: the first token has expired, and npm run local minted a new one.
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", NEW);
+    const later = createFakeModelGateway({ accessTokens: { [ACTIVE]: { ok: false, reason: "expired" }, [NEW]: { ok: true, label: "local", expiresAt: new Date("2099-01-01T08:00:00Z") } } });
+    renderApp({ gateway: later });
+    await unlockWith(unlockKey);
+
+    expect(await screen.findByText("Your Access Token has expired. Ask for a new one.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Access Token")).toHaveValue(NEW);
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("button", { name: /^Access ·/ })).not.toHaveTextContent(/none|expired/i);
+  });
+
+  it("is never read in a production build", () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", ACTIVE);
+
+    expect(localAccessToken()).toBeNull();
   });
 });

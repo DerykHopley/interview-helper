@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "local": "tsx scripts/local.ts",
     "dev": "vite",
     "dev:worker": "wrangler dev --config worker/wrangler.jsonc",
     "build": "npm run typecheck && vite build",
