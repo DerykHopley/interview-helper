@@ -44,17 +44,19 @@ type Props = {
   onChecked?: (result: CheckResult) => void;
   /** Offers "I don't have one yet" (setup only). */
   onSkip?: () => void;
+  /** A token already filled in, for the Candidate to check and continue with (`npm run local`, #63). */
+  filledIn?: string | null;
 };
 
 /** Entering and checking an Access Token (A2 checklist step 1, and inside the app). It keeps nothing itself: where
  * the token is kept is up to the caller. */
-export function AccessTokenPanel({ remembered, onActive, onForget, onChecked, onSkip }: Props) {
+export function AccessTokenPanel({ remembered, onActive, onForget, onChecked, onSkip, filledIn = null }: Props) {
   const gateway = useModelGateway();
   const [active, setActive] = useState<Active | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   // Once the Candidate enters a token, a still-pending check of the remembered one no longer counts.
   const superseded = useRef(false);
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(filledIn ?? "");
   const [checking, setChecking] = useState(false);
 
   // The latest callbacks, so the recheck runs once per remembered token rather than on every render.
@@ -114,6 +116,7 @@ export function AccessTokenPanel({ remembered, onActive, onForget, onChecked, on
         autoComplete="off"
         spellCheck={false}
       />
+      {filledIn && value === filledIn && <p className="form-hint">Filled in by npm run local.</p>}
       {message && <p role="alert" className="error">{message}</p>}
       <button type="submit" className="button-primary" disabled={!value.trim() || checking}>
         Continue

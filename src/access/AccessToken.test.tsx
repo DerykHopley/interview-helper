@@ -1,6 +1,6 @@
 import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ModelGatewayError, type AccessStatus } from "../model-gateway/ModelGateway";
 import { createFakeModelGateway } from "../test/fakeModelGateway";
 import { enterAccessToken, finishSetup, setUpWithoutToken, unlockWith } from "../test/candidate";
@@ -121,5 +121,25 @@ describe("entering an Access Token", () => {
 
     expect(await screen.findByText("Couldn't reach the app's server. Check your connection and try again.")).toBeInTheDocument();
     expect(offline.accessTokenToSend()).toBe(ACTIVE);
+  });
+});
+
+describe("running it with npm run local (#63)", () => {
+  it("fills in the token npm run local minted, so setup only needs Continue", async () => {
+    vi.stubEnv("VITE_LOCAL_ACCESS_TOKEN", ACTIVE);
+    const user = userEvent.setup();
+    renderApp({ gateway: gateway() });
+
+    expect(await screen.findByLabelText("Access Token")).toHaveValue(ACTIVE);
+    expect(screen.getByText("Filled in by npm run local.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByText(/cohort1, active until/)).toBeInTheDocument();
+  });
+
+  it("leaves the field empty when the app wasn't started that way", async () => {
+    renderApp({ gateway: gateway() });
+
+    expect(await screen.findByLabelText("Access Token")).toHaveValue("");
+    expect(screen.queryByText("Filled in by npm run local.")).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { localAccessToken } from "./localAccessToken";
 import type { Pack } from "../packs/packFormat";
 import { SHIPPED_PACKS } from "../packs/shippedPacks";
 import { generateUnlockKey } from "../vault/unlockKey";
@@ -46,6 +47,7 @@ export function Setup({ onComplete }: { onComplete: (choices: SetupChoices) => P
           <AccessTokenPanel
             onActive={(value, active) => { setToken({ value, active }); setStep("key"); }}
             onSkip={() => setStep("key")}
+            filledIn={localAccessToken()}
           />
         </ChecklistStep>
         <ChecklistStep n={2} title="Your Unlock Key" why="Made for you now. Locks your Scenarios on this device. Never expires." state={stateOf("key")} summary="saved">
