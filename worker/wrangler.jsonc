@@ -52,7 +52,14 @@
       "google/gemma-4-31b-it",
       "anthropic/claude-haiku-4.5",
       "minimax/minimax-m2.7"
-    ]
+    ],
+    // Decision jobs (#20): typed answers from a decision model, through /v1/decide only. Kept apart from the chat jobs
+    // and models above, so a chat job can never pick Jev and a decision can never reach a chat model.
+    "DECISION_JOBS": {
+      // The Jev Matcher (#20), compared in the Matcher Report.
+      "jev-matching": "typesafe/jev-1.13"
+    },
+    "DECISION_MODELS": ["typesafe/jev-1.13"]
   }
   // Secrets (never in this file): OPENROUTER_API_KEY and ACCESS_TOKEN_SECRET.
   // Local dev: copy worker/dev.vars.example to worker/.dev.vars (gitignored) and fill them in. (Don't name the example

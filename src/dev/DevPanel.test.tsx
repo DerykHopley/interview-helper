@@ -326,10 +326,19 @@ describe("what the Worker allows", () => {
     expect(panel().queryByLabelText("Model")).not.toBeInTheDocument();
   });
 
+  it("never offers a decision model (Jev, #20) for a chat job", async () => {
+    await inThePackInterview({ gateway: createFakeModelGateway({ accessTokens: ACTIVE }) });
+    await devMode();
+    await settingsFor("Feedback");
+
+    await waitFor(() => expect(panel().getByRole("option", { name: /^openai\/gpt-5-nano/ })).toBeInTheDocument());
+    expect(panel().queryByRole("option", { name: /typesafe\/jev/ })).not.toBeInTheDocument();
+  });
+
   it("shows when prices couldn't be read from OpenRouter", async () => {
     const gateway = createFakeModelGateway({
       accessTokens: ACTIVE,
-      allowed: { models: [{ id: "openai/gpt-5-mini", price: null, temperature: false, reasoning: true }], jobs: (await import("../test/fakeModelGateway")).ALLOWED.jobs, pricesAt: null },
+      allowed: { models: [{ id: "openai/gpt-5-mini", kind: "chat", price: null, temperature: false, reasoning: true }], jobs: (await import("../test/fakeModelGateway")).ALLOWED.jobs, decisionJobs: {}, pricesAt: null },
     });
     await inThePackInterview({ gateway });
     await devMode();

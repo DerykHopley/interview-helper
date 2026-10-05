@@ -1,11 +1,26 @@
 // The Worker: the only server-side code (spec #1). Verifies Access Tokens and proxies model calls to OpenRouter.
-import { ACCESS_REFUSAL_ERROR, GenerateRequest, type AccessResponse, type AllowedModel, type BilledError, type GenerateResponse, type ModelsResponse, type WorkerError } from "../../shared/workerProtocol";
+import type { z } from "zod";
+import {
+  ACCESS_REFUSAL_ERROR,
+  DecideRequest,
+  GenerateRequest,
+  type AccessResponse,
+  type AllowedModel,
+  type BilledError,
+  type CallTokens,
+  type DecideResponse,
+  type GenerateResponse,
+  type ModelsResponse,
+  type WorkerError,
+} from "../../shared/workerProtocol";
 import { checkAccessToken } from "./accessToken";
 
 const OPENROUTER_CHAT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODELS = "https://openrouter.ai/api/v1/models";
+const OPENROUTER_DECISIONS = "https://openrouter.ai/api/alpha/decisions";
 
 type Job = keyof Env["JOB_MODELS"];
+type DecisionJob = keyof Env["DECISION_JOBS"];
 
 const error = (code: WorkerError, status: number) => Response.json({ error: code }, { status });
 
@@ -45,11 +60,47 @@ function upstreamError(status: number, value: unknown): UpstreamError {
   return { status, code, message };
 }
 
-async function generate(request: Request, env: Env, access: Access) {
+type Usage = { cost?: number; prompt_tokens?: number; completion_tokens?: number };
+
+/** What a call cost and its tokens, from OpenRouter's usage (each null if it didn't say). */
+function usageOf(usage: Usage | undefined): { cost: number | null; tokens: CallTokens | null } {
+  const tokens = typeof usage?.prompt_tokens === "number" && typeof usage.completion_tokens === "number" ? { input: usage.prompt_tokens, output: usage.completion_tokens } : null;
+  return { cost: usage?.cost ?? null, tokens };
+}
+
+/** A request's body, if it's JSON that matches `schema`; else null. */
+async function readBody<T>(request: Request, schema: z.ZodType<T>): Promise<T | null> {
   const body = parseJson(await request.text());
-  const parsed = body.ok ? GenerateRequest.safeParse(body.value) : null;
-  if (!parsed?.success) return error("bad_request", 400);
-  const { job, model: requested, maxTokens, reasoningEffort, temperature, system, messages = [], user, schema } = parsed.data;
+  const parsed = body.ok ? schema.safeParse(body.value) : null;
+  return parsed?.success ? parsed.data : null;
+}
+
+/** Posts `payload` to an OpenRouter endpoint with the key. A failure is logged (OpenRouter's status, code and message
+ * only) and answered as model_unavailable; otherwise the reply's JSON comes back (null if it isn't JSON). */
+async function postToOpenRouter(url: string, payload: object, env: Env, call: { access: Access; job: string; model: string }) {
+  const upstream = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
+    // Only providers that don't store or train on prompts (spec #1, story 80).
+    body: JSON.stringify({ ...payload, provider: { data_collection: "deny" } }),
+  });
+  if (!upstream.ok) {
+    const failed = parseJson(await upstream.text());
+    logCall(call.access, call.job, call.model, null, upstreamError(upstream.status, failed.ok ? (failed.value as { error?: unknown } | null)?.error : null));
+    return { failed: error("model_unavailable", 502) };
+  }
+  const reply = parseJson(await upstream.text());
+  return { reply: reply.ok ? reply.value : null, status: upstream.status };
+}
+
+/** An error for a call that was billed anyway: it carries what it cost, when OpenRouter said. */
+const billedError = (code: WorkerError, model: string, cost: number | null, tokens: CallTokens | null) =>
+  cost === null ? error(code, 502) : Response.json({ error: code, model, cost, tokens } satisfies BilledError, { status: 502 });
+
+async function generate(request: Request, env: Env, access: Access) {
+  const parsed = await readBody(request, GenerateRequest);
+  if (!parsed) return error("bad_request", 400);
+  const { job, model: requested, maxTokens, reasoningEffort, temperature, system, messages = [], user, schema } = parsed;
   if (!Object.hasOwn(env.JOB_MODELS, job)) return error("unknown_job", 400);
   // The job's default model, or one the request picks (the Developer panel), if it's on the allowed list.
   const model = requested ?? env.JOB_MODELS[job as Job];
@@ -58,39 +109,30 @@ async function generate(request: Request, env: Env, access: Access) {
   const settings = env.JOB_SETTINGS[job as Job];
   if (maxTokens !== undefined && maxTokens > settings.max_tokens) return error("settings_not_allowed", 400);
 
-  const upstream = await fetch(OPENROUTER_CHAT, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
+  const sent = await postToOpenRouter(
+    OPENROUTER_CHAT,
+    {
       model,
       messages: [{ role: "system", content: system }, ...messages, { role: "user", content: user }],
       response_format: { type: "json_schema", json_schema: { name: "reply", strict: true, schema } },
-      // Only providers that don't store or train on prompts (spec #1, story 80).
-      provider: { data_collection: "deny" },
       usage: { include: true },
       max_tokens: maxTokens ?? settings.max_tokens,
       reasoning: { effort: reasoningEffort ?? settings.reasoning_effort },
       ...(temperature !== undefined && { temperature }),
-    }),
-  });
-  if (!upstream.ok) {
-    const failed = parseJson(await upstream.text());
-    logCall(access, job, model, null, upstreamError(upstream.status, failed.ok ? (failed.value as { error?: unknown } | null)?.error : null));
-    return error("model_unavailable", 502);
-  }
-  const reply = parseJson(await upstream.text());
-  const completion = (reply.ok ? reply.value : null) as {
+    },
+    env,
+    { access, job, model },
+  );
+  if (sent.failed) return sent.failed;
+  const completion = sent.reply as {
     choices?: { finish_reason?: string; message?: { content?: string }; error?: unknown }[];
-    usage?: { cost?: number; prompt_tokens?: number; completion_tokens?: number };
+    usage?: Usage;
   } | null;
   const finish = completion?.choices?.[0]?.finish_reason;
+  const { cost, tokens } = usageOf(completion?.usage);
   // A reply that ends in an error carries OpenRouter's error on the choice.
-  const cost = completion?.usage?.cost ?? null;
-  const usage = completion?.usage;
-  const tokens = typeof usage?.prompt_tokens === "number" && typeof usage.completion_tokens === "number" ? { input: usage.prompt_tokens, output: usage.completion_tokens } : null;
-  logCall(access, job, model, cost, finish === "error" ? upstreamError(upstream.status, completion?.choices?.[0]?.error) : undefined);
-  /** An error for a call that was billed anyway: it carries what it cost, when OpenRouter said. */
-  const billed = (code: WorkerError) => (cost === null ? error(code, 502) : Response.json({ error: code, model, cost, tokens } satisfies BilledError, { status: 502 }));
+  logCall(access, job, model, cost, finish === "error" ? upstreamError(sent.status, completion?.choices?.[0]?.error) : undefined);
+  const billed = (code: WorkerError) => billedError(code, model, cost, tokens);
   // Ran out of tokens (reasoning counts too): the reply is empty or partial, so say so rather than fail to parse it.
   if (finish === "length") return billed("reply_cut_off");
   if (finish === "error") return billed("model_unavailable");
@@ -99,8 +141,29 @@ async function generate(request: Request, env: Env, access: Access) {
   return Response.json({ output: content.value, model, cost, tokens } satisfies GenerateResponse);
 }
 
+/** A decision call (Jev, #20): typed questions about `state`, sent to OpenRouter's decisions endpoint. Only decision
+ * jobs and models are accepted, so a decision never reaches a chat model, nor a chat call Jev. */
+async function decide(request: Request, env: Env, access: Access) {
+  const parsed = await readBody(request, DecideRequest);
+  if (!parsed) return error("bad_request", 400);
+  const { job, model: requested, state, questions } = parsed;
+  if (!Object.hasOwn(env.DECISION_JOBS, job)) return error("unknown_job", 400);
+  const model = requested ?? env.DECISION_JOBS[job as DecisionJob];
+  if (!(env.DECISION_MODELS as readonly string[]).includes(model)) return error("model_not_allowed", 400);
+
+  const sent = await postToOpenRouter(OPENROUTER_DECISIONS, { model, state, questions }, env, { access, job, model });
+  if (sent.failed) return sent.failed;
+  const decided = sent.reply as { answers?: unknown; usage?: Usage } | null;
+  // Jev's output tokens are free, and its usage may leave them out.
+  const { cost, tokens } = usageOf(decided?.usage && { completion_tokens: 0, ...decided.usage });
+  logCall(access, job, model, cost);
+  const answers = decided?.answers;
+  if (typeof answers !== "object" || answers === null || Array.isArray(answers)) return billedError("invalid_model_reply", model, cost, tokens);
+  return Response.json({ answers: answers as Record<string, unknown>, model, cost, tokens } satisfies DecideResponse);
+}
+
 /** What the Developer panel (#17) may pick: the allowed models with their live prices and settings, from OpenRouter's
- * models endpoint, and each job's defaults and caps. Without OpenRouter's list it still answers, with no prices. */
+ * models endpoint, each chat job's defaults and caps, and each decision job's model (#20). Without OpenRouter's list it still answers, with no prices. */
 async function listModels(env: Env) {
   type Listed = { id: string; pricing?: { prompt?: string; completion?: string }; supported_parameters?: string[] };
   let listed: Listed[] | null = null;
@@ -113,17 +176,20 @@ async function listModels(env: Env) {
     listed = null;
   }
   const perMillion = (price?: string) => (price !== undefined && Number.isFinite(Number(price)) ? Math.round(Number(price) * 1e6 * 1e6) / 1e6 : null);
-  const models = (env.ALLOWED_MODELS as readonly string[]).map((id): AllowedModel => {
-    const found = listed?.find((m) => m.id === id);
-    const input = perMillion(found?.pricing?.prompt);
-    const output = perMillion(found?.pricing?.completion);
-    const params = found?.supported_parameters ?? [];
-    return { id, price: input !== null && output !== null ? { inputPerMillion: input, outputPerMillion: output } : null, temperature: params.includes("temperature"), reasoning: params.includes("reasoning") };
-  });
+  const allowed = (ids: readonly string[], kind: AllowedModel["kind"]) =>
+    ids.map((id): AllowedModel => {
+      const found = listed?.find((m) => m.id === id);
+      const input = perMillion(found?.pricing?.prompt);
+      const output = perMillion(found?.pricing?.completion);
+      const params = found?.supported_parameters ?? [];
+      return { id, kind, price: input !== null && output !== null ? { inputPerMillion: input, outputPerMillion: output } : null, temperature: params.includes("temperature"), reasoning: params.includes("reasoning") };
+    });
+  const models = [...allowed(env.ALLOWED_MODELS, "chat"), ...allowed(env.DECISION_MODELS, "decision")];
   const jobs = Object.fromEntries(
     (Object.keys(env.JOB_MODELS) as Job[]).map((job) => [job, { model: env.JOB_MODELS[job], maxTokens: env.JOB_SETTINGS[job].max_tokens, reasoningEffort: env.JOB_SETTINGS[job].reasoning_effort }]),
   );
-  return Response.json({ models, jobs, pricesAt: listed ? new Date().toISOString() : null } satisfies ModelsResponse);
+  const decisionJobs = Object.fromEntries((Object.keys(env.DECISION_JOBS) as DecisionJob[]).map((job) => [job, { model: env.DECISION_JOBS[job] }]));
+  return Response.json({ models, jobs, decisionJobs, pricesAt: listed ? new Date().toISOString() : null } satisfies ModelsResponse);
 }
 
 /** CORS for the web app's origin only: every reply to it, including errors, carries the headers so the app can
@@ -154,6 +220,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (auth instanceof Response) return auth;
     if (request.method === "GET" && pathname === "/v1/access") return Response.json({ label: auth.label, expiresAt: auth.expiresAt.toISOString() } satisfies AccessResponse);
     if (request.method === "POST" && pathname === "/v1/generate") return generate(request, env, auth);
+    if (request.method === "POST" && pathname === "/v1/decide") return decide(request, env, auth);
     if (request.method === "GET" && pathname === "/v1/models") return listModels(env);
   }
   return new Response("Not found", { status: 404 });

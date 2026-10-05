@@ -83,7 +83,7 @@ One version of the system prompt for an LLM job, written with a particular promp
 _Avoid_: Prompt version, template
 
 **Setup**:
-One Matcher configured one particular way: for the LLM Matcher, its Prompt Variant, model and reasoning effort. Each Setup has its own measured Gap threshold, and the Matcher Report can put several side by side.
+One Matcher configured one particular way: for the LLM Matcher, its Prompt Variant, model and reasoning effort; for the Jev Matcher, its model and how it asks (one choice among the Scenarios, or yes or no for each). Each Setup has its own measured Gap threshold, and the Matcher Report can put several side by side.
 _Avoid_: Config, configuration, combination
 
 **Evaluation Set**:

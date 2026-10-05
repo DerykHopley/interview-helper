@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { MATCHING_CONFIG, type MatcherSetup } from "../../src/matching/matchingConfig";
+import { MATCHING_CONFIG, type LlmMatcherSetup, type MatcherSetup } from "../../src/matching/matchingConfig";
 import { PROMPT_VARIANTS } from "../../src/matching/promptVariants";
 import { COMPARED_MODELS, reportPlan, reportsDirFor } from "../src/reportPlan";
 import { parseRawReport, type RawReport } from "../src/rawReport";
 import { scoreCalibration } from "../src/reasons";
 import { scoreRuns } from "../src/scoring";
 
-const SHIPPED: MatcherSetup = { promptVariant: "rubric-zero-shot", model: "openai/gpt-5-mini", reasoningEffort: "low" };
-const key = (s: MatcherSetup) => `${s.promptVariant}/${s.model}/${s.reasoningEffort}`;
+const SHIPPED: LlmMatcherSetup = { matcher: "llm", promptVariant: "rubric-zero-shot", model: "openai/gpt-5-mini", reasoningEffort: "low" };
+const key = (s: MatcherSetup) => (s.matcher === "llm" ? `${s.promptVariant}/${s.model}/${s.reasoningEffort}` : `jev/${s.ask}/${s.model}`);
+const llm = (setups: MatcherSetup[]) => setups.filter((s): s is LlmMatcherSetup => s.matcher === "llm");
 
 describe("what a report with every Setup runs", () => {
   it("runs every Prompt Variant on the shipped model and effort, and each compared effort on the shipped variant, once each", () => {
@@ -15,7 +16,7 @@ describe("what a report with every Setup runs", () => {
 
     expect(new Set(setups.map(key)).size).toBe(setups.length);
     expect(sections.map((s) => s.title)).toEqual(["Prompt Variants", "Reasoning effort"]);
-    const [variants, efforts] = sections;
+    const [variants, efforts] = sections.map((s) => ({ ...s, setups: llm(s.setups) }));
     expect(variants.setups.map((s) => s.promptVariant).sort()).toEqual(Object.keys(PROMPT_VARIANTS).sort());
     expect(variants.setups.every((s) => s.model === SHIPPED.model && s.reasoningEffort === SHIPPED.reasoningEffort)).toBe(true);
     expect(efforts.setups.map((s) => s.reasoningEffort)).toEqual(["minimal", "low", "medium"]);
@@ -25,6 +26,25 @@ describe("what a report with every Setup runs", () => {
 
   it("starts from what the app ships", () => {
     expect(reportPlan(MATCHING_CONFIG, { allSetups: true }).setups.map(key)).toContain(key(MATCHING_CONFIG));
+  });
+});
+
+describe("what a report with Jev runs (#20)", () => {
+  it("adds a Jev section with each way of asking, beside the shipped Setup", () => {
+    const { setups, sections } = reportPlan(SHIPPED, { jev: true });
+
+    expect(sections.map((s) => s.title)).toEqual(["Jev"]);
+    expect(sections[0].setups.map(key)).toEqual(["jev/choice/typesafe/jev-1.13", "jev/yes-no/typesafe/jev-1.13"]);
+    // The shipped Setup runs too, so the report compares Jev with what ships.
+    expect(setups.map(key)).toEqual([key(SHIPPED), "jev/choice/typesafe/jev-1.13", "jev/yes-no/typesafe/jev-1.13"]);
+  });
+
+  it("refuses the LLM comparisons when a Jev Setup ships, since they vary an LLM Setup", () => {
+    const shippedJev: MatcherSetup = { matcher: "jev", ask: "yes-no", model: "typesafe/jev-1.13" };
+
+    expect(reportPlan(shippedJev, { jev: true }).setups.map(key)).toEqual(["jev/yes-no/typesafe/jev-1.13", "jev/choice/typesafe/jev-1.13"]);
+    expect(() => reportPlan(shippedJev, { allSetups: true })).toThrow(/LLM Setup/);
+    expect(() => reportPlan(shippedJev, { models: ["openai/gpt-5-nano"] })).toThrow(/LLM Setup/);
   });
 });
 
@@ -65,7 +85,7 @@ describe("what a report with models runs", () => {
 
     expect(sections.map((s) => s.title)).toEqual(["Models"]);
     expect(sections[0].setups.map((s) => s.model)).toEqual(["openai/gpt-5-nano", "openai/gpt-5-mini", "google/gemini-3.8-flash"]);
-    expect(setups.every((s) => s.promptVariant === SHIPPED.promptVariant && s.reasoningEffort === SHIPPED.reasoningEffort)).toBe(true);
+    expect(setups.every((s) => s.matcher === "llm" && s.promptVariant === SHIPPED.promptVariant && s.reasoningEffort === SHIPPED.reasoningEffort)).toBe(true);
     expect(setups).toHaveLength(3);
   });
 

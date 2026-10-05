@@ -2,6 +2,7 @@
 //   npm run eval [-- --set eval/sets/fixture] [--runs 3]    the shipped Setup
 //   npm run eval -- --all-setups [--runs 3]                  also every Prompt Variant and reasoning effort (#15)
 //   npm run eval -- --models [--runs 3]                      also the shipped Setup on each compared model (#18)
+//   npm run eval -- --jev [--runs 3]                         also each way of asking Jev (#20); well under a cent a run
 //   npm run eval -- --reasons                                also judge the Match reasons (#18); combines with the above
 //   npm run eval -- --render eval/reports/<report>.json      the report again from its saved scores, with no calls
 // Scores Matchers against the Evaluation Set through the local Worker, several runs pooled (models don't score the
@@ -12,7 +13,7 @@
 // comes from the environment or worker/.dev.vars, as for `npm run token`).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { MATCHERS, MATCHING_CONFIG, type MatcherSetup, type RecordedThresholds } from "../src/matching/matchingConfig";
+import { createMatcher, matcherName, MATCHING_CONFIG, type RecordedThresholds } from "../src/matching/matchingConfig";
 import { createWorkerGateway } from "../src/model-gateway/workerGateway";
 import { mintAccessToken } from "../worker/src/accessToken";
 import { readSigningSecret } from "../scripts/signingSecret";
@@ -33,6 +34,7 @@ const { values } = parseArgs({
     "all-setups": { type: "boolean", default: false },
     models: { type: "boolean", default: false },
     reasons: { type: "boolean", default: false },
+    jev: { type: "boolean", default: false },
     render: { type: "string" },
   },
 });
@@ -105,12 +107,12 @@ if (!access?.ok) {
 }
 
 const set = loadEvaluationSet(values.set);
-const nameOf = (setup: MatcherSetup) => MATCHERS[MATCHING_CONFIG.matcher].create(gatewayNoting(new Set()), setup).name;
-const plan = reportPlan(MATCHING_CONFIG, { allSetups: values["all-setups"], models: values.models ? COMPARED_MODELS : [] });
+const nameOf = matcherName;
+const plan = reportPlan(MATCHING_CONFIG, { allSetups: values["all-setups"], models: values.models ? COMPARED_MODELS : [], jev: values.jev });
 const results: RawReport["results"] = [];
 for (const [i, setup] of plan.setups.entries()) {
   const models = new Set<string>();
-  const matcher = MATCHERS[MATCHING_CONFIG.matcher].create(gatewayNoting(models), setup);
+  const matcher = createMatcher(gatewayNoting(models), setup);
   const runs: MatcherRun[] = [];
   for (let n = 1; n <= runCount; n++) {
     await tokens.fresh();

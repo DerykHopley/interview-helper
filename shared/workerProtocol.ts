@@ -5,6 +5,11 @@ import { z } from "zod";
 export const MODEL_JOBS = ["question-generation", "matching", "match-reasons", "co-writing", "feedback", "readiness-report", "reason-judging"] as const;
 export type ModelJob = (typeof MODEL_JOBS)[number];
 
+/** The decision jobs (#20): typed answers from a decision model (Jev), never text. Each maps to a model in the
+ * Worker's DECISION_JOBS, apart from the chat jobs, so neither kind of call can reach the other kind of model. */
+export const DECISION_JOBS = ["jev-matching"] as const;
+export type DecisionJob = (typeof DECISION_JOBS)[number];
+
 /** Every error the Worker replies with, as `{ "error": <code> }`. */
 export const WORKER_ERRORS = [
   "missing_token",
@@ -66,14 +71,57 @@ export type CallTokens = { input: number; output: number };
  * cost comes back with the error, so the Developer panel's total is what was spent (#17). */
 export type BilledError = { error: WorkerError; model: string; cost: number | null; tokens: CallTokens | null };
 
-/** One allowed model, as the Developer panel (#17) shows it: its live price in US$ per million tokens and whether it
- * takes a temperature or a reasoning effort, from OpenRouter's models endpoint (null and false if that's unknown). */
-export type AllowedModel = { id: string; price: { inputPerMillion: number; outputPerMillion: number } | null; temperature: boolean; reasoning: boolean };
+// Scenarios have no length limit of their own; Jev's context (32k tokens) is the real one, and OpenRouter refuses beyond it.
+const decisionText = z.string().trim().min(1).max(20_000);
 
-/** GET /v1/models → 200: the allowed models, and each job's default model and limits (the token cap is a ceiling).
- * `pricesAt` is when the prices were fetched, or null if OpenRouter's models endpoint couldn't be read. */
+/** One of Jev's typed questions (OpenRouter's decisions endpoint, #20): yes or no ("noul"), or one choice among options.
+ * `criteria` describe the answers: Jev never sees the keys, so each description must carry its whole meaning. Jev's
+ * third type, an ordered score, isn't used. */
+export const DecisionQuestion = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("noul"), instructions: decisionText, criteria: z.object({ true: decisionText, false: decisionText }).optional() }),
+  z.object({
+    type: z.literal("choice"),
+    instructions: decisionText,
+    criteria: z.record(z.string(), decisionText).refine((options) => Object.keys(options).length >= 2 && Object.keys(options).length <= 60),
+  }),
+]);
+export type DecisionQuestion = z.infer<typeof DecisionQuestion>;
+
+const probability = z.number().min(0).max(1);
+
+/** Jev's answer to one typed question: probabilities, never text. For a choice, `probabilities` covers the options Jev
+ * gave any. The gateway also checks each answer against the question it answers. */
+export const DecisionAnswer = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("noul"), noul: probability /* 0 = no … 1 = yes */ }),
+  z.object({ type: z.literal("choice"), choice: z.string(), confidence: probability.optional(), probabilities: z.record(z.string(), probability).optional() }),
+]);
+export type DecisionAnswer = z.infer<typeof DecisionAnswer>;
+
+/** POST /v1/decide body: `state` is the untrusted content to evaluate, and `questions` are answered in parallel, by
+ * key. `model` may pick another allowed decision model. */
+export const DecideRequest = z.object({
+  job: z.string(),
+  model: z.string().optional(),
+  state: decisionText,
+  questions: z.record(z.string().regex(/^\w{1,40}$/), DecisionQuestion).refine((questions) => Object.keys(questions).length >= 1 && Object.keys(questions).length <= 60),
+});
+export type DecideRequest = z.infer<typeof DecideRequest>;
+
+/** POST /v1/decide → 200: the answers by question key, as Jev gave them (the gateway checks them), with the model that
+ * ran, its cost and tokens as for /v1/generate. Jev's output tokens are free. */
+export type DecideResponse = { answers: Record<string, unknown>; model: string; cost: number | null; tokens: CallTokens | null };
+
+/** One allowed model, as the Developer panel (#17) shows it: its live price in US$ per million tokens and whether it
+ * takes a temperature or a reasoning effort, from OpenRouter's models endpoint (null and false if that's unknown).
+ * A "decision" model (Jev, #20) answers /v1/decide only, never a chat job. */
+export type AllowedModel = { id: string; kind: "chat" | "decision"; price: { inputPerMillion: number; outputPerMillion: number } | null; temperature: boolean; reasoning: boolean };
+
+/** GET /v1/models → 200: the allowed models, each chat job's default model and limits (the token cap is a ceiling), and
+ * each decision job's default model (#20). `pricesAt` is when the prices were fetched, or null if OpenRouter's models
+ * endpoint couldn't be read. */
 export type ModelsResponse = {
   models: AllowedModel[];
   jobs: Record<string, { model: string; maxTokens: number; reasoningEffort: ReasoningEffort }>;
+  decisionJobs: Record<string, { model: string }>;
   pricesAt: string | null;
 };

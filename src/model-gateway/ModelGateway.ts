@@ -1,8 +1,8 @@
 import type { z } from "zod";
 
-import type { AccessRefusal, CallTokens, ChatTurn, ModelJob, ModelsResponse, ReasoningEffort, WorkerError } from "../../shared/workerProtocol";
+import type { AccessRefusal, CallTokens, ChatTurn, DecisionAnswer, DecisionJob, DecisionQuestion, ModelJob, ModelsResponse, ReasoningEffort, WorkerError } from "../../shared/workerProtocol";
 
-export type { AllowedModel, ChatTurn, ModelJob, ModelsResponse } from "../../shared/workerProtocol";
+export type { AllowedModel, ChatTurn, DecisionAnswer, DecisionJob, DecisionQuestion, ModelJob, ModelsResponse } from "../../shared/workerProtocol";
 
 export type StructuredRequest<Schema extends z.ZodType> = {
   job: ModelJob;
@@ -26,19 +26,11 @@ export type StructuredRequest<Schema extends z.ZodType> = {
   schema: Schema;
 };
 
-/** Jev's typed questions (OpenRouter's decisions endpoint). All questions in one request are answered in parallel. */
-export type DecisionQuestion =
-  | { type: "noul"; instructions: string; criteria?: { true: string; false: string } }
-  | { type: "choice"; instructions: string; criteria: Record<string, string> }
-  | { type: "score"; instructions: string; criteria: string[] };
-
-export type DecisionAnswer =
-  | { type: "noul"; noul: number /* 0 = no … 1 = yes */ }
-  | { type: "choice"; choice: string; confidence?: number; probabilities?: Record<string, number> }
-  | { type: "score"; score: number; confidence?: number; probabilities?: Record<string, number> };
-
+/** Typed questions for Jev. All questions in one request are answered in parallel, in one call. */
 export type DecisionRequest<Keys extends string> = {
-  job: ModelJob;
+  job: DecisionJob;
+  /** A decision model other than the job's default in the Worker; it must be on the Worker's DECISION_MODELS. */
+  model?: string;
   /** The untrusted content to evaluate. */
   state: string;
   questions: Record<Keys, DecisionQuestion>;
@@ -46,7 +38,7 @@ export type DecisionRequest<Keys extends string> = {
 
 /** One model call the Worker answered: which model ran, what it cost (US$) and its tokens (each null if OpenRouter
  * didn't say), how long it took and when. Never the prompt or reply. */
-export type ModelCall = { job: ModelJob; model: string; cost: number | null; tokens: CallTokens | null; durationMs: number; at: Date; failed?: WorkerError };
+export type ModelCall = { job: ModelJob | DecisionJob; model: string; cost: number | null; tokens: CallTokens | null; durationMs: number; at: Date; failed?: WorkerError };
 
 /** Whether an Access Token lets the app use LLM features right now. */
 export type AccessStatus = { ok: true; label: string; expiresAt: Date } | { ok: false; reason: AccessRefusal };
@@ -72,7 +64,8 @@ export class ModelGatewayError extends Error {
 export interface ModelGateway {
   generate<Schema extends z.ZodType>(request: StructuredRequest<Schema>): Promise<z.infer<Schema>>;
   embed(texts: string[]): Promise<number[][]>;
-  /** Classify/score with Jev: typed answers only, no free text. */
+  /** Classify/score with Jev: typed answers only, no free text. An answer missing, of another type than asked, or
+   * outside what was asked is refused with "invalid_model_reply". */
   decide<Keys extends string>(request: DecisionRequest<Keys>): Promise<Record<Keys, DecisionAnswer>>;
   /** Checks an Access Token with the Worker, before it's used. */
   checkAccess(token: string): Promise<AccessStatus>;

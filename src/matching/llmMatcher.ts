@@ -19,9 +19,12 @@ export type LlmSetup = { model: string; reasoningEffort: ReasoningEffort };
 /** The LLM Matcher (spec #1): an OpenRouter chat model, via the Worker's "matching" job, scores every Scenario 0–100.
  * A reply that leaves a Scenario out, or scores one twice, is refused rather than guessed at. Its name includes the
  * Prompt Variant, model and effort, so each combination has its own recorded threshold. */
+/** An LLM Matcher's name, as gapThresholds.json records its threshold. */
+export const llmMatcherName = (variant: PromptVariant, { model, reasoningEffort }: LlmSetup) => `LLM (${variant.name}) · ${model} · ${reasoningEffort} effort`;
+
 export function createLlmMatcher(gateway: ModelGateway, variant: PromptVariant, { model, reasoningEffort }: LlmSetup): Matcher {
   return {
-    name: `LLM (${variant.name}) · ${model} · ${reasoningEffort} effort`,
+    name: llmMatcherName(variant, { model, reasoningEffort }),
     async rank(question: QuestionText, scenarios: ScenarioText[]): Promise<ScoredScenario[]> {
       const ids = withShortIds(scenarios);
       const { scores } = await gateway.generate({

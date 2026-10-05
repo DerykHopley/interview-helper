@@ -8,7 +8,7 @@ import type { ModelGateway } from "../model-gateway/ModelGateway";
 import { scenarioBank, type SavedScenario } from "../scenarios/scenarioBank";
 import type { UnlockedVault } from "../vault/vault";
 import { findMatches } from "./findMatches";
-import { gapThresholdFor, MATCHERS, MATCHING_CONFIG, measuredSetups, type MatcherSetup } from "./matchingConfig";
+import { createMatcher, gapThresholdFor, MATCHING_CONFIG, measuredSetups, type MatcherSetup } from "./matchingConfig";
 
 /** The measured Setup picked in the Developer panel (#17), by its Matcher name, while developer mode is on; else null. */
 export const pickedMatchingSetup = ({ enabled, matchingSetup }: DevSettings = devSettings.get()) => (enabled ? matchingSetup : null);
@@ -19,7 +19,7 @@ const setupNamed = (name: string | null): MatcherSetup => measuredSetups().find(
 /** The shipped Matcher, with the Setup picked in the Developer panel or the shipped one, and the settings its Matches
  * are found with. */
 export function shippedMatcher(gateway: ModelGateway, picked = pickedMatchingSetup()) {
-  const matcher = MATCHERS[MATCHING_CONFIG.matcher].create(gateway, setupNamed(picked));
+  const matcher = createMatcher(gateway, setupNamed(picked));
   return { matcher, settings: { gapThreshold: gapThresholdFor(matcher.name), shown: MATCHING_CONFIG.shown } };
 }
 

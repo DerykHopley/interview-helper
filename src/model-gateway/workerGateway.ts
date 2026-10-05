@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { isWorkerError, type AccessResponse, type BilledError, type GenerateRequest, type GenerateResponse, type ModelsResponse } from "../../shared/workerProtocol";
-import { ModelGatewayError, type AccessStatus, type ModelCall, type ModelGateway } from "./ModelGateway";
+import { DecisionAnswer, isWorkerError, type AccessResponse, type BilledError, type DecideRequest, type DecideResponse, type DecisionQuestion, type GenerateRequest, type GenerateResponse, type ModelsResponse } from "../../shared/workerProtocol";
+import { ModelGatewayError, type AccessStatus, type DecisionRequest, type ModelCall, type ModelGateway } from "./ModelGateway";
 
 type Options = {
   /** Where the Worker runs, e.g. http://localhost:8787 in local dev. */
@@ -25,6 +25,17 @@ function toStrictJsonSchema(schema: z.ZodType) {
   return jsonSchema;
 }
 
+/** Jev's answer to `question`, if it's of the type asked and within it (a choice, and any probabilities, only among the
+ * options given); else null. Fields beyond the contract's are dropped. */
+function answerTo(question: DecisionQuestion, answer: unknown): DecisionAnswer | null {
+  const parsed = DecisionAnswer.safeParse(answer);
+  if (!parsed.success || parsed.data.type !== question.type) return null;
+  if (parsed.data.type === "noul" || question.type === "noul") return parsed.data;
+  const options = Object.keys(question.criteria);
+  const { choice, probabilities = {} } = parsed.data;
+  return options.includes(choice) && Object.keys(probabilities).every((option) => options.includes(option)) ? parsed.data : null;
+}
+
 /** The real Model Gateway: reaches models through the Worker, which checks the Access Token and calls OpenRouter. */
 export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThis.fetch.bind(globalThis), onCall, speech }: Options): ModelGateway {
   const listeners = new Set<(call: ModelCall) => void>(onCall ? [onCall] : []);
@@ -43,6 +54,23 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
     throw new ModelGatewayError(isWorkerError(body.error) ? body.error : response.status >= 500 ? "model_unavailable" : "request_refused", billed);
   };
 
+  /** Reports a call to everyone listening, and returns how to report one that failed but was billed. */
+  const reporter = (job: ModelCall["job"]) => {
+    const at = new Date();
+    return (call: Omit<ModelCall, "job" | "durationMs" | "at">) => {
+      for (const listener of listeners) listener({ job, ...call, durationMs: Date.now() - at.getTime(), at });
+    };
+  };
+  /** Posts to the Worker; a billed failure is reported, with why, before it's thrown. */
+  const post = async <Reply>(path: string, body: unknown, report: ReturnType<typeof reporter>) => {
+    try {
+      return (await call(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })) as Reply;
+    } catch (e) {
+      if (e instanceof ModelGatewayError && e.billed && isWorkerError(e.code)) report({ ...e.billed, failed: e.code }); // billed though it failed
+      throw e;
+    }
+  };
+
   return {
     async generate({ job, model: requested, reasoningEffort, maxTokens, temperature, system, messages, user, schema }) {
       const body: GenerateRequest = {
@@ -56,18 +84,8 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
         user,
         schema: toStrictJsonSchema(schema),
       };
-      const at = new Date();
-      const report = (call: Omit<ModelCall, "job" | "durationMs" | "at">) => {
-        for (const listener of listeners) listener({ job, ...call, durationMs: Date.now() - at.getTime(), at });
-      };
-      let reply: GenerateResponse;
-      try {
-        reply = (await call("/v1/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })) as GenerateResponse;
-      } catch (e) {
-        if (e instanceof ModelGatewayError && e.billed && isWorkerError(e.code)) report({ ...e.billed, failed: e.code }); // billed though it failed
-        throw e;
-      }
-      const { output, model, cost, tokens } = reply;
+      const report = reporter(job);
+      const { output, model, cost, tokens } = await post<GenerateResponse>("/v1/generate", body, report);
       report({ model, cost, tokens: tokens ?? null }); // before the schema check: a reply that fails it was still paid for
       const parsed = schema.safeParse(output);
       if (!parsed.success) throw new ModelGatewayError("invalid_model_reply");
@@ -92,11 +110,20 @@ export function createWorkerGateway({ baseUrl, getAccessToken, fetch = globalThi
       return () => void listeners.delete(listener);
     },
 
-    // Embeddings and Jev decisions reach the Worker in later tickets (#10, #20, #21).
+    async decide<Keys extends string>({ job, model: requested, state, questions }: DecisionRequest<Keys>) {
+      const report = reporter(job);
+      const body: DecideRequest = { job, ...(requested && { model: requested }), state, questions };
+      const { answers, model, cost, tokens } = await post<DecideResponse>("/v1/decide", body, report);
+      report({ model, cost, tokens: tokens ?? null }); // before the answers are checked: a reply that fails was still paid for
+      const checked = (Object.keys(questions) as Keys[]).map((key) => [key, answerTo(questions[key], answers[key])] as const);
+      if (checked.some(([, answer]) => answer === null)) throw new ModelGatewayError("invalid_model_reply");
+      return Object.fromEntries(checked) as Record<Keys, DecisionAnswer>;
+    },
+
+    // Remote embeddings reach the Worker in a later ticket (#21).
     embed: () => Promise.reject(new ModelGatewayError("not_connected")),
     transcribe: (audio, onDownload) => (speech ? speech.transcribe(audio, onDownload) : Promise.reject(new ModelGatewayError("not_connected"))),
     transcriberDownloaded: () => (speech ? speech.transcriberDownloaded() : Promise.resolve(false)),
     prepareTranscriber: (onDownload) => (speech ? speech.prepareTranscriber(onDownload) : Promise.reject(new ModelGatewayError("not_connected"))),
-    decide: () => Promise.reject(new ModelGatewayError("not_connected")),
   };
 }
