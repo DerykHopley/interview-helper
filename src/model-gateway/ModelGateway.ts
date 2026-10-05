@@ -1,8 +1,8 @@
 import type { z } from "zod";
 
-import type { AccessRefusal, CallTokens, ChatTurn, DecisionJob, DecisionQuestion, ModelJob, ModelsResponse, ReasoningEffort, WorkerError } from "../../shared/workerProtocol";
+import type { AccessRefusal, CallTokens, ChatTurn, DecisionAnswer, DecisionJob, DecisionQuestion, ModelJob, ModelsResponse, ReasoningEffort, WorkerError } from "../../shared/workerProtocol";
 
-export type { AllowedModel, ChatTurn, DecisionJob, DecisionQuestion, ModelJob, ModelsResponse } from "../../shared/workerProtocol";
+export type { AllowedModel, ChatTurn, DecisionAnswer, DecisionJob, DecisionQuestion, ModelJob, ModelsResponse } from "../../shared/workerProtocol";
 
 export type StructuredRequest<Schema extends z.ZodType> = {
   job: ModelJob;
@@ -25,12 +25,6 @@ export type StructuredRequest<Schema extends z.ZodType> = {
    */
   schema: Schema;
 };
-
-/** Jev's answer to one typed question (OpenRouter's decisions endpoint, #20): probabilities, never text. */
-export type DecisionAnswer =
-  | { type: "noul"; noul: number /* 0 = no … 1 = yes */ }
-  | { type: "choice"; choice: string; confidence?: number; probabilities?: Record<string, number> }
-  | { type: "score"; score: number; confidence?: number; probabilities?: Record<string, number> };
 
 /** Typed questions for Jev. All questions in one request are answered in parallel, in one call. */
 export type DecisionRequest<Keys extends string> = {

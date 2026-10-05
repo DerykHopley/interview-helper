@@ -87,6 +87,9 @@ export function overrideCount({ jobs, matchingSetup }: DevSettings) {
   return perJob + (matchingSetup ? 1 : 0);
 }
 
+/** The models a chat job may pick: a decision model (Jev, #20) can't run one. */
+export const chatModels = (allowed: ModelsResponse) => allowed.models.filter((m) => m.kind === "chat");
+
 /** The panel's settings for a job, while developer mode is on. Matching takes none: its Setup runs as it was measured. */
 export function overridesFor(job: ModelJob): JobOverride {
   const settings = devSettings.get();
@@ -113,7 +116,7 @@ export function pruneSettings(settings: DevSettings, allowed: ModelsResponse, me
       dropped.push({ job, setting, why });
     };
     if (job === "matching") for (const setting of Object.keys(kept) as (keyof JobOverride)[]) drop(setting, "matching runs its Setup as measured");
-    if (kept.model !== undefined && !allowed.models.some((m) => m.id === kept.model && m.kind === "chat")) drop("model", `${kept.model} isn't allowed any more`);
+    if (kept.model !== undefined && !chatModels(allowed).some((m) => m.id === kept.model)) drop("model", `${kept.model} isn't allowed any more`);
     const model = allowed.models.find((m) => m.id === (kept.model ?? defaults.model));
     if (kept.maxTokens !== undefined && kept.maxTokens > defaults.maxTokens) drop("maxTokens", `above the cap of ${defaults.maxTokens}`);
     if (kept.temperature !== undefined && !model?.temperature) drop("temperature", `${model?.id ?? defaults.model} doesn't take one`);

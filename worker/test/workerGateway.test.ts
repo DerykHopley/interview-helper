@@ -183,6 +183,7 @@ describe("the app's Model Gateway, talking to the Worker", () => {
     ["answers with another type", { s1: { type: "noul", noul: 0.9 }, best: { type: "noul", noul: 0.2 } }],
     ["gives a probability outside 0 to 1", { s1: { type: "noul", noul: 1.4 }, best: { type: "choice", choice: "S1" } }],
     ["picks an option it wasn't given", { s1: { type: "noul", noul: 0.5 }, best: { type: "choice", choice: "S9" } }],
+    ["gives a probability to an option it wasn't given", { s1: { type: "noul", noul: 0.5 }, best: { type: "choice", choice: "S1", probabilities: { S1: 0.6, S9: 0.4 } } }],
   ])("rejects a decision that %s, after reporting what it cost", async (_, answers) => {
     openRouter = fakeOpenRouter(() => decisions(answers));
     const gateway = gatewayWith(await mint(inHours(2)));

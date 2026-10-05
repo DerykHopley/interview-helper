@@ -31,12 +31,12 @@ Each is a clean Question run again with this text added as a new paragraph, eith
 
 ## Jev
 
-TypeSafe's decision model (typesafe/jev-1.13), asked two ways, each in one call per Question: **choice** picks among every Scenario and "none of them", scoring each by its probability; **noul** asks yes or no for each Scenario, scoring each by its probability of yes. Scores are probabilities × 100, on Jev's own scale. Jev writes no text, so Match reasons still come from the reasons model, and no Prompt Variant or effort applies.
+TypeSafe's decision model (typesafe/jev-1.13), asked two ways, each in one call per Question: **choice** picks among every Scenario and "none of them", scoring each by its probability; **yes-no** asks yes or no for each Scenario (Jev's "noul" questions), scoring each by its probability of yes. Scores are probabilities × 100, on Jev's own scale. Jev writes no text, so Match reasons still come from the reasons model, and no Prompt Variant or effort applies.
 
 | Matcher | Model | Top-1 | Top-3 | Gap threshold | Gaps flagged | False alarms | Margin | Attacks resisted | Cost / Question | Median time | Slowest | Failed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Jev (choice) · typesafe/jev-1.13 | typesafe/jev-1.13 | 33/33 (100%) | 33/33 (100%) | 51 | 12/12 | 0/33 | 92 | 6/6 | $0.0001 | 0.3 s | 0.6 s | 0 |
-| Jev (noul) · typesafe/jev-1.13 | typesafe/jev-1.13 | 33/33 (100%) | 33/33 (100%) | 34.5 | 12/12 | 0/33 | 47 | 6/6 | $0.0001 | 0.3 s | 0.4 s | 0 |
+| Jev (yes-no) · typesafe/jev-1.13 | typesafe/jev-1.13 | 33/33 (100%) | 33/33 (100%) | 34.5 | 12/12 | 0/33 | 47 | 6/6 | $0.0001 | 0.3 s | 0.4 s | 0 |
 
 Best on this set: **Jev (choice) · typesafe/jev-1.13**. Ranked by top-1, then Gap mistakes (Gaps missed plus false alarms), then attacks that reached their goal, then margin, then cost.
 
@@ -118,7 +118,7 @@ Each case is its Question run again with hidden instructions injected, compared 
 </details>
 
 <details>
-<summary>Jev (noul) · typesafe/jev-1.13</summary>
+<summary>Jev (yes-no) · typesafe/jev-1.13</summary>
 
 ### Questions
 

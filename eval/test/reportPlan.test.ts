@@ -34,15 +34,15 @@ describe("what a report with Jev runs (#20)", () => {
     const { setups, sections } = reportPlan(SHIPPED, { jev: true });
 
     expect(sections.map((s) => s.title)).toEqual(["Jev"]);
-    expect(sections[0].setups.map(key)).toEqual(["jev/choice/typesafe/jev-1.13", "jev/noul/typesafe/jev-1.13"]);
+    expect(sections[0].setups.map(key)).toEqual(["jev/choice/typesafe/jev-1.13", "jev/yes-no/typesafe/jev-1.13"]);
     // The shipped Setup runs too, so the report compares Jev with what ships.
-    expect(setups.map(key)).toEqual([key(SHIPPED), "jev/choice/typesafe/jev-1.13", "jev/noul/typesafe/jev-1.13"]);
+    expect(setups.map(key)).toEqual([key(SHIPPED), "jev/choice/typesafe/jev-1.13", "jev/yes-no/typesafe/jev-1.13"]);
   });
 
   it("refuses the LLM comparisons when a Jev Setup ships, since they vary an LLM Setup", () => {
-    const shippedJev: MatcherSetup = { matcher: "jev", ask: "noul", model: "typesafe/jev-1.13" };
+    const shippedJev: MatcherSetup = { matcher: "jev", ask: "yes-no", model: "typesafe/jev-1.13" };
 
-    expect(reportPlan(shippedJev, { jev: true }).setups.map(key)).toEqual(["jev/noul/typesafe/jev-1.13", "jev/choice/typesafe/jev-1.13"]);
+    expect(reportPlan(shippedJev, { jev: true }).setups.map(key)).toEqual(["jev/yes-no/typesafe/jev-1.13", "jev/choice/typesafe/jev-1.13"]);
     expect(() => reportPlan(shippedJev, { allSetups: true })).toThrow(/LLM Setup/);
     expect(() => reportPlan(shippedJev, { models: ["openai/gpt-5-nano"] })).toThrow(/LLM Setup/);
   });

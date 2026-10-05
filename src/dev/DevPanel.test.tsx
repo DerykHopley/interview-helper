@@ -338,7 +338,7 @@ describe("what the Worker allows", () => {
   it("shows when prices couldn't be read from OpenRouter", async () => {
     const gateway = createFakeModelGateway({
       accessTokens: ACTIVE,
-      allowed: { models: [{ id: "openai/gpt-5-mini", kind: "chat", price: null, temperature: false, reasoning: true }], jobs: (await import("../test/fakeModelGateway")).ALLOWED.jobs, pricesAt: null },
+      allowed: { models: [{ id: "openai/gpt-5-mini", kind: "chat", price: null, temperature: false, reasoning: true }], jobs: (await import("../test/fakeModelGateway")).ALLOWED.jobs, decisionJobs: {}, pricesAt: null },
     });
     await inThePackInterview({ gateway });
     await devMode();

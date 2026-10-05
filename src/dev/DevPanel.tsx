@@ -5,7 +5,7 @@ import { MATCHING_CONFIG, measuredSetups, sameSetup, setupLabel } from "../match
 import { useModelGateway } from "../model-gateway/context";
 import type { AllowedModel, ModelCall, ModelsResponse } from "../model-gateway/ModelGateway";
 import { countOf } from "../text";
-import { devSettings, jobName, overrideCount, PANEL_JOBS, pruneSettings, useDevSettings, type Dropped, type JobOverride, type PanelJob } from "./devSettings";
+import { chatModels, devSettings, jobName, overrideCount, PANEL_JOBS, pruneSettings, useDevSettings, type Dropped, type JobOverride, type PanelJob } from "./devSettings";
 
 /** The most calls the log keeps, newest last. */
 const MAX_CALLS = 200;
@@ -283,12 +283,11 @@ function JobSettings({ job, allowed, onReset }: { job: Exclude<PanelJob, "matchi
   const override = settings.jobs[job] ?? {};
   const defaults = allowed.jobs[job];
   const modelId = override.model ?? defaults.model;
-  // Chat models only: a decision model (Jev, #20) can't run a chat job.
-  const chatModels = allowed.models.filter((m) => m.kind === "chat");
-  const model = chatModels.find((m) => m.id === modelId) ?? { id: modelId, price: null, temperature: false, reasoning: false };
+  const pickable = chatModels(allowed);
+  const model = pickable.find((m) => m.id === modelId) ?? { id: modelId, price: null, temperature: false, reasoning: false };
 
   function pickModel(id: string) {
-    const picked = chatModels.find((m) => m.id === id);
+    const picked = pickable.find((m) => m.id === id);
     setJobOverride(job, (o) => ({
       ...o,
       model: id === defaults.model ? undefined : id,
@@ -302,7 +301,7 @@ function JobSettings({ job, allowed, onReset }: { job: Exclude<PanelJob, "matchi
       <Field label="Model" changed={override.model !== undefined} wide>
         {(id) => (
           <select id={id} className="dev-input" value={modelId} onChange={(e) => pickModel(e.target.value)}>
-            {chatModels.map((m) => (
+            {pickable.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.id} · {priceOf(m)}
               </option>

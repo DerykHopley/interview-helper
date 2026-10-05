@@ -3,7 +3,7 @@
 // once); and where the report is written.
 import { normalize } from "node:path";
 import type { ReasoningEffort } from "../../shared/workerProtocol";
-import { JEV_ASKS } from "../../src/matching/jevMatcher";
+import { JEV_ASKS, JEV_MODEL } from "../../src/matching/jevMatcher";
 import { sameSetup, type MatcherSetup } from "../../src/matching/matchingConfig";
 import { PROMPT_VARIANTS, type PromptVariantId } from "../../src/matching/promptVariants";
 
@@ -28,40 +28,38 @@ export const COMPARED_MODELS = [
   "minimax/minimax-m2.7",
 ];
 
-/** The Jev model compared with --jev (#20): the Worker's DECISION_MODELS. */
-export const JEV_MODEL = "typesafe/jev-1.13";
-
 /** With `allSetups`, every Prompt Variant and every compared effort; with `models`, the shipped variant and effort on
  * each of those models; with `jev`, each way of asking Jev (#20). Those first two vary an LLM Setup, so they need one
  * to ship. The shipped Setup always runs, and each Setup runs once, however many sections it's in. */
 export function reportPlan(shipped: MatcherSetup, { allSetups = false, models = [], jev = false }: { allSetups?: boolean; models?: string[]; jev?: boolean }): ReportPlan {
   const sections: PlannedSection[] = [];
-  if ((allSetups || models.length) && shipped.matcher !== "llm") throw new Error("--all-setups and --models vary the shipped LLM Setup; ship an LLM Setup to run them");
-  if (allSetups && shipped.matcher === "llm") {
+  const llm = shipped.matcher === "llm" ? shipped : null;
+  if ((allSetups || models.length) && !llm) throw new Error("--all-setups and --models vary the shipped LLM Setup; ship an LLM Setup to run them");
+  if (allSetups && llm) {
     sections.push(
       {
         title: "Prompt Variants",
-        intro: `Each prompting technique on the shipped model and effort (${shipped.model}, ${shipped.reasoningEffort}). Each adds one technique to the same plain zero-shot instruction, with the same message and output schema.`,
-        setups: (Object.keys(PROMPT_VARIANTS) as PromptVariantId[]).map((promptVariant) => ({ ...shipped, promptVariant })),
+        intro: `Each prompting technique on the shipped model and effort (${llm.model}, ${llm.reasoningEffort}). Each adds one technique to the same plain zero-shot instruction, with the same message and output schema.`,
+        setups: (Object.keys(PROMPT_VARIANTS) as PromptVariantId[]).map((promptVariant) => ({ ...llm, promptVariant })),
       },
       {
         title: "Reasoning effort",
-        intro: `The shipped Prompt Variant on ${shipped.model} at each reasoning effort. The GPT-5 models take no temperature on OpenRouter, so effort is the setting compared.`,
-        setups: [...new Set([...COMPARED_EFFORTS, shipped.reasoningEffort])].map((reasoningEffort) => ({ ...shipped, reasoningEffort })),
+        intro: `The shipped Prompt Variant on ${llm.model} at each reasoning effort. The GPT-5 models take no temperature on OpenRouter, so effort is the setting compared.`,
+        setups: [...new Set([...COMPARED_EFFORTS, llm.reasoningEffort])].map((reasoningEffort) => ({ ...llm, reasoningEffort })),
       },
     );
   }
-  if (models.length && shipped.matcher === "llm") {
+  if (models.length && llm) {
     sections.push({
       title: "Models",
-      intro: `The shipped Prompt Variant and effort (${shipped.promptVariant}, ${shipped.reasoningEffort}) on each model. Models without reasoning ignore the effort. Plain gpt-5 isn't on the owner's OpenRouter allow-list, so gpt-5.4 stands in for the full size.`,
-      setups: [...new Set(models)].map((model) => ({ ...shipped, model })),
+      intro: `The shipped Prompt Variant and effort (${llm.promptVariant}, ${llm.reasoningEffort}) on each model. Models without reasoning ignore the effort. Plain gpt-5 isn't on the owner's OpenRouter allow-list, so gpt-5.4 stands in for the full size.`,
+      setups: [...new Set(models)].map((model) => ({ ...llm, model })),
     });
   }
   if (jev) {
     sections.push({
       title: "Jev",
-      intro: `TypeSafe's decision model (${JEV_MODEL}), asked two ways, each in one call per Question: **choice** picks among every Scenario and "none of them", scoring each by its probability; **noul** asks yes or no for each Scenario, scoring each by its probability of yes. Scores are probabilities × 100, on Jev's own scale. Jev writes no text, so Match reasons still come from the reasons model, and no Prompt Variant or effort applies.`,
+      intro: `TypeSafe's decision model (${JEV_MODEL}), asked two ways, each in one call per Question: **choice** picks among every Scenario and "none of them", scoring each by its probability; **yes-no** asks yes or no for each Scenario (Jev's "noul" questions), scoring each by its probability of yes. Scores are probabilities × 100, on Jev's own scale. Jev writes no text, so Match reasons still come from the reasons model, and no Prompt Variant or effort applies.`,
       setups: JEV_ASKS.map((ask) => ({ matcher: "jev", ask, model: JEV_MODEL })),
     });
   }

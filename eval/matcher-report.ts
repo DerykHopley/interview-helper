@@ -13,7 +13,7 @@
 // comes from the environment or worker/.dev.vars, as for `npm run token`).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { createMatcher, MATCHING_CONFIG, type MatcherSetup, type RecordedThresholds } from "../src/matching/matchingConfig";
+import { createMatcher, matcherName, MATCHING_CONFIG, type RecordedThresholds } from "../src/matching/matchingConfig";
 import { createWorkerGateway } from "../src/model-gateway/workerGateway";
 import { mintAccessToken } from "../worker/src/accessToken";
 import { readSigningSecret } from "../scripts/signingSecret";
@@ -107,7 +107,7 @@ if (!access?.ok) {
 }
 
 const set = loadEvaluationSet(values.set);
-const nameOf = (setup: MatcherSetup) => createMatcher(gatewayNoting(new Set()), setup).name;
+const nameOf = matcherName;
 const plan = reportPlan(MATCHING_CONFIG, { allSetups: values["all-setups"], models: values.models ? COMPARED_MODELS : [], jev: values.jev });
 const results: RawReport["results"] = [];
 for (const [i, setup] of plan.setups.entries()) {

@@ -19,6 +19,7 @@ export const ALLOWED: ModelsResponse = {
     "readiness-report": { model: "openai/gpt-5-mini", maxTokens: 8000, reasoningEffort: "medium" },
     "reason-judging": { model: "google/gemini-3.8-flash", maxTokens: 3000, reasoningEffort: "low" },
   },
+  decisionJobs: { "jev-matching": { model: "typesafe/jev-1.13" } },
   pricesAt: "2026-10-02T09:00:00.000Z",
 };
 
@@ -29,7 +30,10 @@ const CALL_TOKENS = { input: 1000, output: 200 };
 export type ReplyFor = (request: { job: ModelJob; system: string; messages?: ChatTurn[]; user: string }) => unknown;
 /** Per job, the replies in order: each a scripted value, or a ReplyFor function. */
 type Script = Partial<Record<ModelJob, unknown[]>>;
-type DecisionScript = Partial<Record<DecisionJob, Record<string, DecisionAnswer>[]>>;
+/** Answers a decision from its request, e.g. to answer about the Scenarios it sent. */
+export type DecisionFor = (request: DecisionRequest<string>) => Record<string, DecisionAnswer>;
+/** Per decision job, the answers in order: each scripted, or a DecisionFor function. */
+type DecisionScript = Partial<Record<DecisionJob, (Record<string, DecisionAnswer> | DecisionFor)[]>>;
 
 /** A fake Model Gateway that can also say which Access Token a real one would send with its next call. */
 export type FakeModelGateway = ModelGateway & {
@@ -69,7 +73,7 @@ export function createFakeModelGateway({
   const queuedTranscripts = [...transcripts];
   let downloaded = downloadedAtStart;
   const queues = Object.fromEntries(Object.entries(generate).map(([job, replies]) => [job, [...replies]])) as Script;
-  const decisions = structuredClone(decide);
+  const decisions = Object.fromEntries(Object.entries(decide).map(([job, answers]) => [job, [...answers]])) as DecisionScript;
   let getAccessToken = (): string | null => null;
   const listeners = new Set<(call: ModelCall) => void>();
   const allowedJobs = allowed instanceof Error ? ALLOWED.jobs : allowed.jobs;
@@ -116,7 +120,8 @@ export function createFakeModelGateway({
       return Promise.resolve(accessTokens[token.trim()] ?? { ok: false, reason: "invalid" });
     },
     decide<Keys extends string>(request: DecisionRequest<Keys>) {
-      const next = decisions[request.job]?.shift();
+      const scripted = decisions[request.job]?.shift();
+      const next = typeof scripted === "function" ? scripted(request) : scripted;
       if (!next) return Promise.reject(new Error(`No scripted decision for job "${request.job}"`));
       const missing = Object.keys(request.questions).filter((key) => !(key in next));
       if (missing.length) return Promise.reject(new Error(`Scripted decision has no answer for: ${missing.join(", ")}`));

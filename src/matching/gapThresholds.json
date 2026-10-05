@@ -63,7 +63,7 @@
     "gapThreshold": 51,
     "report": "eval/reports/2026-10-05-matcher-report.md"
   },
-  "Jev (noul) · typesafe/jev-1.13": {
+  "Jev (yes-no) · typesafe/jev-1.13": {
     "gapThreshold": 34.5,
     "report": "eval/reports/2026-10-05-matcher-report.md"
   }

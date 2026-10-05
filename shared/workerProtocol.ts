@@ -74,8 +74,9 @@ export type BilledError = { error: WorkerError; model: string; cost: number | nu
 // Scenarios have no length limit of their own; Jev's context (32k tokens) is the real one, and OpenRouter refuses beyond it.
 const decisionText = z.string().trim().min(1).max(20_000);
 
-/** One of Jev's typed questions (OpenRouter's decisions endpoint, #20). `criteria` describe the answers: Jev never sees
- * the keys, so each description must carry its whole meaning. */
+/** One of Jev's typed questions (OpenRouter's decisions endpoint, #20): yes or no ("noul"), or one choice among options.
+ * `criteria` describe the answers: Jev never sees the keys, so each description must carry its whole meaning. Jev's
+ * third type, an ordered score, isn't used. */
 export const DecisionQuestion = z.discriminatedUnion("type", [
   z.object({ type: z.literal("noul"), instructions: decisionText, criteria: z.object({ true: decisionText, false: decisionText }).optional() }),
   z.object({
@@ -83,9 +84,18 @@ export const DecisionQuestion = z.discriminatedUnion("type", [
     instructions: decisionText,
     criteria: z.record(z.string(), decisionText).refine((options) => Object.keys(options).length >= 2 && Object.keys(options).length <= 60),
   }),
-  z.object({ type: z.literal("score"), instructions: decisionText, criteria: z.array(decisionText).min(2).max(10) }),
 ]);
 export type DecisionQuestion = z.infer<typeof DecisionQuestion>;
+
+const probability = z.number().min(0).max(1);
+
+/** Jev's answer to one typed question: probabilities, never text. For a choice, `probabilities` covers the options Jev
+ * gave any. The gateway also checks each answer against the question it answers. */
+export const DecisionAnswer = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("noul"), noul: probability /* 0 = no … 1 = yes */ }),
+  z.object({ type: z.literal("choice"), choice: z.string(), confidence: probability.optional(), probabilities: z.record(z.string(), probability).optional() }),
+]);
+export type DecisionAnswer = z.infer<typeof DecisionAnswer>;
 
 /** POST /v1/decide body: `state` is the untrusted content to evaluate, and `questions` are answered in parallel, by
  * key. `model` may pick another allowed decision model. */
@@ -106,10 +116,12 @@ export type DecideResponse = { answers: Record<string, unknown>; model: string; 
  * A "decision" model (Jev, #20) answers /v1/decide only, never a chat job. */
 export type AllowedModel = { id: string; kind: "chat" | "decision"; price: { inputPerMillion: number; outputPerMillion: number } | null; temperature: boolean; reasoning: boolean };
 
-/** GET /v1/models → 200: the allowed models, and each job's default model and limits (the token cap is a ceiling).
- * `pricesAt` is when the prices were fetched, or null if OpenRouter's models endpoint couldn't be read. */
+/** GET /v1/models → 200: the allowed models, each chat job's default model and limits (the token cap is a ceiling), and
+ * each decision job's default model (#20). `pricesAt` is when the prices were fetched, or null if OpenRouter's models
+ * endpoint couldn't be read. */
 export type ModelsResponse = {
   models: AllowedModel[];
   jobs: Record<string, { model: string; maxTokens: number; reasoningEffort: ReasoningEffort }>;
+  decisionJobs: Record<string, { model: string }>;
   pricesAt: string | null;
 };

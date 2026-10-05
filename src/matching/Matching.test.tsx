@@ -1,9 +1,10 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { devSettings } from "../dev/devSettings";
 import { ModelGatewayError } from "../model-gateway/ModelGateway";
 import { createScenario, openTab, setUpWithoutToken, unlockWith } from "../test/candidate";
-import { createFakeModelGateway, type ReplyFor } from "../test/fakeModelGateway";
+import { createFakeModelGateway, type DecisionFor, type ReplyFor } from "../test/fakeModelGateway";
 import { renderApp } from "../test/renderApp";
 import gapThresholds from "./gapThresholds.json";
 import { PROMPT_VARIANTS } from "./promptVariants";
@@ -112,6 +113,63 @@ describe("the matching model", () => {
     expect(generate).toHaveBeenCalledWith(expect.objectContaining({ job: "matching", model: "openai/gpt-5-mini", reasoningEffort: "low" }));
     const reasonsCall = generate.mock.calls.find(([request]) => request.job === "match-reasons");
     expect(reasonsCall?.[0].model).toBeUndefined();
+  });
+});
+
+describe("matching with a measured Jev Setup (#20)", () => {
+  /** Developer mode on, with the measured Jev Setup that asks yes or no per Scenario picked for matching. */
+  const pickJev = () => {
+    localStorage.setItem("interview-helper.developer", JSON.stringify({ enabled: true, jobs: {}, matchingSetup: "Jev (yes-no) · typesafe/jev-1.13" }));
+    devSettings.reload();
+  };
+
+  /** A yes/no answer for each Scenario sent, by its title (each question's instructions carry its Scenario). */
+  const yesByTitle =
+    (byTitle: Record<string, number>): DecisionFor =>
+    ({ questions }) =>
+      Object.fromEntries(
+        Object.entries(questions).map(([id, { instructions }]) => {
+          const scenario = JSON.parse(instructions.split("Scenario:\n")[1]) as { title: string };
+          return [id, { type: "noul" as const, noul: byTitle[scenario.title] ?? 0 }];
+        }),
+      );
+
+  it("finds Matches with Jev, one call for every Scenario, and still gets their reasons from the reasons model", async () => {
+    pickJev();
+    const gateway = createFakeModelGateway({
+      decide: { "jev-matching": [yesByTitle({ [CHECKOUT.Title]: 0.9, [MENTORING.Title]: 0.4 })] },
+      generate: { "match-reasons": [reasons({ [CHECKOUT.Title]: "You shipped a late migration.", [MENTORING.Title]: "You coached under pressure." })] },
+    });
+    const decide = vi.spyOn(gateway, "decide");
+    const generate = vi.spyOn(gateway, "generate");
+    renderApp({ gateway });
+    await interviewWithScenarios([CHECKOUT, MENTORING]);
+
+    await find();
+
+    const cards = within(await screen.findByRole("list", { name: "Matches" })).getAllByRole("listitem");
+    expect(cards.map((card) => card.textContent)).toEqual([
+      expect.stringMatching(/Best fit · 90%.*Rescued the failing checkout migration.*shipped a late migration/),
+      expect.stringMatching(/#2 · 40%.*Mentored two juniors/),
+    ]);
+    expect(decide).toHaveBeenCalledTimes(1);
+    expect(decide).toHaveBeenCalledWith(expect.objectContaining({ job: "jev-matching", model: "typesafe/jev-1.13" }));
+    expect(generate.mock.calls.map(([request]) => request.job)).toEqual(["match-reasons"]);
+  });
+
+  it("flags a Gap below Jev's own recorded threshold", async () => {
+    pickJev();
+    const gateway = createFakeModelGateway({
+      decide: { "jev-matching": [{ S1: { type: "noul", noul: 0.2 } }] },
+      generate: { "match-reasons": [{ suggestion: "A time you kept a critical deadline." }] },
+    });
+    renderApp({ gateway });
+    await interviewWithScenarios([CHECKOUT]);
+
+    await find();
+
+    expect(await screen.findByRole("region", { name: "No Scenario fits this Question yet" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Matches" })).not.toBeInTheDocument();
   });
 });
 

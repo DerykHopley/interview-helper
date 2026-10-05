@@ -41,6 +41,7 @@ describe("what the Worker allows (the Developer panel, #17)", () => {
     expect(body.models.find((m) => m.id === "typesafe/jev-1.13")).toEqual({ id: "typesafe/jev-1.13", kind: "decision", price: { inputPerMillion: 0.042, outputPerMillion: 0 }, temperature: false, reasoning: false });
     expect(body.jobs["feedback"]).toEqual({ model: "openai/gpt-5-mini", maxTokens: 3000, reasoningEffort: "low" });
     expect(body.jobs["readiness-report"]).toEqual({ model: "openai/gpt-5-mini", maxTokens: 8000, reasoningEffort: "medium" });
+    expect(body.decisionJobs).toEqual({ "jev-matching": { model: "typesafe/jev-1.13" } });
     expect(typeof body.pricesAt).toBe("string");
   });
 

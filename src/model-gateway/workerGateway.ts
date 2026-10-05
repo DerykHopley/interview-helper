@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { isWorkerError, type AccessResponse, type BilledError, type DecideRequest, type DecideResponse, type DecisionQuestion, type GenerateRequest, type GenerateResponse, type ModelsResponse } from "../../shared/workerProtocol";
-import { ModelGatewayError, type AccessStatus, type DecisionAnswer, type DecisionRequest, type ModelCall, type ModelGateway } from "./ModelGateway";
+import { DecisionAnswer, isWorkerError, type AccessResponse, type BilledError, type DecideRequest, type DecideResponse, type DecisionQuestion, type GenerateRequest, type GenerateResponse, type ModelsResponse } from "../../shared/workerProtocol";
+import { ModelGatewayError, type AccessStatus, type DecisionRequest, type ModelCall, type ModelGateway } from "./ModelGateway";
 
 type Options = {
   /** Where the Worker runs, e.g. http://localhost:8787 in local dev. */
@@ -25,21 +25,15 @@ function toStrictJsonSchema(schema: z.ZodType) {
   return jsonSchema;
 }
 
-const probability = z.number().min(0).max(1);
-const probabilities = z.record(z.string(), probability).optional();
-
-/** Jev's answer to `question`, if it's of the type asked and within it (a choice among the options given, a score on
- * the levels given); else null. Fields beyond these are dropped. */
+/** Jev's answer to `question`, if it's of the type asked and within it (a choice, and any probabilities, only among the
+ * options given); else null. Fields beyond the contract's are dropped. */
 function answerTo(question: DecisionQuestion, answer: unknown): DecisionAnswer | null {
-  const options = question.type === "choice" ? Object.keys(question.criteria) : [];
-  const levels = question.type === "score" ? question.criteria.length : 0;
-  const schema = {
-    noul: z.object({ type: z.literal("noul"), noul: probability }),
-    choice: z.object({ type: z.literal("choice"), choice: z.string().refine((c) => options.includes(c)), confidence: probability.optional(), probabilities }),
-    score: z.object({ type: z.literal("score"), score: z.number().min(0).max(levels), confidence: probability.optional(), probabilities }),
-  }[question.type];
-  const parsed = schema.safeParse(answer);
-  return parsed.success ? parsed.data : null;
+  const parsed = DecisionAnswer.safeParse(answer);
+  if (!parsed.success || parsed.data.type !== question.type) return null;
+  if (parsed.data.type === "noul" || question.type === "noul") return parsed.data;
+  const options = Object.keys(question.criteria);
+  const { choice, probabilities = {} } = parsed.data;
+  return options.includes(choice) && Object.keys(probabilities).every((option) => options.includes(option)) ? parsed.data : null;
 }
 
 /** The real Model Gateway: reaches models through the Worker, which checks the Access Token and calls OpenRouter. */

@@ -373,10 +373,10 @@
   "sections": [
     {
       "title": "Jev",
-      "intro": "TypeSafe's decision model (typesafe/jev-1.13), asked two ways, each in one call per Question: **choice** picks among every Scenario and \"none of them\", scoring each by its probability; **noul** asks yes or no for each Scenario, scoring each by its probability of yes. Scores are probabilities × 100, on Jev's own scale. Jev writes no text, so Match reasons still come from the reasons model, and no Prompt Variant or effort applies.",
+      "intro": "TypeSafe's decision model (typesafe/jev-1.13), asked two ways, each in one call per Question: **choice** picks among every Scenario and \"none of them\", scoring each by its probability; **yes-no** asks yes or no for each Scenario (Jev's \"noul\" questions), scoring each by its probability of yes. Scores are probabilities × 100, on Jev's own scale. Jev writes no text, so Match reasons still come from the reasons model, and no Prompt Variant or effort applies.",
       "names": [
         "Jev (choice) · typesafe/jev-1.13",
-        "Jev (noul) · typesafe/jev-1.13"
+        "Jev (yes-no) · typesafe/jev-1.13"
       ]
     }
   ],
@@ -4076,13 +4076,13 @@
       ]
     },
     {
-      "name": "Jev (noul) · typesafe/jev-1.13",
+      "name": "Jev (yes-no) · typesafe/jev-1.13",
       "models": [
         "typesafe/jev-1.13"
       ],
       "runs": [
         {
-          "name": "Jev (noul) · typesafe/jev-1.13",
+          "name": "Jev (yes-no) · typesafe/jev-1.13",
           "questions": [
             {
               "questionId": "off-the-rails",
@@ -4695,7 +4695,7 @@
           ]
         },
         {
-          "name": "Jev (noul) · typesafe/jev-1.13",
+          "name": "Jev (yes-no) · typesafe/jev-1.13",
           "questions": [
             {
               "questionId": "off-the-rails",
@@ -5308,7 +5308,7 @@
           ]
         },
         {
-          "name": "Jev (noul) · typesafe/jev-1.13",
+          "name": "Jev (yes-no) · typesafe/jev-1.13",
           "questions": [
             {
               "questionId": "off-the-rails",
