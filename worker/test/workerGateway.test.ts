@@ -8,7 +8,7 @@ import { PROMPT_VARIANTS } from "../../src/matching/promptVariants";
 import { createWorkerGateway } from "../../src/model-gateway/workerGateway";
 import { mintAccessToken } from "../src/accessToken";
 import { fakeOpenRouter } from "./fakeOpenRouter";
-import { completion, inHours } from "./helpers";
+import { completion, decisions, inHours } from "./helpers";
 
 const gatewayWith = (token: string | null) =>
   createWorkerGateway({ baseUrl: "http://worker.test", getAccessToken: () => token, fetch: (input, init) => exports.default.fetch(input, init) });
@@ -107,7 +107,7 @@ describe("the app's Model Gateway, talking to the Worker", () => {
 
     const allowed = await gateway.allowedModels();
 
-    expect(allowed.models).toContainEqual({ id: "openai/gpt-5-mini", price: { inputPerMillion: 0.25, outputPerMillion: 2 }, temperature: false, reasoning: true });
+    expect(allowed.models).toContainEqual({ id: "openai/gpt-5-mini", kind: "chat", price: { inputPerMillion: 0.25, outputPerMillion: 2 }, temperature: false, reasoning: true });
     expect(allowed.jobs["co-writing"]).toEqual({ model: "openai/gpt-5-mini", maxTokens: 4000, reasoningEffort: "low" });
   });
 
@@ -159,6 +159,44 @@ describe("the app's Model Gateway, talking to the Worker", () => {
     const gateway = gatewayWith(await mint(inHours(2)));
 
     await expect(gateway.generate({ job: "question-generation", system: "s", user: "u", schema: Questions })).rejects.toMatchObject({ code: "invalid_model_reply" });
+  });
+
+  it("asks Jev typed questions through the Worker, and reports the call (#20)", async () => {
+    openRouter = fakeOpenRouter(() => decisions({ s1: { type: "noul", noul: 0.9 }, best: { type: "choice", choice: "S1", confidence: 0.6, probabilities: { S1: 0.7, none: 0.3 } } }, 0.00002));
+    const gateway = gatewayWith(await mint(inHours(2)));
+    const heard: unknown[] = [];
+    gateway.onCall((call) => heard.push(call));
+
+    const answers = await gateway.decide({
+      job: "jev-matching",
+      state: "Question",
+      questions: { s1: { type: "noul", instructions: "Does it?" }, best: { type: "choice", instructions: "Which?", criteria: { S1: "One", none: "None" } } },
+    });
+
+    expect(answers).toEqual({ s1: { type: "noul", noul: 0.9 }, best: { type: "choice", choice: "S1", confidence: 0.6, probabilities: { S1: 0.7, none: 0.3 } } });
+    expect(openRouter.requests[0].json()).toMatchObject({ model: "typesafe/jev-1.13", state: "Question" });
+    expect(heard).toEqual([expect.objectContaining({ job: "jev-matching", model: "typesafe/jev-1.13", cost: 0.00002, tokens: { input: 480, output: 0 } })]);
+  });
+
+  it.each([
+    ["leaves a question unanswered", { s1: { type: "noul", noul: 0.9 } }],
+    ["answers with another type", { s1: { type: "noul", noul: 0.9 }, best: { type: "noul", noul: 0.2 } }],
+    ["gives a probability outside 0 to 1", { s1: { type: "noul", noul: 1.4 }, best: { type: "choice", choice: "S1" } }],
+    ["picks an option it wasn't given", { s1: { type: "noul", noul: 0.5 }, best: { type: "choice", choice: "S9" } }],
+  ])("rejects a decision that %s, after reporting what it cost", async (_, answers) => {
+    openRouter = fakeOpenRouter(() => decisions(answers));
+    const gateway = gatewayWith(await mint(inHours(2)));
+    const heard: unknown[] = [];
+    gateway.onCall((call) => heard.push(call));
+
+    const asked = gateway.decide({
+      job: "jev-matching",
+      state: "Question",
+      questions: { s1: { type: "noul", instructions: "Does it?" }, best: { type: "choice", instructions: "Which?", criteria: { S1: "One", none: "None" } } },
+    });
+
+    await expect(asked).rejects.toMatchObject({ code: "invalid_model_reply" });
+    expect(heard).toHaveLength(1);
   });
 
   it("tells the app when its Access Token has expired", async () => {

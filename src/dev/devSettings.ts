@@ -3,7 +3,7 @@
 // effort and temperature, and pick matching's Setup. Turned off, the Worker's defaults and the shipped Setup apply.
 import { useSyncExternalStore } from "react";
 import { z } from "zod";
-import { REASONING_EFFORTS, type ModelJob } from "../../shared/workerProtocol";
+import { REASONING_EFFORTS, type DecisionJob, type ModelJob } from "../../shared/workerProtocol";
 import type { ModelGateway, ModelsResponse } from "../model-gateway/ModelGateway";
 
 /** The jobs the panel sets, with the names it shows. The reason judge runs in the Matcher Report only. */
@@ -16,7 +16,7 @@ export const PANEL_JOBS = [
   ["readiness-report", "Readiness Report"],
 ] as const satisfies readonly (readonly [ModelJob, string])[];
 export type PanelJob = (typeof PANEL_JOBS)[number][0];
-export const jobName = (job: ModelJob) => PANEL_JOBS.find(([key]) => key === job)?.[1] ?? job;
+export const jobName = (job: ModelJob | DecisionJob) => PANEL_JOBS.find(([key]) => key === job)?.[1] ?? job;
 
 const jobOverride = z.object({
   model: z.string().optional(),
@@ -113,7 +113,7 @@ export function pruneSettings(settings: DevSettings, allowed: ModelsResponse, me
       dropped.push({ job, setting, why });
     };
     if (job === "matching") for (const setting of Object.keys(kept) as (keyof JobOverride)[]) drop(setting, "matching runs its Setup as measured");
-    if (kept.model !== undefined && !allowed.models.some((m) => m.id === kept.model)) drop("model", `${kept.model} isn't allowed any more`);
+    if (kept.model !== undefined && !allowed.models.some((m) => m.id === kept.model && m.kind === "chat")) drop("model", `${kept.model} isn't allowed any more`);
     const model = allowed.models.find((m) => m.id === (kept.model ?? defaults.model));
     if (kept.maxTokens !== undefined && kept.maxTokens > defaults.maxTokens) drop("maxTokens", `above the cap of ${defaults.maxTokens}`);
     if (kept.temperature !== undefined && !model?.temperature) drop("temperature", `${model?.id ?? defaults.model} doesn't take one`);

@@ -1,8 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { REASONING_EFFORTS, type ModelJob, type ReasoningEffort } from "../../shared/workerProtocol";
 import { useCancellableEffect } from "../hooks";
-import { MATCHING_CONFIG, measuredSetups } from "../matching/matchingConfig";
-import { PROMPT_VARIANTS } from "../matching/promptVariants";
+import { MATCHING_CONFIG, measuredSetups, sameSetup, setupLabel } from "../matching/matchingConfig";
 import { useModelGateway } from "../model-gateway/context";
 import type { AllowedModel, ModelCall, ModelsResponse } from "../model-gateway/ModelGateway";
 import { countOf } from "../text";
@@ -13,9 +12,7 @@ const MAX_CALLS = 200;
 
 /** The Setups the Matcher Report measured (they don't change while the app runs), and the shipped one among them. */
 const MEASURED = measuredSetups();
-const SHIPPED_SETUP = MEASURED.find(
-  ({ setup }) => setup.promptVariant === MATCHING_CONFIG.promptVariant && setup.model === MATCHING_CONFIG.model && setup.reasoningEffort === MATCHING_CONFIG.reasoningEffort,
-);
+const SHIPPED_SETUP = MEASURED.find(({ setup }) => sameSetup(setup, MATCHING_CONFIG));
 
 const isToggle = (e: KeyboardEvent) => e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === "d";
 
@@ -286,10 +283,12 @@ function JobSettings({ job, allowed, onReset }: { job: Exclude<PanelJob, "matchi
   const override = settings.jobs[job] ?? {};
   const defaults = allowed.jobs[job];
   const modelId = override.model ?? defaults.model;
-  const model = allowed.models.find((m) => m.id === modelId) ?? { id: modelId, price: null, temperature: false, reasoning: false };
+  // Chat models only: a decision model (Jev, #20) can't run a chat job.
+  const chatModels = allowed.models.filter((m) => m.kind === "chat");
+  const model = chatModels.find((m) => m.id === modelId) ?? { id: modelId, price: null, temperature: false, reasoning: false };
 
   function pickModel(id: string) {
-    const picked = allowed.models.find((m) => m.id === id);
+    const picked = chatModels.find((m) => m.id === id);
     setJobOverride(job, (o) => ({
       ...o,
       model: id === defaults.model ? undefined : id,
@@ -303,7 +302,7 @@ function JobSettings({ job, allowed, onReset }: { job: Exclude<PanelJob, "matchi
       <Field label="Model" changed={override.model !== undefined} wide>
         {(id) => (
           <select id={id} className="dev-input" value={modelId} onChange={(e) => pickModel(e.target.value)}>
-            {allowed.models.map((m) => (
+            {chatModels.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.id} · {priceOf(m)}
               </option>
@@ -380,7 +379,7 @@ function MatchingSettings({ allowed, onReset }: { allowed: ModelsResponse; onRes
           >
             {offered.map((m) => (
               <option key={m.name} value={m.name}>
-                {PROMPT_VARIANTS[m.setup.promptVariant].name} · {m.setup.model} · {m.setup.reasoningEffort} effort — threshold {m.gapThreshold}
+                {setupLabel(m)}
               </option>
             ))}
           </select>

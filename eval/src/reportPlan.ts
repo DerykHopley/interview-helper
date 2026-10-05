@@ -3,7 +3,8 @@
 // once); and where the report is written.
 import { normalize } from "node:path";
 import type { ReasoningEffort } from "../../shared/workerProtocol";
-import type { MatcherSetup } from "../../src/matching/matchingConfig";
+import { JEV_ASKS } from "../../src/matching/jevMatcher";
+import { sameSetup, type MatcherSetup } from "../../src/matching/matchingConfig";
 import { PROMPT_VARIANTS, type PromptVariantId } from "../../src/matching/promptVariants";
 
 /** The efforts compared: cheaper and faster, what ships, and slower and costlier. */
@@ -27,13 +28,16 @@ export const COMPARED_MODELS = [
   "minimax/minimax-m2.7",
 ];
 
-const same = (a: MatcherSetup, b: MatcherSetup) => a.promptVariant === b.promptVariant && a.model === b.model && a.reasoningEffort === b.reasoningEffort;
+/** The Jev model compared with --jev (#20): the Worker's DECISION_MODELS. */
+export const JEV_MODEL = "typesafe/jev-1.13";
 
 /** With `allSetups`, every Prompt Variant and every compared effort; with `models`, the shipped variant and effort on
- * each of those models. Each Setup runs once, however many sections it's in. */
-export function reportPlan(shipped: MatcherSetup, { allSetups = false, models = [] }: { allSetups?: boolean; models?: string[] }): ReportPlan {
+ * each of those models; with `jev`, each way of asking Jev (#20). Those first two vary an LLM Setup, so they need one
+ * to ship. The shipped Setup always runs, and each Setup runs once, however many sections it's in. */
+export function reportPlan(shipped: MatcherSetup, { allSetups = false, models = [], jev = false }: { allSetups?: boolean; models?: string[]; jev?: boolean }): ReportPlan {
   const sections: PlannedSection[] = [];
-  if (allSetups) {
+  if ((allSetups || models.length) && shipped.matcher !== "llm") throw new Error("--all-setups and --models vary the shipped LLM Setup; ship an LLM Setup to run them");
+  if (allSetups && shipped.matcher === "llm") {
     sections.push(
       {
         title: "Prompt Variants",
@@ -47,15 +51,22 @@ export function reportPlan(shipped: MatcherSetup, { allSetups = false, models = 
       },
     );
   }
-  if (models.length) {
+  if (models.length && shipped.matcher === "llm") {
     sections.push({
       title: "Models",
       intro: `The shipped Prompt Variant and effort (${shipped.promptVariant}, ${shipped.reasoningEffort}) on each model. Models without reasoning ignore the effort. Plain gpt-5 isn't on the owner's OpenRouter allow-list, so gpt-5.4 stands in for the full size.`,
       setups: [...new Set(models)].map((model) => ({ ...shipped, model })),
     });
   }
-  const setups = sections.flatMap((section) => section.setups).filter((s, i, all) => all.findIndex((t) => same(s, t)) === i);
-  return { setups: setups.length ? setups : [shipped], sections };
+  if (jev) {
+    sections.push({
+      title: "Jev",
+      intro: `TypeSafe's decision model (${JEV_MODEL}), asked two ways, each in one call per Question: **choice** picks among every Scenario and "none of them", scoring each by its probability; **noul** asks yes or no for each Scenario, scoring each by its probability of yes. Scores are probabilities × 100, on Jev's own scale. Jev writes no text, so Match reasons still come from the reasons model, and no Prompt Variant or effort applies.`,
+      setups: JEV_ASKS.map((ask) => ({ matcher: "jev", ask, model: JEV_MODEL })),
+    });
+  }
+  const setups = [shipped, ...sections.flatMap((section) => section.setups)].filter((s, i, all) => all.findIndex((t) => sameSetup(s, t)) === i);
+  return { setups, sections };
 }
 
 /** Reports go in the committed eval/reports/, except those on a set in the git-ignored eval/private/: its Scenarios are

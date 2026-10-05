@@ -1,13 +1,14 @@
-import type { AccessStatus, ChatTurn, DecisionAnswer, ModelCall, ModelGateway, ModelJob, ModelsResponse } from "../model-gateway/ModelGateway";
+import type { AccessStatus, ChatTurn, DecisionAnswer, DecisionJob, DecisionRequest, ModelCall, ModelGateway, ModelJob, ModelsResponse } from "../model-gateway/ModelGateway";
 
 /** What the Worker allows, as `GET /v1/models` answers (#17): its allowed models, and each job's defaults and caps. */
 export const ALLOWED: ModelsResponse = {
   models: [
-    { id: "openai/gpt-5-mini", price: { inputPerMillion: 0.25, outputPerMillion: 2 }, temperature: false, reasoning: true },
-    { id: "openai/gpt-5-nano", price: { inputPerMillion: 0.05, outputPerMillion: 0.4 }, temperature: false, reasoning: true },
-    { id: "openai/gpt-5.4", price: { inputPerMillion: 2.5, outputPerMillion: 15 }, temperature: false, reasoning: true },
-    { id: "anthropic/claude-haiku-4.5", price: { inputPerMillion: 1, outputPerMillion: 5 }, temperature: true, reasoning: true },
-    { id: "openai/gpt-4o-mini", price: { inputPerMillion: 0.15, outputPerMillion: 0.6 }, temperature: true, reasoning: false },
+    { id: "openai/gpt-5-mini", kind: "chat", price: { inputPerMillion: 0.25, outputPerMillion: 2 }, temperature: false, reasoning: true },
+    { id: "openai/gpt-5-nano", kind: "chat", price: { inputPerMillion: 0.05, outputPerMillion: 0.4 }, temperature: false, reasoning: true },
+    { id: "openai/gpt-5.4", kind: "chat", price: { inputPerMillion: 2.5, outputPerMillion: 15 }, temperature: false, reasoning: true },
+    { id: "anthropic/claude-haiku-4.5", kind: "chat", price: { inputPerMillion: 1, outputPerMillion: 5 }, temperature: true, reasoning: true },
+    { id: "openai/gpt-4o-mini", kind: "chat", price: { inputPerMillion: 0.15, outputPerMillion: 0.6 }, temperature: true, reasoning: false },
+    { id: "typesafe/jev-1.13", kind: "decision", price: { inputPerMillion: 0.042, outputPerMillion: 0 }, temperature: false, reasoning: false },
   ],
   jobs: {
     "question-generation": { model: "openai/gpt-5-mini", maxTokens: 4000, reasoningEffort: "low" },
@@ -28,7 +29,7 @@ const CALL_TOKENS = { input: 1000, output: 200 };
 export type ReplyFor = (request: { job: ModelJob; system: string; messages?: ChatTurn[]; user: string }) => unknown;
 /** Per job, the replies in order: each a scripted value, or a ReplyFor function. */
 type Script = Partial<Record<ModelJob, unknown[]>>;
-type DecisionScript = Partial<Record<ModelJob, Record<string, DecisionAnswer>[]>>;
+type DecisionScript = Partial<Record<DecisionJob, Record<string, DecisionAnswer>[]>>;
 
 /** A fake Model Gateway that can also say which Access Token a real one would send with its next call. */
 export type FakeModelGateway = ModelGateway & {
@@ -114,7 +115,7 @@ export function createFakeModelGateway({
     checkAccess(token) {
       return Promise.resolve(accessTokens[token.trim()] ?? { ok: false, reason: "invalid" });
     },
-    decide<Keys extends string>(request: { job: ModelJob; questions: Record<Keys, unknown> }) {
+    decide<Keys extends string>(request: DecisionRequest<Keys>) {
       const next = decisions[request.job]?.shift();
       if (!next) return Promise.reject(new Error(`No scripted decision for job "${request.job}"`));
       const missing = Object.keys(request.questions).filter((key) => !(key in next));

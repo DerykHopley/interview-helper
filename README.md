@@ -38,7 +38,7 @@ The words are defined in [`CONTEXT.md`](CONTEXT.md).
 - **Answering:** an answer bar on each Question, saved as you type. You can speak instead: a speech model transcribes you **in your browser**, so your voice never leaves your device.
 - **Feedback:** a checklist on one Answer against the Scenario you picked: which STAR parts are said, a measurable result, claims your Scenario doesn't support (quoted), and whether it shows the Question's skill.
 - **Readiness Report:** once half the Questions are answered, a practice estimate for the whole Interview (**Ready**, **Nearly there** or **Not yet**), with each skill, strengths, what to work on and what isn't practised yet.
-- **Developer panel** (for the app owner): press **Ctrl+Shift+D**, or add `?dev=1` to the address, and a DEV tab appears. For each job you can pick the model (with OpenRouter's live prices), the temperature where the model takes one, max tokens up to the job's cap, and the reasoning effort. Matching offers only the Setups the Matcher Report measured. A Calls tab shows each call's tokens, time and billed cost. It needs an Access Token, and the settings stay in that browser.
+- **Developer panel** (for the app owner): press **Ctrl+Shift+D**, or add `?dev=1` to the address, and a DEV tab appears. For each job you can pick the model (with OpenRouter's live prices), the temperature where the model takes one, max tokens up to the job's cap, and the reasoning effort. Matching offers only the Setups the Matcher Report measured, Jev's included. A Calls tab shows each call's tokens, time and billed cost. It needs an Access Token, and the settings stay in that browser.
 - **Packs:** two ready-made roles (Engineering Manager, Software Developer), each with an Interview and fictional Demo Scenarios, so the whole app can be tried in a minute.
 
 | Gaps | Co-writing | Readiness Report |
@@ -112,7 +112,7 @@ Seven jobs prompt a model, all through the Worker, all as structured output chec
 
 Matching is the core of the app, so it's measured. The **Matcher Report** (`npm run eval`, run by hand against the local Worker, never in CI) runs Matchers over an **Evaluation Set**: Scenarios and Questions, each Question labelled with the Scenarios that should match it, or as a Gap.
 
-Each Setup (a Prompt Variant, model and effort) runs 3 times, because models don't score the same way twice. The report measures:
+Each Setup (an LLM's Prompt Variant, model and effort, or how Jev is asked) runs 3 times, because models don't score the same way twice. The report measures:
 - **Top-1 and top-3 accuracy:** is a right Scenario ranked first, or in the first three?
 - **The Gap threshold:** the score below which a Question counts as a Gap. It's measured for each Setup, as the cut-off that sorts the most Questions correctly.
 - **Gaps flagged and false alarms** at that threshold.
@@ -123,6 +123,7 @@ Each Setup (a Prompt Variant, model and effort) runs 3 times, because models don
 On the starter set (7 Scenarios, 15 Questions, 4 of them Gaps, and 2 adversarial cases):
 - **Every Prompt Variant ranked every Question right.** The shipped rubric was the only cheap variant that neither adversarial case steered in any run ([report](eval/reports/2026-09-30-matcher-report-2.md), [interactive copy](eval/reports/2026-09-30-matcher-report-2.html)).
 - **Nine models** were compared on the shipped prompt. gpt-5-mini costs about $0.001 per Question. gpt-5.4 had a much wider margin for about 6× the cost. gpt-5-nano costs a fifth as much as gpt-5-mini, but hidden instructions steered it in 4 of its 6 attacked runs ([report](eval/reports/2026-09-30-matcher-report-3.md), [interactive copy](eval/reports/2026-09-30-matcher-report-3.html)).
+- **Jev** ([#20](https://github.com/DerykHopley/interview-helper/issues/20)), TypeSafe's decision model, answers typed questions with probabilities instead of text. It was asked two ways, each in one call per Question: one choice among all the Scenarios, or yes or no for each. Both got every Question right, at about a ninth of gpt-5-mini's cost and 0.3 s instead of 6 s. Asked as a choice, it puts nearly all its probability on one Scenario, so the 2nd and 3rd Matches would carry little signal. It's for comparison; the app still ships gpt-5-mini ([report](eval/reports/2026-10-05-matcher-report.md), [interactive copy](eval/reports/2026-10-05-matcher-report.html)).
 - **Match reasons:** the top Match's reason was grounded and answered the Question in 11 of 11. The 2nd and 3rd Matches' reasons often don't answer it, because a weaker Match only partly does ([#43](https://github.com/DerykHopley/interview-helper/issues/43)). The reason judge matched 10 of 10 known verdicts.
 
 These results are **provisional**: the starter set is small and easy, and the threshold is chosen on the same set it's measured on. A harder set is being built by hand ([#16](https://github.com/DerykHopley/interview-helper/issues/16)). The other jobs were checked by real runs recorded on GitHub:
@@ -233,7 +234,6 @@ Checked against the Sprint 1 brief on 2026-10-02.
 **Planned** (tickets, in the chart below):
 - Scenario Export and import, to back up or move Scenarios between browsers ([#6](https://github.com/DerykHopley/interview-helper/issues/6))
 - the adversarial results in a workbook for the course's jailbreak experiment ([#19](https://github.com/DerykHopley/interview-helper/issues/19))
-- a Matcher built on Jev, a different kind of model on OpenRouter, to compare ([#20](https://github.com/DerykHopley/interview-helper/issues/20))
 - local and embedding Matchers ([#21](https://github.com/DerykHopley/interview-helper/issues/21))
 - an LLM-judge honesty check for co-writing ([#22](https://github.com/DerykHopley/interview-helper/issues/22))
 - the harder Evaluation Set ([#16](https://github.com/DerykHopley/interview-helper/issues/16))
@@ -325,9 +325,9 @@ flowchart LR
   classDef should fill:#E2F2EF,color:#0B4F49,stroke:#0F7B72,stroke-width:2px
   classDef could fill:#fff,color:#4A5263,stroke:#8A93A6,stroke-width:2px,stroke-dasharray:5 4
 
-  class T2,T3,T4,T5,T7,T8,T9,T10,T11,T12,T13,T14,T15,T18,T31,T32,T33,T17,T54,T56,T58,T63 done
+  class T2,T3,T4,T5,T7,T8,T9,T10,T11,T12,T13,T14,T15,T18,T20,T31,T32,T33,T17,T54,T56,T58,T63 done
   class T16,T24 mustcrit
-  class T6,T19,T20 should
+  class T6,T19 should
   class T21,T22,T23,T30 could
 ```
 
