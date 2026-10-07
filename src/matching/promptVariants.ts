@@ -1,4 +1,4 @@
-// Prompt Variants (CONTEXT.md) for the LLM Matcher: one prompting technique each, compared in #15. Every variant
+// Prompt Variants (GLOSSARY.md) for the LLM Matcher: one prompting technique each, compared in #15. Every variant
 // keeps the same data layout and output schema, so only the technique differs (spec #1).
 import type { QuestionText, ScenarioText } from "./Matcher";
 

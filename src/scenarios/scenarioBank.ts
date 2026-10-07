@@ -33,7 +33,7 @@ export function scenarioBank(vault: UnlockedVault) {
   };
 }
 
-/** A copy of a Pack's Example Scenario (CONTEXT.md "Demo Scenario"). */
+/** A copy of a Pack's Example Scenario (GLOSSARY.md "Demo Scenario"). */
 export const isDemo = (scenario: Pick<Scenario, "origin">) => scenario.origin === "demo";
 
 export const REMOVE_DEMO_FAILED = "Couldn't remove the demo Scenarios. Try again.";

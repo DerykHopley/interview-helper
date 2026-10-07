@@ -1,4 +1,4 @@
-// The Evaluation Set (CONTEXT.md): a fixed collection of Scenarios and labelled Questions used to score Matchers.
+// The Evaluation Set (GLOSSARY.md): a fixed collection of Scenarios and labelled Questions used to score Matchers.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parse } from "yaml";

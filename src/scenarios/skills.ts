@@ -1,4 +1,4 @@
-// Skill tags (CONTEXT.md, Scenario) are compared ignoring capitals, and shown as the Candidate first wrote them.
+// Skill tags (GLOSSARY.md, Scenario) are compared ignoring capitals, and shown as the Candidate first wrote them.
 
 /** What makes two skill tags the same skill. */
 export const skillKey = (skill: string) => skill.trim().toLowerCase();

@@ -1,4 +1,4 @@
-// Access Tokens (CONTEXT.md; ADR 0002): a time-limited pass that lets a group use the app's LLM features.
+// Access Tokens (GLOSSARY.md; ADR 0002): a time-limited pass that lets a group use the app's LLM features.
 // Format: IH-<LABEL>-<EXPIRY>-<SIGNATURE>, short enough to read out or paste, e.g. IH-COHORT1-1Z3K9QT-7M2XD9PQRW4TK6BA.
 //   LABEL      the group's label, letters and digits (shown in usage logs)
 //   EXPIRY     Unix seconds, Crockford base32

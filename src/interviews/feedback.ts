@@ -1,4 +1,4 @@
-// Feedback on an Answer (CONTEXT.md "Feedback"; #32): an LLM checks the Answer against the Scenario the Candidate picked
+// Feedback on an Answer (GLOSSARY.md "Feedback"; #32): an LLM checks the Answer against the Scenario the Candidate picked
 // for that Question and the skill it tests, as a fixed checklist. It checks; it never writes a better answer or
 // suggests facts the Candidate didn't supply.
 import { z } from "zod";

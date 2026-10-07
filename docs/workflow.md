@@ -8,7 +8,7 @@ They're a good way for an existing developer to move into AI-assisted work, beca
 
 ## The flow, start to finish
 
-0. **`/setup-matt-pocock-skills`**, once per repo. It sets up where the issues live (GitHub Issues for me), the labels, and the docs layout: a `CONTEXT.md` glossary and `docs/adr/` for decisions.
+0. **`/setup-matt-pocock-skills`**, once per repo. It sets up where the issues live (GitHub Issues for me), the labels, and the docs layout: a `GLOSSARY.md` glossary and `docs/adr/` for decisions.
 1. **Understand the idea as well as you can, then `/grill-with-docs`.** Explain it as fully as you can, and give it everything: examples, another spec to base it on, links. It asks questions one round at a time, each with a recommended answer, and writes the glossary and decision records as you go.
    - **Answer the questions; don't just accept the recommendations.** Discuss why, or how something would work.
    - **Ask for alternatives.** The model will run with whatever you tell it, including a wrong approach. Ask "what are the other options?" Claude knows a lot, but links you give it help more.
@@ -53,7 +53,7 @@ This is where most of the value is. For every ticket I ask Claude to:
 
 - Use CI from day one.
 - Don't let it commit or push without asking, and tell it to stage files by name. Mine once swept an untracked file of mine into a commit.
-- Keep a glossary (`CONTEXT.md`). The same words in the code, the tickets and the UI save a lot of confusion.
+- Keep a glossary (`GLOSSARY.md`). The same words in the code, the tickets and the UI save a lot of confusion.
 - Short sessions with saved decisions beat one long session.
 
 ## Where to see it in this repo
@@ -62,7 +62,7 @@ This is where most of the value is. For every ticket I ask Claude to:
 - **Tickets and their labels:** [the issues](https://github.com/DerykHopley/interview-helper/issues), and the dependency chart at the bottom of the [README](../README.md#how-it-was-built).
 - **Decisions recorded on a ticket:** [#56](https://github.com/DerykHopley/interview-helper/issues/56), the Readiness Report, from a `/grill-with-docs` session through to its real check.
 - **A PR with its review and manual test record:** [PR #57](https://github.com/DerykHopley/interview-helper/pull/57).
-- **The glossary and decision records:** [`CONTEXT.md`](../CONTEXT.md) and [`docs/adr/`](adr/).
+- **The glossary and decision records:** [`GLOSSARY.md`](../GLOSSARY.md) and [`docs/adr/`](adr/).
 - **The prototypes:** [`docs/prototypes/`](prototypes/README.md), each round with its screenshots and the version chosen.
 - **The reports and comparisons:** [`eval/reports/`](../eval/reports/) (the Matcher Reports and their interactive pages) and the [voice comparison page](prototypes/voice/).
 - **The prompts:** [`docs/prompts.md`](prompts.md).
