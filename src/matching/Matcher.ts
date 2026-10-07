@@ -1,5 +1,5 @@
 /**
- * One interchangeable way of producing Matches (CONTEXT.md). Given a Question and the Candidate's Scenarios, it
+ * One interchangeable way of producing Matches (GLOSSARY.md). Given a Question and the Candidate's Scenarios, it
  * returns every Scenario with a score on the Matcher's own scale. Picking the top three, the Gap threshold and
  * Match reasons sit in a layer above this.
  */

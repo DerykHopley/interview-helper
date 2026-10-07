@@ -1,4 +1,4 @@
-// The Unlock Key (CONTEXT.md; ADR 0002): app-generated, so it can't be weak. 120 random bits as 6 groups of 4
+// The Unlock Key (GLOSSARY.md; ADR 0002): app-generated, so it can't be weak. 120 random bits as 6 groups of 4
 // Crockford base32 characters, e.g. 7KQF-M2XD-9HRT-4VNC-P8WB-3JZE.
 import { encodeBytes } from "../../shared/crockford";
 

@@ -1,4 +1,4 @@
-// Adding a Pack (CONTEXT.md "Pack"): it creates an Interview from the Pack's Questions and copies its Example
+// Adding a Pack (GLOSSARY.md "Pack"): it creates an Interview from the Pack's Questions and copies its Example
 // Scenarios in as Demo Scenarios. Example Scenarios are only ever matched as those copies.
 import { interviewStore } from "../interviews/interviewStore";
 import { isDemo, scenarioBank } from "../scenarios/scenarioBank";

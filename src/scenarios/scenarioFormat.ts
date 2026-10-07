@@ -1,4 +1,4 @@
-// The Scenario format (spec #1, "Scenario format"; CONTEXT.md): Markdown with a YAML header, e.g.
+// The Scenario format (spec #1, "Scenario format"; GLOSSARY.md): Markdown with a YAML header, e.g.
 //
 //   ---
 //   title: Rescued the failing checkout migration

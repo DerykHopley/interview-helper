@@ -1,4 +1,4 @@
-// Match reasons (CONTEXT.md) and a Gap's suggestion, from the Worker's cheap "match-reasons" job. They're written for
+// Match reasons (GLOSSARY.md) and a Gap's suggestion, from the Worker's cheap "match-reasons" job. They're written for
 // whichever Matcher ranked the Scenarios, so every Matcher's Matches read the same way (spec #1).
 import { z } from "zod";
 import type { ModelGateway } from "../model-gateway/ModelGateway";

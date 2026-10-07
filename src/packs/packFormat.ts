@@ -1,4 +1,4 @@
-// The Pack format (CONTEXT.md "Pack"; decisions on #7): one plain-text Markdown file a teacher can write in any
+// The Pack format (GLOSSARY.md "Pack"; decisions on #7): one plain-text Markdown file a teacher can write in any
 // editor. A YAML header holds the Pack's name, its Interview and its Questions; each Example Scenario then follows
 // under its own "# Example Scenario" line, in the Scenario format without an origin, e.g.
 //

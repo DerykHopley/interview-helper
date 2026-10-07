@@ -27,7 +27,7 @@ Before an interview, most people have a handful of strong, real stories from the
 
 Interview Helper works the other way round. You keep a private bank of **Scenarios**, real stories in your own words in a fixed STAR format. For each job you paste the **Job Spec**, and the app writes the behavioural **Questions** you're likely to face. For each Question it shows your best-fitting Scenarios as **Matches**, with a one-sentence reason each. When none of your Scenarios fits, the Question is flagged as a **Gap**, and an AI **co-writer** helps you write the missing story by asking you questions. It never adds anything you didn't say. Then you practise: type or speak each **Answer**, get **Feedback** checked against the Scenario you picked, and when you've answered enough, a **Readiness Report** on the whole Interview.
 
-The words are defined in [`CONTEXT.md`](CONTEXT.md).
+The words are defined in [`GLOSSARY.md`](GLOSSARY.md).
 
 ## Features
 

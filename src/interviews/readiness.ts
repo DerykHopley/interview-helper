@@ -1,4 +1,4 @@
-// The Readiness Report (CONTEXT.md; #56): an LLM judges a whole Interview's Answers together, against its Questions'
+// The Readiness Report (GLOSSARY.md; #56): an LLM judges a whole Interview's Answers together, against its Questions'
 // skills and its Job Spec, and gives a Readiness level with strengths and things to work on. Like Feedback it checks;
 // it never writes a better Answer or suggests facts the Candidate didn't supply. Code then keeps the model honest:
 // Readiness is capped while a Question is unanswered, and every quote must be in the Candidate's own Answer.

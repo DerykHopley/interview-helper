@@ -1,4 +1,4 @@
-// An Interview (CONTEXT.md): one job the Candidate is preparing for. Stored in the Vault as JSON, checked by this
+// An Interview (GLOSSARY.md): one job the Candidate is preparing for. Stored in the Vault as JSON, checked by this
 // schema on every read (ADR 0004). Later tickets add fields with defaults, so older records still read.
 import { z } from "zod";
 
@@ -34,7 +34,7 @@ export const storedChecklistSchema = z.object({
 });
 export type StoredChecklist = z.infer<typeof storedChecklistSchema>;
 
-/** A Readiness Report's levels (#56, CONTEXT.md "Readiness"). */
+/** A Readiness Report's levels (#56, GLOSSARY.md "Readiness"). */
 export const READINESS_LEVELS = ["ready", "nearly-there", "not-yet"] as const;
 export type Readiness = (typeof READINESS_LEVELS)[number];
 
